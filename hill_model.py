@@ -108,6 +108,7 @@ class HillCoordinate:
             interactionIndex - A length K+1 vector of global state variable indices for this coordinate followed by the K incoming interacting nodes"""
 
         self.gamma = gamma  # set linear decay
+        self.parameter = parameter  # store array of interaction parameters
         self.numcomponents = len(interactionSign)  # number of interaction nodes
         self.components = self.set_components(parameter, interactionSign, hillCoefficient)
         self.hillcoefficient = hillCoefficient  # Set Hill coefficient vector
@@ -115,7 +116,7 @@ class HillCoordinate:
         self.interaction = interactionIndex[1:]  # Vector of global interaction variable indices
         self.interactiontype = interactionType
         self.summand = self.set_summand()
-        self.interactionfunction = self.set_interaction()  # evaluation method for interaction polynomial
+        # self.interactionfunction = self.set_interaction()  # evaluation method for interaction polynomial
 
     def __call__(self, x):
         """Evaluate the Hill coordinate on a vector of (global) state variables. This is a map of the form
@@ -145,11 +146,6 @@ class HillCoordinate:
         localIndex = list(range(self.numcomponents))
         return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactiontype))]
 
-    def set_interaction(self):
-        """Dummy functionality just returns the sum for now"""
-
-        return lambda v: np.sum(v)
-
     def dinteraction(self, xLocal):
         """Dummy functionality for evaluating the derivative of the interaction function"""
 
@@ -157,6 +153,20 @@ class HillCoordinate:
             return np.ones(len(xLocal))
         else:
             raise KeyboardInterrupt
+
+    def interactionfunction(self, parm):
+        """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
+
+        return np.sum(
+            parm)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
+        # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
+
+    def eqintervalenclosure(self):
+        """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
+
+        minInteraction = self.interactionfunction([H.ell for H in self.components]) / self.gamma
+        maxInteraction = self.interactionfunction([H.ell + H.delta for H in self.components]) / self.gamma
+        return np.array([minInteraction, maxInteraction])
 
     def dx(self, x):
         """Return the derivative (gradient vector) evaluated at x in R^n as a row vector"""
@@ -203,6 +213,17 @@ class HillModel:
 
         return np.vstack([f_i.dx(x) for f_i in self.coordinate])
 
+    def findeq(self, gridDensity):
+        """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant"""
+
+        findroot = lambda x0: optimize.root(ts2, x0, jac=lambda x: ts2.dx(x), method='hybr')  # set root finding algorithm
+        # build a grid of initial data for Newton algorithm
+        evalGrid = np.meshgrid(*[np.linspace(*f_i.eqintervalenclosure(), num=gridDensity) for f_i in self.coordinate])
+        X = np.row_stack([G_i.flatten() for G_i in evalGrid])
+        solns = list(filter(lambda root: root.success, [findroot(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
+        equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
+        equilibria = np.unique(np.round(equilibria, 7), axis=1)  # remove duplicates
+        return np.column_stack([findroot(equilibria[:, j]).x for j in range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 def toggleswitch(gamma, parameter, hillCoefficient):
     """Defines the vector field for the toggle switch example"""
@@ -237,8 +258,15 @@ ts2 = HillModel(gamma, [hillParm[0, :], hillParm[1, :]], [hillCoefficient, hillC
 
 # verify that ts1(x0) = ts2(x0) - DONE
 # verify that ts2.dx(x0) matches MATLAB - DONE
+# equilibria = ts2.findeq(10) # test Hill model equilibrium finding - DONE
 
 
-# test Hill model equilibrium finding
-sol = optimize.root(ts2, np.array([4.1, 4.1]), jac=lambda x: ts2.dx(x), method='hybr')
-# sol.x ~ (1.1610, 6.8801) as it should be
+# # plot nullclines and equilibria
+# Xp = np.linspace(0, 10)
+# Yp = np.linspace(0, 10)
+# plt.figure()
+# plt.scatter(equilibria[0, :], equilibria[1, :])
+# N1 = ts2.coordinate[0].components[0](Yp) / gamma[0]  # f1 = 0 Nullcline
+# N2 = ts2.coordinate[1].components[0](Xp) / gamma[1]  # f2 = 0 Nullcline
+# plt.plot(Xp, N2)
+# plt.plot(N1, Yp)
