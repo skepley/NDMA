@@ -8,7 +8,7 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
 import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
-from math import log
+from numpy import log
 
 
 def isvector(array):
@@ -26,9 +26,8 @@ class HillComponent:
         """A Hill function with parameters [ell, delta, theta, n] of InteractionType in {-1, 1} to denote H^-, H^+ """
         self.sign = interactionSign
         self.parameterValues = np.zeros(4)  # initialize vector of parameter values
-
         parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
-        parameterCallIndex = {parameterNames: j for j in range(3)}  # calling index for parameter by name
+        parameterCallIndex = {parameterNames[j]: j for j in range(4)}  # calling index for parameter by name
         for parameterName, parameterValue in kwargs.items():
             setattr(self, parameterName, parameterValue)  # fix input parameter
             self.parameterValues[
@@ -37,6 +36,7 @@ class HillComponent:
 
         self.variableParameters = list(parameterCallIndex.keys())  # set callable parameters
         self.parameterCallIndex = list(parameterCallIndex.values())  # get indices for callable parameters
+        self.fixedParameter = [parameterName for parameterName in parameterNames if parameterName not in self.variableParameters]
 
     def __iter__(self):
         """Make iterable"""
@@ -48,12 +48,10 @@ class HillComponent:
         parameterEvaluation[self.parameterCallIndex] = parameter  # slice passed parameter vector into callable slots
         return parameterEvaluation
 
-    def __call__(self, x, parameter):
+    def __call__(self, x, parameter=np.array([])):
         """Evaluation method for a Hill component function instance"""
 
-        ell, delta, theta, hillCoefficient = self.curry_parameters(
-            parameter)  # unpack fixed and variable parameter values
-
+        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         xPower = x ** hillCoefficient
         thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
@@ -70,54 +68,49 @@ class HillComponent:
 
         reprString = 'Hill Component: \n' + 'sign = {0} \n'.format(self.sign)
         for parameterName in ['ell', 'delta', 'theta', 'hillCoefficient']:
-            reprString += parameterName + ' = {0} \n'.format(getattr(self, parameterName))
+            if parameterName not in self.variableParameters:
+                reprString += parameterName + ' = {0} \n'.format(getattr(self, parameterName))
+        reprString += 'Variable Parameters: {' + ', '.join(self.variableParameters) + '}\n'
         return reprString
 
-    def dx(self, x, nDerivative=1):
+    def dx(self, x, parameter=np.array([]), nDerivative=1):
         """Returns the derivative of a Hill component with respect to x"""
 
-        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
-        # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
-        thetaPower = self.theta ** hillCoefficient
+        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        # compute powers of x and theta only once.
+        thetaPower = theta ** hillCoefficient
         if nDerivative == 1:
             xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
             xPower = xPowerSmall * x
-            return self.sign * hillCoefficient * self.delta * thetaPower * xPowerSmall / ((thetaPower + xPower) ** 2)
+            return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall / ((thetaPower + xPower) ** 2)
         elif nDerivative == 2:
             xPowerSmall = x ** (hillCoefficient - 2)  # compute x^{hillCoefficient-1}
             xPower = xPowerSmall * x ** 2
-            return self.sign * self.delta * thetaPower * xPowerSmall * (
+            return self.sign * delta * thetaPower * xPowerSmall * (
                     (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
         else:
             raise KeyboardInterrupt
 
-    def dn(self, x):
+    def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n"""
 
-        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
-        # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
+        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        # compute powers of x and theta only once.
         xPower = x ** hillCoefficient
-        thetaPower = self.theta ** hillCoefficient
+        thetaPower = theta ** hillCoefficient
+        return self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
 
-        return self.sign * self.delta * xPower * thetaPower * log(x / self.theta) / ((thetaPower + xPower) ** 2)
-
-    def dndx(self, x):
+    def dndx(self, x, parameter=np.array([])):
         """Returns the mixed partials of a Hill component with respect to n and x"""
 
-        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
-        # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
-        thetaPower = self.theta ** hillCoefficient
+        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        # compute powers of x and theta only once.
+        thetaPower = theta ** hillCoefficient
         xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
         xPower = xPowerSmall * x
-        return self.sign * self.delta * thetaPower * xPowerSmall * (
-                hillCoefficient * (thetaPower - xPower) * log(x / self.theta) + thetaPower + xPower) / (
+        return self.sign * delta * thetaPower * xPowerSmall * (
+                hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
                        (thetaPower + xPower) ** 3)
-
-
-def myFun(hillcomponent, **kwargs):
-    for key, value in kwargs.items():
-        setattr(hillcomponent, key, value)
-    return hillcomponent
 
 
 class HillCoordinate:
@@ -272,25 +265,25 @@ def toggleswitch(gamma, parameter, hillCoefficient):
                      [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
 
 
-# set some parameters to test using MATLAB toggle switch for ground truth
-gamma = np.array([1, 1], dtype=float)
-ell = np.array([1, 1], dtype=float)
-theta = np.array([3, 3], dtype=float)
-delta = np.array([5, 6], dtype=float)
-hillParm = np.column_stack([ell, delta, theta])
-hillCoefficient = 4.1
-x0 = np.array([4, 3])
-
-# test Hill component code
-parm = np.append(hillParm[0, :], hillCoefficient)
-H = HillComponent(-1, parm)
-
-# test Hill coordinate code
-f1 = HillCoordinate(gamma[0], hillParm[0, :], hillCoefficient, [-1], [1], [0, 1])
-f2 = HillCoordinate(gamma[1], hillParm[1, :], hillCoefficient, [-1], [1], [1, 0])
+# # set some parameters to test using MATLAB toggle switch for ground truth
+# # gamma = np.array([1, 1], dtype=float)
+# # ell = np.array([1, 1], dtype=float)
+# # theta = np.array([3, 3], dtype=float)
+# # delta = np.array([5, 6], dtype=float)
+# # hillParm = np.column_stack([ell, delta, theta])
+# # hillCoefficient = 4.1
+# # x0 = np.array([4, 3])
+# #
+# # # test Hill component code
+# # parm = np.append(hillParm[0, :], hillCoefficient)
+# # H = HillComponent(-1, parm)
+# #
+# # # test Hill coordinate code
+# # f1 = HillCoordinate(gamma[0], hillParm[0, :], hillCoefficient, [-1], [1], [0, 1])
+# # f2 = HillCoordinate(gamma[1], hillParm[1, :], hillCoefficient, [-1], [1], [1, 0])
 
 # test Hill model code
-ts = toggleswitch(gamma, [hillParm[0, :], hillParm[1, :]], hillCoefficient)
+# ts = toggleswitch(gamma, [hillParm[0, :], hillParm[1, :]], hillCoefficient)
 
 # verify that ts1(x0) = ts2(x0) - DONE
 # verify that ts2.dx(x0) matches MATLAB - DONE
@@ -299,16 +292,16 @@ ts = toggleswitch(gamma, [hillParm[0, :], hillParm[1, :]], hillCoefficient)
 
 
 # # plot nullclines and equilibria
-plt.close('all')
-Xp = np.linspace(0, 10, 100)
-Yp = np.linspace(0, 10, 100)
-Z = np.zeros_like(Xp)
-
-equilibria = ts.findeq(10)
-N1 = ts.coordinate[0](np.row_stack([Z, Yp])) / gamma[0]  # f1 = 0 nullcline
-N2 = ts.coordinate[1](np.row_stack([Xp, Z])) / gamma[1]  # f2 = 0 nullcline
-
-plt.figure()
-plt.scatter(equilibria[0, :], equilibria[1, :])
-plt.plot(Xp, N2)
-plt.plot(N1, Yp)
+# plt.close('all')
+# Xp = np.linspace(0, 10, 100)
+# Yp = np.linspace(0, 10, 100)
+# Z = np.zeros_like(Xp)
+#
+# equilibria = ts.findeq(10)
+# N1 = ts.coordinate[0](np.row_stack([Z, Yp])) / gamma[0]  # f1 = 0 nullcline
+# N2 = ts.coordinate[1](np.row_stack([Xp, Z])) / gamma[1]  # f2 = 0 nullcline
+#
+# plt.figure()
+# plt.scatter(equilibria[0, :], equilibria[1, :])
+# plt.plot(Xp, N2)
+# plt.plot(N1, Yp)
