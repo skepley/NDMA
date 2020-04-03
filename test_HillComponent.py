@@ -9,17 +9,14 @@ Function and design testing for the HillComponent class
     Date: 4/3/20; Last revision: 4/3/20
 """
 import numpy as np
-from scipy import optimize
-import matplotlib.pyplot as plt
-from math import log
 from hill_model import HillComponent
 
-# set some parameters to test using MATLAB toggle switch for ground truth
+# set some parameters to test
 ell = 1
 theta = 3
 delta = 5
 n = 4.1
-x0 = np.array([3,4])
+x0 = np.array([3, 4, 5, 6])
 # x0 = 3
 
 # test Hill component code
