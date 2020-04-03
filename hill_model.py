@@ -11,6 +11,12 @@ import matplotlib.pyplot as plt
 from math import log
 
 
+def isvector(array):
+    """Returns true if input is a numpy vector"""
+
+    return len(np.shape(array)) == 1
+
+
 class HillComponent:
     """A component of a Hill system of the form ell + delta*H(x; ell, delta, theta, n) where H is an increasing or decreasing Hill function.
     In practice, the value of n should be thought of as a variable and the indices of the edges associated to ell, delta are
@@ -22,7 +28,7 @@ class HillComponent:
         self.ell = parameter[0]
         self.delta = parameter[1]
         self.theta = parameter[2]
-        self.hillCoefficient = parameter[3]
+        self.hillcoefficient = parameter[3]
 
     def __iter__(self):
         """Make iterable"""
@@ -31,8 +37,7 @@ class HillComponent:
     def __call__(self, x):
         """Evaluation method for a Hill function instance"""
 
-        hillCoefficient = self.hillCoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
-
+        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
         # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
         xPower = x ** hillCoefficient
         thetaPower = self.theta ** hillCoefficient  # compute theta^hillCoefficient only once
@@ -49,12 +54,12 @@ class HillComponent:
 
         return ('Hill Component: \n' + 'sign = {0} \n'.format(self.sign) + 'ell = {0} \n'.format(
             self.ell) + 'delta = {0} \n'.format(self.delta) +
-                'theta = {0} \n'.format(self.theta)) + 'n = {0} \n'.format(self.hillCoefficient)
+                'theta = {0} \n'.format(self.theta)) + 'n = {0} \n'.format(self.hillcoefficient)
 
     def dx(self, x, nDerivative=1):
         """Returns the derivative of a Hill component with respect to x"""
 
-        hillCoefficient = self.hillCoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
+        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
         # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
         thetaPower = self.theta ** hillCoefficient
         if nDerivative == 1:
@@ -72,7 +77,7 @@ class HillComponent:
     def dn(self, x):
         """Returns the derivative of a Hill component with respect to n"""
 
-        hillCoefficient = self.hillCoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
+        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
         # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
         xPower = x ** hillCoefficient
         thetaPower = self.theta ** hillCoefficient
@@ -82,7 +87,7 @@ class HillComponent:
     def dndx(self, x):
         """Returns the mixed partials of a Hill component with respect to n and x"""
 
-        hillCoefficient = self.hillCoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
+        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
         # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
         thetaPower = self.theta ** hillCoefficient
         xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
@@ -116,16 +121,20 @@ class HillCoordinate:
         self.interaction = interactionIndex[1:]  # Vector of global interaction variable indices
         self.interactiontype = interactionType
         self.summand = self.set_summand()
-        # self.interactionfunction = self.set_interaction()  # evaluation method for interaction polynomial
 
     def __call__(self, x):
         """Evaluate the Hill coordinate on a vector of (global) state variables. This is a map of the form
         g: R^n ---> R"""
 
-        hillComponentValues = np.array(list(map(lambda H, idx: H(x[idx]), self.components,
-                                                self.interaction)))  # evaluate Hill components
-        nonlinearTerm = self.interactionfunction(hillComponentValues)  # compose with interaction function
-        return -self.gamma * x[self.index] + nonlinearTerm
+        # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
+
+        if isvector(x):  # Evaluate coordinate for a single x in R^n
+            hillComponentValues = np.array(list(map(lambda H, idx: H(x[idx]), self.components,
+                                                    self.interaction)))  # evaluate Hill components
+            nonlinearTerm = self.interactionfunction(hillComponentValues)  # compose with interaction function
+            return -self.gamma * x[self.index] + nonlinearTerm
+        else:  # vectorized evaluation where x is a matrix of columns to evaluate
+            return np.array([self(x[:, j]) for j in range(np.shape(x)[1])])
 
     def set_components(self, parameter, interactionSign, hillCoefficient):
         """Return a list of Hill components for this Hill coordinate"""
@@ -183,6 +192,7 @@ class HillCoordinate:
         return Df
 
 
+
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and its incoming interactions, {X_1,...,X_{K_i}}.
@@ -206,7 +216,10 @@ class HillModel:
     def __call__(self, x):
         """Evaluate the vector field defined by this HillModel instance"""
 
-        return np.array([f_i(x) for f_i in self.coordinate])
+        if isvector(x):  # input a single vector in R^n
+            return np.array([f_i(x) for f_i in self.coordinate])
+        else:  # vectorized input
+            return np.row_stack([f_i(x) for f_i in self.coordinate])
 
     def dx(self, x):
         """Return the derivative (Jacobian) of the HillModel vector field evaluated at x"""
@@ -216,22 +229,25 @@ class HillModel:
     def findeq(self, gridDensity):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant"""
 
-        findroot = lambda x0: optimize.root(ts2, x0, jac=lambda x: ts2.dx(x), method='hybr')  # set root finding algorithm
+        findroot = lambda x0: optimize.root(self, x0, jac=lambda x: self.dx(x),
+                                            method='hybr')  # set root finding algorithm
         # build a grid of initial data for Newton algorithm
         evalGrid = np.meshgrid(*[np.linspace(*f_i.eqintervalenclosure(), num=gridDensity) for f_i in self.coordinate])
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
-        solns = list(filter(lambda root: root.success, [findroot(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
+        solns = list(filter(lambda root: root.success,
+                            [findroot(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         equilibria = np.unique(np.round(equilibria, 7), axis=1)  # remove duplicates
-        return np.column_stack([findroot(equilibria[:, j]).x for j in range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
+        return np.column_stack([findroot(equilibria[:, j]).x for j in
+                                range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
+
 
 def toggleswitch(gamma, parameter, hillCoefficient):
     """Defines the vector field for the toggle switch example"""
 
     # define Hill system for toggle switch
-    f1 = HillCoordinate(gamma[0], parameter[0, :], hillCoefficient, [-1], [1], [0, 1])
-    f2 = HillCoordinate(gamma[1], parameter[1, :], hillCoefficient, [-1], [1], [1, 0])
-    return lambda x: np.array([f1(x), f2(x)])
+    return HillModel(gamma, parameter, [hillCoefficient, hillCoefficient],
+                     [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
@@ -252,21 +268,25 @@ f1 = HillCoordinate(gamma[0], hillParm[0, :], hillCoefficient, [-1], [1], [0, 1]
 f2 = HillCoordinate(gamma[1], hillParm[1, :], hillCoefficient, [-1], [1], [1, 0])
 
 # test Hill model code
-ts1 = toggleswitch(gamma, hillParm, hillCoefficient)
-ts2 = HillModel(gamma, [hillParm[0, :], hillParm[1, :]], [hillCoefficient, hillCoefficient],
-                [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
+ts = toggleswitch(gamma, [hillParm[0, :], hillParm[1, :]], hillCoefficient)
 
 # verify that ts1(x0) = ts2(x0) - DONE
 # verify that ts2.dx(x0) matches MATLAB - DONE
 # equilibria = ts2.findeq(10) # test Hill model equilibrium finding - DONE
+# added vectorized evaluation of Hill Models - DONE
 
 
 # # plot nullclines and equilibria
-# Xp = np.linspace(0, 10)
-# Yp = np.linspace(0, 10)
-# plt.figure()
-# plt.scatter(equilibria[0, :], equilibria[1, :])
-# N1 = ts2.coordinate[0].components[0](Yp) / gamma[0]  # f1 = 0 Nullcline
-# N2 = ts2.coordinate[1].components[0](Xp) / gamma[1]  # f2 = 0 Nullcline
-# plt.plot(Xp, N2)
-# plt.plot(N1, Yp)
+plt.close('all')
+Xp = np.linspace(0, 10, 100)
+Yp = np.linspace(0, 10, 100)
+Z = np.zeros_like(Xp)
+
+equilibria = ts.findeq(10)
+N1 = ts.coordinate[0](np.row_stack([Z, Yp])) / gamma[0]  # f1 = 0 nullcline
+N2 = ts.coordinate[1](np.row_stack([Xp, Z])) / gamma[1]  # f2 = 0 nullcline
+
+plt.figure()
+plt.scatter(equilibria[0, :], equilibria[1, :])
+plt.plot(Xp, N2)
+plt.plot(N1, Yp)
