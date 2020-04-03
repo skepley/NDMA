@@ -22,39 +22,56 @@ class HillComponent:
     In practice, the value of n should be thought of as a variable and the indices of the edges associated to ell, delta are
     different than those associated to theta."""
 
-    def __init__(self, interactionSign, parameter):
+    def __init__(self, interactionSign, **kwargs):
         """A Hill function with parameters [ell, delta, theta, n] of InteractionType in {-1, 1} to denote H^-, H^+ """
         self.sign = interactionSign
-        self.ell = parameter[0]
-        self.delta = parameter[1]
-        self.theta = parameter[2]
-        self.hillcoefficient = parameter[3]
+        self.parameterValues = np.zeros(4)  # initialize vector of parameter values
+
+        parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
+        parameterCallIndex = {parameterNames: j for j in range(3)}  # calling index for parameter by name
+        for parameterName, parameterValue in kwargs.items():
+            setattr(self, parameterName, parameterValue)  # fix input parameter
+            self.parameterValues[
+                parameterCallIndex[parameterName]] = parameterValue  # update fixed parameter value in evaluation vector
+            del parameterCallIndex[parameterName]  # remove fixed parameter from callable list
+
+        self.variableParameters = list(parameterCallIndex.keys())  # set callable parameters
+        self.parameterCallIndex = list(parameterCallIndex.values())  # get indices for callable parameters
 
     def __iter__(self):
         """Make iterable"""
         yield self
 
-    def __call__(self, x):
-        """Evaluation method for a Hill function instance"""
+    def curry_parameters(self, parameter):
+        """Returns a parameter evaluation vector in R^4 with fixed and variable parameters indexed properly"""
+        parameterEvaluation = self.parameterValues.copy()  # get a mutable copy of the fixed parameter values
+        parameterEvaluation[self.parameterCallIndex] = parameter  # slice passed parameter vector into callable slots
+        return parameterEvaluation
 
-        hillCoefficient = self.hillcoefficient  # extract Hill coefficient in the local scope. This is so that later versions will allow this as a passed variable.
-        # compute powers of x and theta only once. This should be added as a property later to speed up numerical algorithms
+    def __call__(self, x, parameter):
+        """Evaluation method for a Hill component function instance"""
+
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
+
+        # compute powers of x and theta only once.
         xPower = x ** hillCoefficient
-        thetaPower = self.theta ** hillCoefficient  # compute theta^hillCoefficient only once
+        thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
 
         # evaluation rational part of the Hill function
         if self.sign == 1:
             evalRational = xPower / (xPower + thetaPower)
         elif self.sign == -1:
             evalRational = thetaPower / (xPower + thetaPower)
-        return self.ell + self.delta * evalRational
+        return ell + delta * evalRational
 
     def __repr__(self):
         """Return a canonical string representation of a Hill component"""
 
-        return ('Hill Component: \n' + 'sign = {0} \n'.format(self.sign) + 'ell = {0} \n'.format(
-            self.ell) + 'delta = {0} \n'.format(self.delta) +
-                'theta = {0} \n'.format(self.theta)) + 'n = {0} \n'.format(self.hillcoefficient)
+        reprString = 'Hill Component: \n' + 'sign = {0} \n'.format(self.sign)
+        for parameterName in ['ell', 'delta', 'theta', 'hillCoefficient']:
+            reprString += parameterName + ' = {0} \n'.format(getattr(self, parameterName))
+        return reprString
 
     def dx(self, x, nDerivative=1):
         """Returns the derivative of a Hill component with respect to x"""
@@ -95,6 +112,12 @@ class HillComponent:
         return self.sign * self.delta * thetaPower * xPowerSmall * (
                 hillCoefficient * (thetaPower - xPower) * log(x / self.theta) + thetaPower + xPower) / (
                        (thetaPower + xPower) ** 3)
+
+
+def myFun(hillcomponent, **kwargs):
+    for key, value in kwargs.items():
+        setattr(hillcomponent, key, value)
+    return hillcomponent
 
 
 class HillCoordinate:
@@ -190,7 +213,6 @@ class HillCoordinate:
         Df[self.interaction] = Dinteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
         Df[self.index] -= self.gamma  # Add derivative of linear part to the gradient at this HillCoordinate
         return Df
-
 
 
 class HillModel:
