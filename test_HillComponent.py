@@ -20,10 +20,12 @@ x0 = np.array([3, 4, 5, 6])
 # x0 = 3
 
 # test Hill component code
-parm = np.array([ell, theta, delta, n], dtype=float)
-H1 = HillComponent(-1, ell=ell, theta=theta, delta=delta, hillCoefficient=n)  # A function of x with all parameters fixed
+H1 = HillComponent(-1, ell=ell, theta=theta, delta=delta,
+                   hillCoefficient=n)  # A function of x with all parameters fixed
 H2 = HillComponent(-1, ell=ell, theta=theta)  # A function of x with callable variable parameters: {delta, n}
 H3 = HillComponent(-1)  # A function of x with all parameters callable
+parameterDict = {'ell': ell, 'theta': theta}
+H4 = HillComponent(-1, **parameterDict)  # Test construction by dictionary
 
 # check function calls
 print(H1(x0))

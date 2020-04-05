@@ -19,11 +19,13 @@ def isvector(array):
 
 class HillComponent:
     """A component of a Hill system of the form ell + delta*H(x; ell, delta, theta, n) where H is an increasing or decreasing Hill function.
-    In practice, the value of n should be thought of as a variable and the indices of the edges associated to ell, delta are
-    different than those associated to theta."""
+    Any of these parameters can be considered as a fixed value for a Component or included in the callable variables. The
+    indices of the edges associated to ell, and delta are different than those associated to theta."""
 
     def __init__(self, interactionSign, **kwargs):
         """A Hill function with parameters [ell, delta, theta, n] of InteractionType in {-1, 1} to denote H^-, H^+ """
+        # TODO: Class constructor should not do work!
+
         self.sign = interactionSign
         self.parameterValues = np.zeros(4)  # initialize vector of parameter values
         parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
@@ -36,7 +38,8 @@ class HillComponent:
 
         self.variableParameters = list(parameterCallIndex.keys())  # set callable parameters
         self.parameterCallIndex = list(parameterCallIndex.values())  # get indices for callable parameters
-        self.fixedParameter = [parameterName for parameterName in parameterNames if parameterName not in self.variableParameters]
+        self.fixedParameter = [parameterName for parameterName in parameterNames if
+                               parameterName not in self.variableParameters]
 
     def __iter__(self):
         """Make iterable"""
@@ -51,7 +54,8 @@ class HillComponent:
     def __call__(self, x, parameter=np.array([])):
         """Evaluation method for a Hill component function instance"""
 
-        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         xPower = x ** hillCoefficient
         thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
@@ -76,7 +80,8 @@ class HillComponent:
     def dx(self, x, parameter=np.array([]), nDerivative=1):
         """Returns the derivative of a Hill component with respect to x"""
 
-        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         thetaPower = theta ** hillCoefficient
         if nDerivative == 1:
@@ -94,7 +99,8 @@ class HillComponent:
     def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n"""
 
-        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         xPower = x ** hillCoefficient
         thetaPower = theta ** hillCoefficient
@@ -103,7 +109,8 @@ class HillComponent:
     def dndx(self, x, parameter=np.array([])):
         """Returns the mixed partials of a Hill component with respect to n and x"""
 
-        ell, delta, theta, hillCoefficient = self.curry_parameters(parameter)  # unpack fixed and variable parameter values
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         thetaPower = theta ** hillCoefficient
         xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
@@ -118,80 +125,104 @@ class HillCoordinate:
     x' = -gamma*x + p(H_1, H_2,...,H_k) where each H_i is a Hill function depending on x_i which is a state variable
     which regulates x"""
 
-    def __init__(self, gamma, parameter, hillCoefficient, interactionSign, interactionType, interactionIndex):
+    def __init__(self, parameter, interactionSign, interactionType, interactionIndex, gamma=np.nan):
         """Hill Coordinate instantiation with the following syntax:
         INPUTS:
             gamma - scalar decay rate for this coordinate
-            parameter - A K-by-3 numpy array of Hill component parameter with rows of the form [ell, delta, theta]
-            hillCoefficient - A length K vector or list with Hill coefficients for the K incoming interactions
+            parameter - A K-by-4 numpy array of Hill component parameters with rows of the form [ell, delta, theta, hillCoefficient]
+            hillCoefficient(DEPRECATED) - A length K vector or list with Hill coefficients for the K incoming interactions
             interactionSign - A vector in F_2^K carrying the sign type for each Hill component
             interactionType - A vector describing the interaction type of the interaction function specified as an integer partition of K
-            interactionIndex - A length K+1 vector of global state variable indices for this coordinate followed by the K incoming interacting nodes"""
+            interactionIndex - A length K+1 vector of global state variable indices. interactionIndex[0] is the global index
+                for this coordinate and interactionIndex[1:] the indices of the K incoming interacting nodes"""
 
-        self.gamma = gamma  # set linear decay
-        self.parameter = parameter  # store array of interaction parameters
-        self.numcomponents = len(interactionSign)  # number of interaction nodes
-        self.components = self.set_components(parameter, interactionSign, hillCoefficient)
-        self.hillcoefficient = hillCoefficient  # Set Hill coefficient vector
-        self.index = interactionIndex[0]  # Define this coordinates global index
+        # TODO: Class constructor should not do work!
+        self.gammaIsVariable = np.isnan(gamma)
+        if ~np.isnan(gamma):
+            self.gamma = gamma  # set fixed linear decay
+        self.parameterValues = parameter  # initialize array of fixed parameter values
+        self.numComponent = len(interactionSign)  # number of interaction nodes
+        self.components = self.set_components(parameter, interactionSign)
+        self.index = interactionIndex[0]  # Define this coordinate's global index
         self.interaction = interactionIndex[1:]  # Vector of global interaction variable indices
-        self.interactiontype = interactionType
+        self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()
+        self.numVarByComponent = list(
+            map(lambda j: np.count_nonzero(np.isnan(self.parameterValues[j, :])), range(self.numComponent)))
+        self.variableIndexByComponent = np.insert(np.cumsum(self.numVarByComponent), 0, 0)
 
-    def __call__(self, x):
+    def __call__(self, x, parameter):
         """Evaluate the Hill coordinate on a vector of (global) state variables. This is a map of the form
         g: R^n ---> R"""
 
-        # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
+        if self.gammaIsVariable:
+            gamma = parameter.pop(0)
+        else:
+            gamma = self.gamma
 
         if isvector(x):  # Evaluate coordinate for a single x in R^n
-            hillComponentValues = np.array(list(map(lambda H, idx: H(x[idx]), self.components,
-                                                    self.interaction)))  # evaluate Hill components
-            nonlinearTerm = self.interactionfunction(hillComponentValues)  # compose with interaction function
+            parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
+                                    j in range(self.numComponent)]
+            hillComponentValues = np.array(list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interaction,
+                                                    parameterByComponent)))  # evaluate Hill components
+            nonlinearTerm = self.interaction_function(hillComponentValues)  # compose with interaction function
             return -self.gamma * x[self.index] + nonlinearTerm
-        else:  # vectorized evaluation where x is a matrix of columns to evaluate
+
+        # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
+        else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
             return np.array([self(x[:, j]) for j in range(np.shape(x)[1])])
 
-    def set_components(self, parameter, interactionSign, hillCoefficient):
+    def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
 
-        if self.numcomponents == 1:
-            return [HillComponent(interactionSign[0], np.append(parameter, hillCoefficient))]
+        parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
+
+        def row2dict(row):
+            """convert ordered row of parameter matrix to kwarg"""
+            return {parameterNames[j]: row[j] for j in range(4) if
+                    not np.isnan(row[j])}
+
+        if self.numComponent == 1:
+            return [HillComponent(interactionSign[0], **row2dict(parameter))]
         else:
-            return [HillComponent(interactionSign[k], np.append(parameter[k, :], hillCoefficient[k])) for k in
-                    range(self.numcomponents)]  # list of Hill components
+            return [HillComponent(interactionSign[k], **row2dict(parameter[k, :])) for k in
+                    range(self.numComponent)]  # list of Hill components
 
     def set_summand(self):
         """Return the list of lists containing the summand indices defined by the interaction type.
         EXAMPLE:
             interactionType = [2,1,3,1] returns the index partition [[0,1], [2], [3,4,5], [6]]"""
 
-        sumEndpoints = np.insert(np.cumsum(self.interactiontype), 0,
+        sumEndpoints = np.insert(np.cumsum(self.interactionType), 0,
                                  0)  # summand endpoint indices including initial zero
-        localIndex = list(range(self.numcomponents))
-        return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactiontype))]
+        localIndex = list(range(self.numComponent))
+        return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactionType))]
 
-    def dinteraction(self, xLocal):
+    def diff_interaction(self, xLocal):
         """Dummy functionality for evaluating the derivative of the interaction function"""
 
-        if len(self.interactiontype) == 1:
+        if len(self.interactionType) == 1:
             return np.ones(len(xLocal))
         else:
             raise KeyboardInterrupt
 
-    def interactionfunction(self, parm):
+    def interaction_function(self, parm):
         """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
 
         return np.sum(
             parm)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
         # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
 
-    def eqintervalenclosure(self):
+    def eq_interval(self):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
-        minInteraction = self.interactionfunction([H.ell for H in self.components]) / self.gamma
-        maxInteraction = self.interactionfunction([H.ell + H.delta for H in self.components]) / self.gamma
-        return np.array([minInteraction, maxInteraction])
+        try:
+            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
+            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+            enclosingInterval = np.array([minInteraction, maxInteraction])
+        except AttributeError:
+            print('Current implementation requires fixed ell, delta parameters')
+        return enclosingInterval
 
     def dx(self, x):
         """Return the derivative (gradient vector) evaluated at x in R^n as a row vector"""
@@ -200,7 +231,7 @@ class HillCoordinate:
         Df = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interaction]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        Dinteraction = self.dinteraction(xLocal)  # evaluate outer term in chain rule
+        Dinteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
         DHillComponent = np.array(
             list(map(lambda H, x: H.dx(x), self.components, xLocal)))  # evaluate inner term in chain rule
         Df[self.interaction] = Dinteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
@@ -247,7 +278,7 @@ class HillModel:
         findroot = lambda x0: optimize.root(self, x0, jac=lambda x: self.dx(x),
                                             method='hybr')  # set root finding algorithm
         # build a grid of initial data for Newton algorithm
-        evalGrid = np.meshgrid(*[np.linspace(*f_i.eqintervalenclosure(), num=gridDensity) for f_i in self.coordinate])
+        evalGrid = np.meshgrid(*[np.linspace(*f_i.eq_interval(), num=gridDensity) for f_i in self.coordinate])
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
         solns = list(filter(lambda root: root.success,
                             [findroot(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
@@ -263,7 +294,6 @@ def toggleswitch(gamma, parameter, hillCoefficient):
     # define Hill system for toggle switch
     return HillModel(gamma, parameter, [hillCoefficient, hillCoefficient],
                      [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
-
 
 # # set some parameters to test using MATLAB toggle switch for ground truth
 # # gamma = np.array([1, 1], dtype=float)
