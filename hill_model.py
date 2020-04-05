@@ -128,9 +128,10 @@ class HillCoordinate:
     def __init__(self, parameter, interactionSign, interactionType, interactionIndex, gamma=np.nan):
         """Hill Coordinate instantiation with the following syntax:
         INPUTS:
-            gamma - scalar decay rate for this coordinate
+            gamma - scalar decay rate for this coordinate or NaN if gamma is a variable parameter which is callable as
+                the first component of the parameter variable vector.
             parameter - A K-by-4 numpy array of Hill component parameters with rows of the form [ell, delta, theta, hillCoefficient]
-            hillCoefficient(DEPRECATED) - A length K vector or list with Hill coefficients for the K incoming interactions
+                Entries which are NaN are variable parameters which are callable in the function and all derivatives.
             interactionSign - A vector in F_2^K carrying the sign type for each Hill component
             interactionType - A vector describing the interaction type of the interaction function specified as an integer partition of K
             interactionIndex - A length K+1 vector of global state variable indices. interactionIndex[0] is the global index
@@ -152,25 +153,53 @@ class HillCoordinate:
         self.variableIndexByComponent = np.insert(np.cumsum(self.numVarByComponent), 0, 0)
 
     def __call__(self, x, parameter):
-        """Evaluate the Hill coordinate on a vector of (global) state variables. This is a map of the form
-        g: R^n ---> R"""
+        """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
+        map of the form  g: R^n x R^m ---> R where n is the number of state variables of the Hill model and m is the number
+        of variable parameters for this Hill coordinate"""
 
+        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
         if self.gammaIsVariable:
             gamma = parameter.pop(0)
         else:
             gamma = self.gamma
 
         if isvector(x):  # Evaluate coordinate for a single x in R^n
+            # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
+            # the j^th Hill component.
             parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
                                     j in range(self.numComponent)]
-            hillComponentValues = np.array(list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interaction,
-                                                    parameterByComponent)))  # evaluate Hill components
+            hillComponentValues = np.array(
+                list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interaction,
+                         parameterByComponent)))  # evaluate Hill components
             nonlinearTerm = self.interaction_function(hillComponentValues)  # compose with interaction function
-            return -self.gamma * x[self.index] + nonlinearTerm
+            return -gamma * x[self.index] + nonlinearTerm
 
         # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
         else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
             return np.array([self(x[:, j]) for j in range(np.shape(x)[1])])
+
+    def dx(self, x, parameter):
+        """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
+
+        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
+        if self.gammaIsVariable:
+            gamma = parameter.pop(0)
+        else:
+            gamma = self.gamma
+
+        dim = len(x)  # dimension of vector field
+        Df = np.zeros(dim, dtype=float)
+        xLocal = x[
+            self.interaction]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        Dinteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
+        parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
+                                j in range(self.numComponent)]  # unpack variable parameters by component
+        DHillComponent = np.array(
+            list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
+                     parameterByComponent)))  # evaluate inner term in chain rule
+        Df[self.interaction] = Dinteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+        Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
+        return Df
 
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
@@ -223,20 +252,6 @@ class HillCoordinate:
         except AttributeError:
             print('Current implementation requires fixed ell, delta parameters')
         return enclosingInterval
-
-    def dx(self, x):
-        """Return the derivative (gradient vector) evaluated at x in R^n as a row vector"""
-
-        dim = len(x)  # dimension of vector field
-        Df = np.zeros(dim, dtype=float)
-        xLocal = x[
-            self.interaction]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        Dinteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
-        DHillComponent = np.array(
-            list(map(lambda H, x: H.dx(x), self.components, xLocal)))  # evaluate inner term in chain rule
-        Df[self.interaction] = Dinteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
-        Df[self.index] -= self.gamma  # Add derivative of linear part to the gradient at this HillCoordinate
-        return Df
 
 
 class HillModel:
