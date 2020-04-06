@@ -1,13 +1,8 @@
 """
-One line description of what the script performs (H1 line)
-
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
+Function and design testing for the HillComponent class
 
     Output: output
     Other files required: none
-    See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
 
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
@@ -27,3 +22,11 @@ p = np.array([1, 2, 3])
 
 f1 = HillCoordinate(parameter, interactionSign, [2], [0, 1, 2], gamma=gamma)
 print(f1(x, p))
+print(f1.dx(x,p))
+
+parameter2 = np.array([[1, 3, 5, np.nan],
+                      [np.nan, 2, 6, 3]])
+f2 = HillCoordinate(parameter2, interactionSign, [2], [0, 1, 2])
+p2 = np.array([gamma, 4.1, 1])
+print(f2(x, p2 ))
+print(f2.dx(x, p2))

@@ -159,7 +159,7 @@ class HillCoordinate:
 
         # If gamma is not fixed, then it must be the first coordinate of the parameter vector
         if self.gammaIsVariable:
-            gamma = parameter.pop(0)
+            gamma, parameter = parameter[0], parameter[1:]
         else:
             gamma = self.gamma
 
@@ -183,7 +183,7 @@ class HillCoordinate:
 
         # If gamma is not fixed, then it must be the first coordinate of the parameter vector
         if self.gammaIsVariable:
-            gamma = parameter.pop(0)
+            gamma, parameter = parameter[0], parameter[1:]
         else:
             gamma = self.gamma
 
