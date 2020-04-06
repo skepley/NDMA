@@ -30,3 +30,6 @@ f2 = HillCoordinate(parameter2, interactionSign, [2], [0, 1, 2])
 p2 = np.array([gamma, 4.1, 1])
 print(f2(x, p2 ))
 print(f2.dx(x, p2))
+
+f3 = HillCoordinate(p1, [-1], [1], [0, 1], gamma=1)
+
