@@ -142,15 +142,17 @@ class HillCoordinate:
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
         self.parameterValues = parameter  # initialize array of fixed parameter values
-        self.numComponent = len(interactionSign)  # number of interaction nodes
+        self.nComponent = len(interactionSign)  # number of interaction nodes
         self.components = self.set_components(parameter, interactionSign)
         self.index = interactionIndex[0]  # Define this coordinate's global index
         self.interaction = interactionIndex[1:]  # Vector of global interaction variable indices
         self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()
-        self.numVarByComponent = list(
-            map(lambda j: np.count_nonzero(np.isnan(self.parameterValues[j, :])), range(self.numComponent)))
-        self.variableIndexByComponent = np.insert(np.cumsum(self.numVarByComponent), 0, 0)
+        self.nVarByComponent = list(
+            map(lambda j: np.count_nonzero(np.isnan(self.parameterValues[j, :])), range(self.nComponent)))
+        # endpoints for concatenated parameter vector by coordinate
+        self.variableIndexByComponent = np.insert(np.cumsum(self.nVarByComponent), 0, 0)  # endpoints for concatenated parameter vector by coordinate
+        self.nVariableParameter = sum(self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate
 
     def __call__(self, x, parameter):
         """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
@@ -167,7 +169,7 @@ class HillCoordinate:
             # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
             # the j^th Hill component.
             parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                    j in range(self.numComponent)]
+                                    j in range(self.nComponent)]
             hillComponentValues = np.array(
                 list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interaction,
                          parameterByComponent)))  # evaluate Hill components
@@ -193,7 +195,7 @@ class HillCoordinate:
             self.interaction]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         Dinteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
         parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                j in range(self.numComponent)]  # unpack variable parameters by component
+                                j in range(self.nComponent)]  # unpack variable parameters by component
         DHillComponent = np.array(
             list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
@@ -211,11 +213,11 @@ class HillCoordinate:
             return {parameterNames[j]: row[j] for j in range(4) if
                     not np.isnan(row[j])}
 
-        if self.numComponent == 1:
+        if self.nComponent == 1:
             return [HillComponent(interactionSign[0], **row2dict(parameter))]
         else:
             return [HillComponent(interactionSign[k], **row2dict(parameter[k, :])) for k in
-                    range(self.numComponent)]  # list of Hill components
+                    range(self.nComponent)]  # list of Hill components
 
     def set_summand(self):
         """Return the list of lists containing the summand indices defined by the interaction type.
@@ -224,7 +226,7 @@ class HillCoordinate:
 
         sumEndpoints = np.insert(np.cumsum(self.interactionType), 0,
                                  0)  # summand endpoint indices including initial zero
-        localIndex = list(range(self.numComponent))
+        localIndex = list(range(self.nComponent))
         return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactionType))]
 
     def diff_interaction(self, xLocal):
@@ -260,22 +262,31 @@ class HillModel:
     This function is always a linear decay and a nonlinear interaction defined by a polynomial composition of Hill
     functions evaluated at the interactions. The vector field is defined coordinate-wise as a vector of HillCoordinate instances"""
 
-    def __init__(self, gamma, parameter, hillCoefficient, interactionSign, interactionType, interactionIndex):
+    def __init__(self, gamma, parameter, interactionSign, interactionType, interactionIndex):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^n of linear decay rates
-            parameter - A length n list of K_i-by-3 parameter arrays
-            hillCoefficient - A length n list of vectors in R^{K_i}
+            parameter - A length n list of K_i-by-4 parameter arrays
             interactionSign - A length n list of vectors in F_2^{K_i}
             interactionType - A length n list of length q_i lists describing an integer partitions of K_i
             interactionIndex - A length n list whose i^th element is a list of global indices for the i^th incoming interactions"""
+        # TODO: Class constructor should not do work!
 
-        self.dimension = len(gamma)  # Dimension of vector field
-        self.coordinate = [HillCoordinate(gamma[i], parameter[i], hillCoefficient[i], interactionSign[i],
-                                          interactionType[i], interactionIndex[i]) for i in range(self.dimension)]
+        self.dimension = len(gamma)  # Dimension of vector field i.e. n
+        self.coordinate = [HillCoordinate(parameter[j], interactionSign[j],
+                                          interactionType[j], interactionIndex[j], gamma=gamma[j]) for j in
+                           range(self.dimension)]
+        # A list of HillCoordinates specifying each coordinate of the vector field
+        self.nVarByCoordinate = [fi.nVariableParameter for fi in self.coordinate]  # number of variable parameters by coordinate
+        self.variableIndexByComponent = np.insert(np.cumsum(self.nVarByCoordinate), 0, 0)  # endpoints for concatenated parameter vector by coordinate
+        self.nVariableParameter = sum(self.nVarByCoordinate)  # number of variable parameters for this HillModel
 
     def __call__(self, x):
-        """Evaluate the vector field defined by this HillModel instance"""
+        """Evaluate the vector field defined by this HillModel instance. This is a function of the form
+        f: R^n x R^{m_1} x ... x R^{m_n} ---> R^n where the j^th Hill coordinate has m_j variable parameters. The syntax
+        is f(x,p) where p = (p_1,...,p_n) is a variable parameter vector constructed by ordered concatenation of vectors
+        of the form p_j = (p_j1,...,p_jK) which is also an ordered concatenation of the variable parameters associated to
+        the K-HillComponents for the j^th HillCoordinate."""
 
         if isvector(x):  # input a single vector in R^n
             return np.array([f_i(x) for f_i in self.coordinate])
@@ -287,19 +298,23 @@ class HillModel:
 
         return np.vstack([f_i.dx(x) for f_i in self.coordinate])
 
-    def findeq(self, gridDensity):
+    def find_equilibria(self, gridDensity, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant"""
 
-        findroot = lambda x0: optimize.root(self, x0, jac=lambda x: self.dx(x),
-                                            method='hybr')  # set root finding algorithm
+        # TODO: Include root finding method as vararg
+        def find_root(x0):
+            """Default root finding method to use if one is not specified"""
+            return optimize.root(self, x0, jac=lambda x: self.dx(x),
+                                 method='hybr')  # set root finding algorithm
+
         # build a grid of initial data for Newton algorithm
         evalGrid = np.meshgrid(*[np.linspace(*f_i.eq_interval(), num=gridDensity) for f_i in self.coordinate])
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
         solns = list(filter(lambda root: root.success,
-                            [findroot(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
+                            [find_root(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-        equilibria = np.unique(np.round(equilibria, 7), axis=1)  # remove duplicates
-        return np.column_stack([findroot(equilibria[:, j]).x for j in
+        equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
+        return np.column_stack([find_root(equilibria[:, j]).x for j in
                                 range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 
