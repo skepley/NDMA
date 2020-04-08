@@ -77,24 +77,28 @@ class HillComponent:
         reprString += 'Variable Parameters: {' + ', '.join(self.variableParameters) + '}\n'
         return reprString
 
-    def dx(self, x, parameter=np.array([]), nDerivative=1):
-        """Returns the derivative of a Hill component with respect to x"""
+    def dx(self, x, parameter=np.array([])):
+        """Evaluate the derivative of a Hill component with respect to x"""
 
         ell, delta, theta, hillCoefficient = self.curry_parameters(
             parameter)  # unpack fixed and variable parameter values
         # compute powers of x and theta only once.
         thetaPower = theta ** hillCoefficient
-        if nDerivative == 1:
-            xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
-            xPower = xPowerSmall * x
-            return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall / ((thetaPower + xPower) ** 2)
-        elif nDerivative == 2:
-            xPowerSmall = x ** (hillCoefficient - 2)  # compute x^{hillCoefficient-1}
-            xPower = xPowerSmall * x ** 2
-            return self.sign * delta * thetaPower * xPowerSmall * (
-                    (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
-        else:
-            raise KeyboardInterrupt
+        xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
+        xPower = xPowerSmall * x
+        return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall / ((thetaPower + xPower) ** 2)
+
+    def dx2(self, x, parameter=np.array([])):
+        """Evaluate the second derivative of a Hill component with respect to x"""
+
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
+        # compute powers of x and theta only once.
+        thetaPower = theta ** hillCoefficient
+        xPowerSmall = x ** (hillCoefficient - 2)  # compute x^{hillCoefficient-1}
+        xPower = xPowerSmall * x ** 2
+        return self.sign * delta * thetaPower * xPowerSmall * (
+                (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
 
     def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n"""
@@ -118,14 +122,6 @@ class HillComponent:
         return self.sign * delta * thetaPower * xPowerSmall * (
                 hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
                        (thetaPower + xPower) ** 3)
-
-
-def interaction_function(parm):
-    """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
-
-    return np.sum(
-        parm)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
-    # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
 
 
 class HillCoordinate:
@@ -192,12 +188,19 @@ class HillCoordinate:
             hillComponentValues = np.array(
                 list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
                          parameterByComponent)))  # evaluate Hill components
-            nonlinearTerm = interaction_function(hillComponentValues)  # compose with interaction function
+            nonlinearTerm = self.interaction_function(hillComponentValues)  # compose with interaction function
             return -gamma * x[self.index] + nonlinearTerm
 
         # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
         else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
             return np.array([self(x[:, j]) for j in range(np.shape(x)[1])])
+
+    def interaction_function(self, parameter):
+        """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
+
+        return np.sum(
+            parameter)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
+        # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
 
     def dx(self, x, parameter=np.array([])):
         """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
@@ -213,7 +216,8 @@ class HillCoordinate:
         DHillComponent = np.array(
             list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
-        Df[self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+        Df[
+            self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
         Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
         return Df
 
@@ -386,6 +390,20 @@ class ToggleSwitch(HillModel):
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          [[1], [0]])  # define HillModel for toggle switch
 
+        # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
+        # class is implemented.
+        setattr(self.coordinates[0], 'dx2',
+                lambda x, hillCoefficient: np.array(
+                    [[0, 0], [0, self.coordinates[0].components[0].dx2(x[1], hillCoefficient)]]))
+        setattr(self.coordinates[1], 'dx2',
+                lambda x, hillCoefficient: np.array(
+                    [[self.coordinates[1].components[0].dx2(x[0], hillCoefficient), 0], [0, 0]]))
+
+        setattr(self.coordinates[0], 'dndx',
+                lambda x, hillCoefficient: np.array([0, self.coordinates[0].components[0].dndx(x[1], hillCoefficient)]))
+        setattr(self.coordinates[1], 'dndx',
+                lambda x, hillCoefficient: np.array([self.coordinates[1].components[0].dndx(x[0], hillCoefficient), 0]))
+
     def __call__(self, x, n):
         """Overload the toggle switch to identify the Hill coefficients"""
 
@@ -403,6 +421,39 @@ class ToggleSwitch(HillModel):
         return np.sum(Df_dn, 0)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
 
 
+def unit_phase_condition(v):
+    """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
+    return np.linalg.norm(v) - 1
+
+
+class SaddleNode:
+    """A instance of a saddle-node bifurcation problem for a HillModel"""
+
+    def __init__(self, hillModel, phaseCondition):
+        """Construct an instance of a saddle-node problem for specified HillModel"""
+
+        self.model = hillModel
+        self.phaseCondition = phaseCondition
+        self.mapDimension = 2 * hillModel.dimension + 1  # dimension of the zero finding map
+
+    def zero_map(self, u):
+        """A zero finding map for saddle-node bifurcations of the form g: R^{2n+1} ---> R^{2n+1} whose roots are
+        isolated parameters for which a saddle-node bifurcation occurs.
+        INPUT: u = (x, v, n) where x is a state vector, v a tangent vector and n the Hill coefficient"""
+
+        # unpack input vector
+        stateVector = u[0:self.model.dimension]
+        tangentVector = u[self.model.dimension:-1]
+        hillCoeffient = u[-1]
+
+        g1 = self.model(stateVector,
+                        hillCoeffient)  # this is zero iff x is an equilibrium for the system at parameter value n
+        g2 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
+        g3 = self.model.dx(stateVector,
+                           hillCoeffient) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
+        return np.concatenate((g1, g2, g3), axis=None)
+
+
 # set some parameters to test using MATLAB toggle switch for ground truth
 decay = np.array([1, 1], dtype=float)
 p1 = np.array([1, 5, 3], dtype=float)
@@ -413,7 +464,25 @@ f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
 n = 4.1
+n0 = np.array([n])
 
-print(f(x0, n))
-print(f.dx(x0, n))
-print(f.dn(x0, n))
+# print(f(x0, n))
+# print(f.dx(x0, n))
+# print(f.dn(x0, n))
+
+# SN = SaddleNode(f, unit_phase_condition)
+SN = SaddleNode(f, lambda v: np.abs(v[0]) - 1)
+
+v0 = np.array([1, 1])
+u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
+print(SN.zero_map(u0))
+
+A = np.zeros([5, 5])
+d = 2
+A[0:d, 0:d], A[d:2 * d, d:2 * d] = f.dx(x0, n)
+A[0:d, -1] = f.dn(x0, n)
+A[d:2*d, 0:d] = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
+A[-1, d:2*d] = v0 / np.linalg.norm(v0)
+D2f = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
+
+print(A)
