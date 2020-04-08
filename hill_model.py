@@ -120,6 +120,14 @@ class HillComponent:
                        (thetaPower + xPower) ** 3)
 
 
+def interaction_function(parm):
+    """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
+
+    return np.sum(
+        parm)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
+    # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
+
+
 class HillCoordinate:
     """Define a coordinate of the vector field for a Hill system. This is a scalar equation taking the form
     x' = -gamma*x + p(H_1, H_2,...,H_k) where each H_i is a Hill function depending on x_i which is a state variable
@@ -145,7 +153,7 @@ class HillCoordinate:
         self.nComponent = len(interactionSign)  # number of interaction nodes
         self.components = self.set_components(parameter, interactionSign)
         self.index = interactionIndex[0]  # Define this coordinate's global index
-        self.interaction = interactionIndex[1:]  # Vector of global interaction variable indices
+        self.interactionIndex = interactionIndex[1:]  # Vector of global interaction variable indices
         self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()
         if self.nComponent == 1:  # Coordinate has a single HillComponent
@@ -160,26 +168,31 @@ class HillCoordinate:
         self.nVariableParameter = sum(
             self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate
 
+    def curry_gamma(self, parameter):
+        """Returns the value of gamma and a curried version of a variable parameter argument"""
+
+        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
+        if self.gammaIsVariable:
+            return parameter[0], parameter[1:]
+        else:  # return fixed gamma and unaltered parameter
+            return self.gamma, parameter
+
     def __call__(self, x, parameter=np.array([])):
         """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
         map of the form  g: R^n x R^m ---> R where n is the number of state variables of the Hill model and m is the number
         of variable parameters for this Hill coordinate"""
 
-        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
-        if self.gammaIsVariable:
-            gamma, parameter = parameter[0], parameter[1:]
-        else:
-            gamma = self.gamma
-
+        gamma, parameter = self.curry_gamma(parameter)
+        # TODO: Currently the input parameter must be a numpy array even if there is only a single parameter. It would
         if isvector(x):  # Evaluate coordinate for a single x in R^n
             # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
             # the j^th Hill component.
             parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
                                     j in range(self.nComponent)]
             hillComponentValues = np.array(
-                list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interaction,
+                list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
                          parameterByComponent)))  # evaluate Hill components
-            nonlinearTerm = self.interaction_function(hillComponentValues)  # compose with interaction function
+            nonlinearTerm = interaction_function(hillComponentValues)  # compose with interaction function
             return -gamma * x[self.index] + nonlinearTerm
 
         # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
@@ -189,25 +202,41 @@ class HillCoordinate:
     def dx(self, x, parameter=np.array([])):
         """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
 
-        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
-        if self.gammaIsVariable:
-            gamma, parameter = parameter[0], parameter[1:]
-        else:
-            gamma = self.gamma
-
+        gamma, parameter = self.curry_gamma(parameter)
         dim = len(x)  # dimension of vector field
         Df = np.zeros(dim, dtype=float)
         xLocal = x[
-            self.interaction]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
         parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
                                 j in range(self.nComponent)]  # unpack variable parameters by component
         DHillComponent = np.array(
             list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
-        Df[self.interaction] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+        Df[self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
         Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
         return Df
+
+    def dn(self, x, parameter=np.array([])):
+        """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.
+        Evaluation requires specifying x in R^n and p in R^m. This method does not assume that all HillCoordinates have
+        a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
+        should be the sum of the gradient vector returned"""
+
+        gamma, parameter = self.curry_gamma(parameter)
+        dim = len(x)  # dimension of vector field
+        df_dn = np.zeros(dim, dtype=float)
+        xLocal = x[
+            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
+        parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
+                                j in range(self.nComponent)]  # unpack variable parameters by component
+        dHillComponent_dn = np.array(
+            list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
+                     parameterByComponent)))  # evaluate inner term in chain rule
+        df_dn[
+            self.interactionIndex] = diffInteraction * dHillComponent_dn  # evaluate gradient of nonlinear part via chain rule
+        return df_dn
 
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
@@ -243,22 +272,23 @@ class HillCoordinate:
         else:
             raise KeyboardInterrupt
 
-    def interaction_function(self, parm):
-        """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
+    def summand_map(self, x, parameter=np.array([])):
+        """Apply the summand map of the form: f_i : R^n ---> p = (p1,...,p_q) which is a partial composition
+        with the interaction function."""
 
-        return np.sum(
-            parm)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
-        # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
+        H = self.__call__(x, parameter)
+        return [sum(H[indexSet]) for indexSet in self.summand]
 
     def eq_interval(self):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
         try:
-            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
-            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+            minInteraction = interaction_function([H.ell for H in self.components]) / self.gamma
+            maxInteraction = interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
             enclosingInterval = np.array([minInteraction, maxInteraction])
         except AttributeError:
-            print('Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
+            print(
+                'Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
         return enclosingInterval
 
 
@@ -275,12 +305,12 @@ class HillModel:
             parameter - A length n list of K_i-by-4 parameter arrays
             interactionSign - A length n list of vectors in F_2^{K_i}
             interactionType - A length n list of length q_i lists describing an integer partitions of K_i
-            interactionIndex - A length n list whose i^th element is a list of global indices for the i^th incoming interactions"""
+            interactionIndex - A length n list whose i^th element is a length K_i list of global indices for the i^th incoming interactions"""
         # TODO: Class constructor should not do work!
 
         self.dimension = len(gamma)  # Dimension of vector field i.e. n
         self.coordinates = [HillCoordinate(parameter[j], interactionSign[j],
-                                           interactionType[j], interactionIndex[j], gamma=gamma[j]) for j in
+                                           interactionType[j], [j] + interactionIndex[j], gamma=gamma[j]) for j in
                             range(self.dimension)]
         # A list of HillCoordinates specifying each coordinate of the vector field
         self.nVarByCoordinate = [fi.nVariableParameter for fi in
@@ -305,10 +335,20 @@ class HillModel:
             return np.row_stack(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
 
     def dx(self, x, parameter=np.array([])):
-        """Return the derivative (Jacobian) of the HillModel vector field evaluated at x.
+        """Return the derivative (Jacobian) of the HillModel vector field with respect to x.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        return np.vstack([f_i.dx(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
+        return np.vstack(
+            [f_i.dx(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
+
+    def dn(self, x, parameter=np.array([])):
+        """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
+        of Hill Coefficients. If n is uniform across all HillComponents, then the derivative is a gradient vector obtained
+        by summing this Jacobian along rows.
+        NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
+
+        return np.vstack(
+            [f_i.dn(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
 
     def find_equilibria(self, gridDensity, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
@@ -333,42 +373,47 @@ class HillModel:
                                 range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 
-def toggle_switch(gamma, parameter):
-    """Defines the vector field for the toggle switch example"""
+class ToggleSwitch(HillModel):
+    """An implementation of a saddle node problem for the toggle switch as a HillModel subclass"""
 
-    # define Hill system for toggle switch
-    return HillModel(gamma, parameter, [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
+    def __init__(self, gamma, fixedParameters):
+        """Toggle switch construction where each node has fixed ell, delta, theta, gamma and both Hill coefficients
+        are free (but identical) variables."""
+
+        parameter = [np.insert(p, 3, np.nan) for p in fixedParameters]
+        interactionSigns = [[-1], [-1]]
+        interactionTypes = [[1], [1]]
+        super().__init__(gamma, parameter, interactionSigns, interactionTypes,
+                         [[1], [0]])  # define HillModel for toggle switch
+
+    def __call__(self, x, n):
+        """Overload the toggle switch to identify the Hill coefficients"""
+
+        return super().__call__(x, np.array([n, n]))
+
+    def dx(self, x, n):
+        """Overload the toggle switch derivative to identify the Hill coefficients"""
+
+        return super().dx(x, np.array([n, n]))
+
+    def dn(self, x, n):
+        """Overload the toggle switch derivative to identify the Hill coefficients"""
+
+        Df_dn = super().dn(x, np.array([n, n]))  # Return Jacobian with respect to n = (n1, n2)
+        return np.sum(Df_dn, 0)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
-gamma = np.array([1, 1], dtype=float)
-p1 = np.array([1, 3, 5, 4.1], dtype=float)
-p2 = np.array([1, 3, 6, 4.1], dtype=float)
+decay = np.array([1, 1], dtype=float)
+p1 = np.array([1, 5, 3], dtype=float)
+p2 = np.array([1, 6, 3], dtype=float)
 x0 = np.array([4, 3])
 
-# test Hill model code
+f = ToggleSwitch(decay, [p1, p2])
+f1 = f.coordinates[0]
+f2 = f.coordinates[1]
+n = 4.1
 
-
-ts = toggle_switch(gamma, [p1, p2])
-print(ts(x0))
-# verify that ts2.dx(x0) matches MATLAB - DONE
-
-# test Hill model equilibrium finding
-eq = ts.find_equilibria(10)
-print(eq)
-# added vectorized evaluation of Hill Models - DONE
-
-
-# plot nullclines and equilibria
-plt.close('all')
-Xp = np.linspace(0, 10, 100)
-Yp = np.linspace(0, 10, 100)
-Z = np.zeros_like(Xp)
-
-N1 = ts.coordinates[0](np.row_stack([Z, Yp])) / gamma[0]  # f1 = 0 nullcline
-N2 = ts.coordinates[1](np.row_stack([Xp, Z])) / gamma[1]  # f2 = 0 nullcline
-
-plt.figure()
-plt.scatter(eq[0, :], eq[1, :])
-plt.plot(Xp, N2)
-plt.plot(N1, Yp)
+print(f(x0, n))
+print(f.dx(x0, n))
+print(f.dn(x0, n))
