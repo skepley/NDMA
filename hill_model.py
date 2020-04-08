@@ -97,7 +97,7 @@ class HillComponent:
         thetaPower = theta ** hillCoefficient
         xPowerSmall = x ** (hillCoefficient - 2)  # compute x^{hillCoefficient-1}
         xPower = xPowerSmall * x ** 2
-        return self.sign * delta * thetaPower * xPowerSmall * (
+        return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall * (
                 (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
 
     def dn(self, x, parameter=np.array([])):
@@ -418,7 +418,7 @@ class ToggleSwitch(HillModel):
         """Overload the toggle switch derivative to identify the Hill coefficients"""
 
         Df_dn = super().dn(x, np.array([n, n]))  # Return Jacobian with respect to n = (n1, n2)
-        return np.sum(Df_dn, 0)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
+        return np.sum(Df_dn, 1)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
 
 
 def unit_phase_condition(v):
@@ -463,6 +463,8 @@ x0 = np.array([4, 3])
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
+H1 = f1.components[0]
+H2 = f2.components[0]
 n = 4.1
 n0 = np.array([n])
 
@@ -476,13 +478,19 @@ SN = SaddleNode(f, lambda v: np.abs(v[0]) - 1)
 v0 = np.array([1, 1])
 u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
 print(SN.zero_map(u0))
+print('\n')
 
 A = np.zeros([5, 5])
 d = 2
-A[0:d, 0:d], A[d:2 * d, d:2 * d] = f.dx(x0, n)
+Df = f.dx(x0, n)
+A[0:d, 0:d] = Df
+A[d:2 * d, d:2 * d] = Df
 A[0:d, -1] = f.dn(x0, n)
 A[d:2*d, 0:d] = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
 A[-1, d:2*d] = v0 / np.linalg.norm(v0)
+
 D2f = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
+Dfn = np.row_stack([f_i.dndx(x0, n) for f_i in f.coordinates])
+A[d:2*d, -1] = Dfn @ v0
 
 print(A)
