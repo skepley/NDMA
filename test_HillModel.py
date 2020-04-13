@@ -1,14 +1,10 @@
 """
-One line description of what the script performs (H1 line)
-  
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
+Function and design testing for the HillModel class
+
 
     Output: output
     Other files required: none
-    See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
-   
+
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
     Date: 4/6/20; Last revision: 4/6/20

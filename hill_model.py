@@ -296,9 +296,14 @@ class HillCoordinate:
         return enclosingInterval
 
 
-def find_root(f, Df, x0):
+def find_root(f, Df, initialGuess, diagnose=False):
     """Default root finding method to use if one is not specified"""
-    return optimize.root(f, x0, jac=Df, method='hybr')  # set root finding algorithm
+
+    solution = optimize.root(f, initialGuess, jac=Df, method='hybr')  # set root finding algorithm
+    if diagnose:
+        return solution  # return the entire solution object including iterations and diagnostics
+    else:
+        return solution.x  # return only the solution vector
 
 
 def full_newton(f, Df, x0, maxDefect=1e-13):
@@ -323,7 +328,7 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
         iIterate = 1
         while iDefect > maxDefect and iIterate < maxIterate and not is_singular(Dy, fDim):
             if fDim == 1:
-                x -= y/Dy
+                x -= y / Dy
             else:
                 x -= np.linalg.solve(Dy, y)  # update x
 
@@ -419,11 +424,11 @@ class HillModel:
         evalGrid = np.meshgrid(*[np.linspace(*f_i.eq_interval(), num=gridDensity) for f_i in self.coordinates])
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
         solns = list(filter(lambda root: root.success,
-                            [find_root(F, DF, X[:, j])
+                            [find_root(F, DF, X[:, j], diagnose=True)
                              for j in range(X.shape[1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
-        return np.column_stack([find_root(F, DF, equilibria[:, j]).x for j in
+        return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
                                 range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 
@@ -471,17 +476,36 @@ class ToggleSwitch(HillModel):
         Df_dn = super().dn(x, np.array([n, n]))  # Return Jacobian with respect to n = (n1, n2)
         return np.sum(Df_dn, 1)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
 
+    def plot_nullcline(self, n, nNodes=100, domainBounds=(10, 10)):
+        """Plot the nullclines for the toggle switch at a given parameter"""
+
+        equilibria = self.find_equilibria(n, 10)
+        Xp = np.linspace(0, domainBounds[0], nNodes)
+        Yp = np.linspace(0, domainBounds[1], nNodes)
+        Z = np.zeros_like(Xp)
+
+        N1 = self.coordinates[0](np.row_stack([Z, Yp]), np.array([n])) / self.coordinates[0].gamma  # f1 = 0 nullcline
+        N2 = self.coordinates[1](np.row_stack([Xp, Z]), np.array([n])) / self.coordinates[1].gamma  # f2 = 0 nullcline
+
+        if equilibria.ndim == 0:
+            pass
+        elif equilibria.ndim == 1:
+            plt.scatter(equilibria[0], equilibria[1])
+        else:
+            plt.scatter(equilibria[0, :], equilibria[1, :])
+
+        plt.plot(Xp, N2)
+        plt.plot(N1, Yp)
+
 
 def unit_phase_condition(v):
     """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
-    return v[0] - 1
-    # return np.linalg.norm(v) - 1
+    return np.linalg.norm(v) - 1
 
 
 def diff_unit_phase_condition(v):
     """Evaluate the derivative of the unit phase condition function"""
-    # return v / np.linalg.norm(v)
-    return np.array([1, 0])
+    return v / np.linalg.norm(v)
 
 
 class SaddleNode:
@@ -547,74 +571,29 @@ class SaddleNode:
 decay = np.array([1, 1], dtype=float)
 p1 = np.array([1, 5, 3], dtype=float)
 p2 = np.array([1, 6, 3], dtype=float)
-x0 = np.array([4, 3])
+x = np.array([4, 3])
 
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
 H1 = f1.components[0]
 H2 = f2.components[0]
-n = 4.1
-# n = 3.5
-n0 = np.array([n])
+n0 = 4.1
 
-# print(f(x0, n))
-# print(f.dx(x0, n))
-# print(f.dn(x0, n))
-
-# test Hill model equilibrium finding
-eq = f.find_equilibria(n, 10)
-print(eq)
-# plot nullclines and equilibria
-plt.close('all')
-Xp = np.linspace(0, 10, 100)
-Yp = np.linspace(0, 10, 100)
-Z = np.zeros_like(Xp)
-
-N1 = f1(np.row_stack([Z, Yp]), n0) / f1.gamma  # f1 = 0 nullcline
-N2 = f2(np.row_stack([Xp, Z]), n0) / f2.gamma  # f2 = 0 nullcline
-
-plt.figure()
-plt.scatter(eq[0, :], eq[1, :])
-plt.plot(Xp, N2)
-plt.plot(N1, Yp)
-
-# SN = SaddleNode(f, unit_phase_condition)
 SN = SaddleNode(f, unit_phase_condition, diff_unit_phase_condition)
-
-# v0 = np.array([1, 1])
-v0 = np.array([1, -.7])
-# v0 = eq[:, 0] - eq[:, 1]
-# v0 = v0 / np.linalg.norm(v0)
+eq = f.find_equilibria(n0, 10)
+# v0 = np.array([1, -.7])
+v0 = np.array([1, 1])
 x0 = eq[:, 1]
-u0 = np.concatenate((x0, v0, np.array(n)), axis=None)
+u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
 
-print(SN.zero_map(u0))
-print('\n')
-print(SN.diff_zero_map(u0))
+uSol = find_root(SN.zero_map, SN.diff_zero_map, u0, diagnose=True)
+print(uSol)
+xSol, vSol, nSol = [uSol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 
-
-# sol = find_root(SN.zero_map, SN.diff_zero_map, u0)
-# sol = optimize.root(SN.zero_map, u0, method='hybr')  # set root finding algorithm
-# SNsol = sol.x
-SNsol = full_newton(SN.zero_map, SN.diff_zero_map, u0)
-print(SNsol)
-
-
-
-# # test Hill model equilibrium finding
-# eqSol = f.find_equilibria(SNsol[-1], 10)
-# print(eqSol)
-# # plot nullclines and equilibria
-#
-# Xp = np.linspace(0, 10, 100)
-# Yp = np.linspace(0, 10, 100)
-# Z = np.zeros_like(Xp)
-#
-# N1 = f1(np.row_stack([Z, Yp]), np.array([SNsol[-1]])) / f1.gamma  # f1 = 0 nullcline
-# N2 = f2(np.row_stack([Xp, Z]), np.array([SNsol[-1]])) / f2.gamma  # f2 = 0 nullcline
-#
-# plt.figure()
-# plt.scatter(eqSol[0, :], eqSol[1, :])
-# plt.plot(Xp, N2)
-# plt.plot(N1, Yp)
+# plot nullclines
+plt.close('all')
+plt.figure()
+f.plot_nullcline(4.1)
+plt.figure()
+f.plot_nullcline(nSol)
