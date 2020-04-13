@@ -193,7 +193,7 @@ class HillCoordinate:
 
         # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
         else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
-            return np.array([self(x[:, j]) for j in range(np.shape(x)[1])])
+            return np.array([self(x[:, j], parameter) for j in range(np.shape(x)[1])])
 
     def interaction_function(self, parameter):
         """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
@@ -287,13 +287,58 @@ class HillCoordinate:
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
         try:
-            minInteraction = interaction_function([H.ell for H in self.components]) / self.gamma
-            maxInteraction = interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
+            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
             enclosingInterval = np.array([minInteraction, maxInteraction])
         except AttributeError:
             print(
                 'Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
         return enclosingInterval
+
+
+def find_root(f, Df, x0):
+    """Default root finding method to use if one is not specified"""
+    return optimize.root(f, x0, jac=Df, method='hybr')  # set root finding algorithm
+
+
+def full_newton(f, Df, x0, maxDefect=1e-13):
+    """A full Newton based root finding algorithm"""
+
+    def is_singular(matrix, rank):
+        """Returns true if the derivative becomes singular for any reason"""
+        return np.isnan(matrix).any() or np.isinf(matrix).any() or np.linalg.matrix_rank(matrix) < rank
+
+    fDim = len(x0)  # dimension of the domain/image of f
+    maxIterate = 100
+
+    if not isvector(x0):  # an array whose columns are initial guesses
+        print('not implemented yet')
+
+    else:  # x0 is a single initial guess
+        # initialize iteration
+        x = x0.copy()
+        y = f(x)
+        Dy = Df(x)
+        iDefect = np.linalg.norm(y)  # initialize defect
+        iIterate = 1
+        while iDefect > maxDefect and iIterate < maxIterate and not is_singular(Dy, fDim):
+            if fDim == 1:
+                x -= y/Dy
+            else:
+                x -= np.linalg.solve(Dy, y)  # update x
+
+            y = f(x)  # update f(x)
+            print(y)
+            Dy = Df(x)  # update Df(x)
+            iDefect = np.linalg.norm(y)  # initialize defect
+            print(iDefect)
+            iIterate += 1
+
+        if iDefect < maxDefect:
+            return x
+        else:
+            print('Newton failed to converge')
+            return np.nan
 
 
 class HillModel:
@@ -354,26 +399,31 @@ class HillModel:
         return np.vstack(
             [f_i.dn(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
 
-    def find_equilibria(self, gridDensity, uniqueRootDigits=7):
+    def find_equilibria(self, parameter, gridDensity, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
+            parameter - A vector of all variable parameters to use for evaluating the root finding algorithm
             gridDensity - (int) density to sample in each dimension.
             uniqueRootDigits - (int) Number of digits to use for distinguishing between floats."""
 
         # TODO: Include root finding method as vararg
-        def find_root(x0):
-            """Default root finding method to use if one is not specified"""
-            return optimize.root(self, x0, jac=lambda x: self.dx(x),
-                                 method='hybr')  # set root finding algorithm
+        def F(x):
+            """Fix parameter values in the zero finding map"""
+            return self.__call__(x, parameter)
+
+        def DF(x):
+            """Fix parameter values in the zero finding map derivative"""
+            return self.dx(x, parameter)
 
         # build a grid of initial data for Newton algorithm
         evalGrid = np.meshgrid(*[np.linspace(*f_i.eq_interval(), num=gridDensity) for f_i in self.coordinates])
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
         solns = list(filter(lambda root: root.success,
-                            [find_root(X[:, j]) for j in range(X.shape[1])]))  # return equilibria which converged
+                            [find_root(F, DF, X[:, j])
+                             for j in range(X.shape[1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
-        return np.column_stack([find_root(equilibria[:, j]).x for j in
+        return np.column_stack([find_root(F, DF, equilibria[:, j]).x for j in
                                 range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 
@@ -387,8 +437,9 @@ class ToggleSwitch(HillModel):
         parameter = [np.insert(p, 3, np.nan) for p in fixedParameters]
         interactionSigns = [[-1], [-1]]
         interactionTypes = [[1], [1]]
+        interactionIndex = [[1], [0]]
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
-                         [[1], [0]])  # define HillModel for toggle switch
+                         interactionIndex)  # define HillModel for toggle switch
 
         # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
         # class is implemented.
@@ -423,17 +474,26 @@ class ToggleSwitch(HillModel):
 
 def unit_phase_condition(v):
     """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
-    return np.linalg.norm(v) - 1
+    return v[0] - 1
+    # return np.linalg.norm(v) - 1
+
+
+def diff_unit_phase_condition(v):
+    """Evaluate the derivative of the unit phase condition function"""
+    # return v / np.linalg.norm(v)
+    return np.array([1, 0])
 
 
 class SaddleNode:
-    """A instance of a saddle-node bifurcation problem for a HillModel"""
+    """A instance of a saddle-node bifurcation problem for a HillModel with 1 hill coefficient parameter which is
+    shared by all HillComponents"""
 
-    def __init__(self, hillModel, phaseCondition):
+    def __init__(self, hillModel, phaseCondition, phaseConditionDerivative):
         """Construct an instance of a saddle-node problem for specified HillModel"""
 
         self.model = hillModel
         self.phaseCondition = phaseCondition
+        self.diffPhaseCondition = phaseConditionDerivative
         self.mapDimension = 2 * hillModel.dimension + 1  # dimension of the zero finding map
 
     def zero_map(self, u):
@@ -444,14 +504,43 @@ class SaddleNode:
         # unpack input vector
         stateVector = u[0:self.model.dimension]
         tangentVector = u[self.model.dimension:-1]
-        hillCoeffient = u[-1]
+        hillCoefficient = u[-1]
 
         g1 = self.model(stateVector,
-                        hillCoeffient)  # this is zero iff x is an equilibrium for the system at parameter value n
-        g2 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
-        g3 = self.model.dx(stateVector,
-                           hillCoeffient) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
+                        hillCoefficient)  # this is zero iff x is an equilibrium for the system at parameter value n
+        g2 = self.model.dx(stateVector,
+                           hillCoefficient) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
+        g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return np.concatenate((g1, g2, g3), axis=None)
+
+    def diff_zero_map(self, u):
+        """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
+        Dg: R^{2n+1} ---> M_{2n+1}(R).
+        INPUT: u = (x, v, n) where x is a state vector, v a tangent vector and n the Hill coefficient"""
+
+        # unpack input vector and set dimensions for Jacobian blocks
+        stateVector = u[0:self.model.dimension]
+        tangentVector = u[self.model.dimension:-1]
+        hillCoefficient = u[-1]
+        n = self.model.dimension
+        Dg = np.zeros([self.mapDimension, self.mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
+        Df = f.dx(stateVector, hillCoefficient)  # store derivative of vector field which appears in 2 blocks
+
+        # BLOCK ROW 1
+        Dg[0:n, 0:n] = Df  # block - (1,1)
+        # block - (1, 2) is an n-by-n zero block
+        Dg[0:n, -1] = f.dn(stateVector, hillCoefficient)  # block - (1,3)
+        # BLOCK ROW 2
+        Dg[n:2 * n, 0:n] = np.row_stack([tangentVector @ f.coordinates[j].dx2(stateVector, hillCoefficient)
+                                         for j in range(2)])  # block - (2,1)
+        Dg[n:2 * n, n:2 * n] = Df  # block - (2,2)
+        Dg[n:2 * n, -1] = np.row_stack(
+            [f_i.dndx(stateVector, hillCoefficient) for f_i in f.coordinates]) @ tangentVector  # block - (2,3)
+        # BLOCK ROW 3
+        # block - (3, 1) is a 1-by-n zero block
+        Dg[-1, n:2 * n] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
+        # block - (3, 1) is a 1-by-1 zero block
+        return Dg
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
@@ -466,31 +555,66 @@ f2 = f.coordinates[1]
 H1 = f1.components[0]
 H2 = f2.components[0]
 n = 4.1
+# n = 3.5
 n0 = np.array([n])
 
 # print(f(x0, n))
 # print(f.dx(x0, n))
 # print(f.dn(x0, n))
 
-# SN = SaddleNode(f, unit_phase_condition)
-SN = SaddleNode(f, lambda v: np.abs(v[0]) - 1)
+# test Hill model equilibrium finding
+eq = f.find_equilibria(n, 10)
+print(eq)
+# plot nullclines and equilibria
+plt.close('all')
+Xp = np.linspace(0, 10, 100)
+Yp = np.linspace(0, 10, 100)
+Z = np.zeros_like(Xp)
 
-v0 = np.array([1, 1])
-u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
+N1 = f1(np.row_stack([Z, Yp]), n0) / f1.gamma  # f1 = 0 nullcline
+N2 = f2(np.row_stack([Xp, Z]), n0) / f2.gamma  # f2 = 0 nullcline
+
+plt.figure()
+plt.scatter(eq[0, :], eq[1, :])
+plt.plot(Xp, N2)
+plt.plot(N1, Yp)
+
+# SN = SaddleNode(f, unit_phase_condition)
+SN = SaddleNode(f, unit_phase_condition, diff_unit_phase_condition)
+
+# v0 = np.array([1, 1])
+v0 = np.array([1, -.7])
+# v0 = eq[:, 0] - eq[:, 1]
+# v0 = v0 / np.linalg.norm(v0)
+x0 = eq[:, 1]
+u0 = np.concatenate((x0, v0, np.array(n)), axis=None)
+
 print(SN.zero_map(u0))
 print('\n')
+print(SN.diff_zero_map(u0))
 
-A = np.zeros([5, 5])
-d = 2
-Df = f.dx(x0, n)
-A[0:d, 0:d] = Df
-A[d:2 * d, d:2 * d] = Df
-A[0:d, -1] = f.dn(x0, n)
-A[d:2*d, 0:d] = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
-A[-1, d:2*d] = v0 / np.linalg.norm(v0)
 
-D2f = np.row_stack([v0 @ f.coordinates[j].dx2(x0, n) for j in range(2)])
-Dfn = np.row_stack([f_i.dndx(x0, n) for f_i in f.coordinates])
-A[d:2*d, -1] = Dfn @ v0
+# sol = find_root(SN.zero_map, SN.diff_zero_map, u0)
+# sol = optimize.root(SN.zero_map, u0, method='hybr')  # set root finding algorithm
+# SNsol = sol.x
+SNsol = full_newton(SN.zero_map, SN.diff_zero_map, u0)
+print(SNsol)
 
-print(A)
+
+
+# # test Hill model equilibrium finding
+# eqSol = f.find_equilibria(SNsol[-1], 10)
+# print(eqSol)
+# # plot nullclines and equilibria
+#
+# Xp = np.linspace(0, 10, 100)
+# Yp = np.linspace(0, 10, 100)
+# Z = np.zeros_like(Xp)
+#
+# N1 = f1(np.row_stack([Z, Yp]), np.array([SNsol[-1]])) / f1.gamma  # f1 = 0 nullcline
+# N2 = f2(np.row_stack([Xp, Z]), np.array([SNsol[-1]])) / f2.gamma  # f2 = 0 nullcline
+#
+# plt.figure()
+# plt.scatter(eqSol[0, :], eqSol[1, :])
+# plt.plot(Xp, N2)
+# plt.plot(N1, Yp)

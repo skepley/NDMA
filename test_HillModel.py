@@ -16,18 +16,23 @@ Optional file header info (to give more details about the function than in the H
 
 import numpy as np
 import matplotlib.pyplot as plt
+from hill_model import HillComponent, HillCoordinate, HillModel
+
 
 def toggle_switch(gamma, parameter):
     """Defines the vector field for the toggle switch example"""
 
     # define Hill system for toggle switch
-    return HillModel(gamma, parameter, [[-1], [-1]], [[1], [1]], [[0, 1], [1, 0]])
+    return HillModel(gamma, parameter, [[-1], [-1]], [[1], [1]], [[1], [0]])
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 gamma = np.array([1, 1], dtype=float)
-p1 = np.array([1, 5, 3, 4.1], dtype=float)
-p2 = np.array([1, 6, 3, 4.1], dtype=float)
+# p1 = np.array([1, 5, 3, 4.1], dtype=float)
+# p2 = np.array([1, 6, 3, 4.1], dtype=float)
+p1 = np.array([1, 5, 3], dtype=float)
+p2 = np.array([1, 6, 3], dtype=float)
+parm = np.array([4.1,4.1])
 x0 = np.array([4, 3])
 
 
@@ -38,7 +43,7 @@ print(ts(x0))
 # verify that ts2.dx(x0) matches MATLAB - DONE
 
 # test Hill model equilibrium finding
-eq = ts.find_equilibria(10)
+eq = ts.find_equilibria(parm, 10)
 print(eq)
 # added vectorized evaluation of Hill Models - DONE
 
