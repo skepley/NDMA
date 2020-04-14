@@ -23,6 +23,7 @@ x0 = np.array([3, 4, 5, 6])
 H1 = HillComponent(-1, ell=ell, theta=theta, delta=delta,
                    hillCoefficient=n)  # A function of x with all parameters fixed
 H2 = HillComponent(-1, ell=ell, theta=theta)  # A function of x with callable variable parameters: {delta, n}
+pp0 = np.array([delta, n])
 H3 = HillComponent(-1)  # A function of x with all parameters callable
 parameterDict = {'ell': ell, 'theta': theta}
 H4 = HillComponent(-1, **parameterDict)  # Test construction by dictionary

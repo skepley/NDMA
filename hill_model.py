@@ -1,6 +1,6 @@
 """
 Classes and methods for constructing, evaluating, and doing parameter continuation of Hill Models
-   
+
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
     Date: 2/29/20; Last revision: 3/4/20
@@ -9,6 +9,8 @@ import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
 from numpy import log
+
+plt.close('all')
 
 
 def isvector(array):
@@ -40,10 +42,25 @@ class HillComponent:
         self.parameterCallIndex = list(parameterCallIndex.values())  # get indices for callable parameters
         self.fixedParameter = [parameterName for parameterName in parameterNames if
                                parameterName not in self.variableParameters]
+        #  set callable parameter name functions
+        for idx in range(len(self.variableParameters)):
+            self.add_parameter_call(self.variableParameters[idx], idx)
+
+        print(self.delta([1, 2, 3, 4]))
 
     def __iter__(self):
         """Make iterable"""
         yield self
+
+    def add_parameter_call(self, parameterName, parameterIndex):
+        """Adds a call by name function for variable parameters to a HillComponent instance"""
+
+        def call_function(self, parameter):
+            """returns a class method which has the given parameter name. This method slices the given index out of a
+            variable parameter vector"""
+            return parameter[parameterIndex]
+
+        setattr(HillComponent, parameterName, call_function)  # set dynamic method name
 
     def curry_parameters(self, parameter):
         """Returns a parameter evaluation vector in R^4 with fixed and variable parameters indexed properly"""
@@ -178,11 +195,11 @@ class HillCoordinate:
         map of the form  g: R^n x R^m ---> R where n is the number of state variables of the Hill model and m is the number
         of variable parameters for this Hill coordinate"""
 
-        gamma, parameter = self.curry_gamma(parameter)
-        # TODO: Currently the input parameter must be a numpy array even if there is only a single parameter. It would
+        # TODO: Currently the input parameter must be a numpy array even if there is only a single parameter.
         if isvector(x):  # Evaluate coordinate for a single x in R^n
             # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
             # the j^th Hill component.
+            gamma, parameter = self.curry_gamma(parameter)
             parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
                                     j in range(self.nComponent)]
             hillComponentValues = np.array(
@@ -373,6 +390,12 @@ class HillModel:
                                                    0)  # endpoints for concatenated parameter vector by coordinate
         self.nVariableParameter = sum(self.nVarByCoordinate)  # number of variable parameters for this HillModel
 
+    def unpack_variable_parameters(self, parameter):
+        """Unpack a parameter vector for the HillModel into component vectors for each distinct coordinate"""
+
+        return [parameter[self.variableIndexByCoordinate[j]:self.variableIndexByCoordinate[j + 1]] for
+                j in range(self.dimension)]
+
     def __call__(self, x, parameter=np.array([])):
         """Evaluate the vector field defined by this HillModel instance. This is a function of the form
         f: R^n x R^{m_1} x ... x R^{m_n} ---> R^n where the j^th Hill coordinate has m_j variable parameters. The syntax
@@ -380,9 +403,7 @@ class HillModel:
         of the form p_j = (p_j1,...,p_jK) which is also an ordered concatenation of the variable parameters associated to
         the K-HillComponents for the j^th HillCoordinate."""
 
-        parameterByCoordinate = [parameter[self.variableIndexByCoordinate[j]:self.variableIndexByCoordinate[j + 1]] for
-                                 j in range(self.dimension)]  # unpack variable parameters by component
-
+        parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         if isvector(x):  # input a single vector in R^n
             return np.array(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
         else:  # vectorized input
@@ -392,8 +413,9 @@ class HillModel:
         """Return the derivative (Jacobian) of the HillModel vector field with respect to x.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        return np.vstack(
-            [f_i.dx(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
+        parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
+        return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
+                                  parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
 
     def dn(self, x, parameter=np.array([])):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
@@ -401,13 +423,14 @@ class HillModel:
         by summing this Jacobian along rows.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        return np.vstack(
-            [f_i.dn(x, parameter) for f_i in self.coordinates])  # return a vertical stack of gradient (row) vectors
+        parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
+        return np.vstack(list(map(lambda f_i, parm: f_i.dn(x, parm), self.coordinates,
+                                  parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
 
     def find_equilibria(self, parameter, gridDensity, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
-            parameter - A vector of all variable parameters to use for evaluating the root finding algorithm
+            parameter - (numpy vector) Evaluations for variable parameters to use for evaluating the root finding algorithm
             gridDensity - (int) density to sample in each dimension.
             uniqueRootDigits - (int) Number of digits to use for distinguishing between floats."""
 
@@ -433,86 +456,107 @@ class HillModel:
 
 
 class ToggleSwitch(HillModel):
-    """An implementation of a saddle node problem for the toggle switch as a HillModel subclass"""
+    """Two-dimensional toggle switch construction inherited as a HillModel where each node has free (but identical)
+    Hill coefficients and possibly some other parameters free."""
 
-    def __init__(self, gamma, fixedParameters):
-        """Toggle switch construction where each node has fixed ell, delta, theta, gamma and both Hill coefficients
-        are free (but identical) variables."""
+    def __init__(self, gamma, parameter):
+        """Class constructor which has the following syntax:
+        INPUTS:
+            gamma - A vector in R^n of linear decay rates
+            parameter - A length n list of K_i-by-3 parameter arrays with rows of the form (ell, delta, theta)"""
 
-        parameter = [np.insert(p, 3, np.nan) for p in fixedParameters]
+        parameter = [np.insert(parmList, 3, np.nan) for parmList in
+                     parameter]  # append hillCoefficient as free parameter
         interactionSigns = [[-1], [-1]]
         interactionTypes = [[1], [1]]
         interactionIndex = [[1], [0]]
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel for toggle switch
+        self.hillIndexByCoordinate = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
 
         # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
         # class is implemented.
         setattr(self.coordinates[0], 'dx2',
-                lambda x, hillCoefficient: np.array(
-                    [[0, 0], [0, self.coordinates[0].components[0].dx2(x[1], hillCoefficient)]]))
+                lambda x, parm: np.array(
+                    [[0, 0], [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].curry_gamma(parm)[1])]]))
         setattr(self.coordinates[1], 'dx2',
-                lambda x, hillCoefficient: np.array(
-                    [[self.coordinates[1].components[0].dx2(x[0], hillCoefficient), 0], [0, 0]]))
+                lambda x, parm: np.array(
+                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0], [0, 0]]))
 
         setattr(self.coordinates[0], 'dndx',
-                lambda x, hillCoefficient: np.array([0, self.coordinates[0].components[0].dndx(x[1], hillCoefficient)]))
+                lambda x, parm: np.array([0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].curry_gamma(parm)[1])]))
         setattr(self.coordinates[1], 'dndx',
-                lambda x, hillCoefficient: np.array([self.coordinates[1].components[0].dndx(x[0], hillCoefficient), 0]))
+                lambda x, parm: np.array([self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0]))
 
-    def __call__(self, x, n):
-        """Overload the toggle switch to identify the Hill coefficients"""
+    def pass_uniform_hill(self, n, parameter):
+        """Inserts copies of n into the appropriate Hill coefficient indices in the parameter vector"""
 
-        return super().__call__(x, np.array([n, n]))
+        return np.insert(parameter, self.hillIndexByCoordinate, n)
 
-    def dx(self, x, n):
+    def __call__(self, x, n, parameter):
+        """Overload the toggle switch to identify the Hill coefficients and evaluate as a separate scalar input.
+
+        INPUT:
+            x - (vector) state vector in R^2
+            n - (float) a single scalar parameter for the Hill coefficients of both coordinates
+            parameter - (vector) remaining free parameters with length between 0 and 8 ordered as
+                (gamma1, ell1, delta1, theta1, gamma2, ell2, delta2, theta2)
+            """
+        return super().__call__(x, self.pass_uniform_hill(n, parameter))
+
+    def dx(self, x, n, parameter=np.array([])):
         """Overload the toggle switch derivative to identify the Hill coefficients"""
 
-        return super().dx(x, np.array([n, n]))
+        return super().dx(x, self.pass_uniform_hill(n, parameter))
 
-    def dn(self, x, n):
+    def dn(self, x, n, parameter=np.array([])):
         """Overload the toggle switch derivative to identify the Hill coefficients"""
 
-        Df_dn = super().dn(x, np.array([n, n]))  # Return Jacobian with respect to n = (n1, n2)
+        Df_dn = super().dn(x, self.pass_uniform_hill(n, parameter))  # Return Jacobian with respect to n = (n1, n2)
         return np.sum(Df_dn, 1)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
 
-    def plot_nullcline(self, n, nNodes=100, domainBounds=(10, 10)):
+    def plot_nullcline(self, n, parameter=np.array([]), nNodes=100, domainBounds=(10, 10)):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
-        equilibria = self.find_equilibria(n, 10)
+        # equilibria = self.find_equilibria(n, 10)
         Xp = np.linspace(0, domainBounds[0], nNodes)
         Yp = np.linspace(0, domainBounds[1], nNodes)
         Z = np.zeros_like(Xp)
 
-        N1 = self.coordinates[0](np.row_stack([Z, Yp]), np.array([n])) / self.coordinates[0].gamma  # f1 = 0 nullcline
-        N2 = self.coordinates[1](np.row_stack([Xp, Z]), np.array([n])) / self.coordinates[1].gamma  # f2 = 0 nullcline
+        # unpack decay parameters separately
+        gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], self.coordinates,
+                                  self.unpack_variable_parameters(self.pass_uniform_hill(n, parameter)))))
+        N1 = (self(np.row_stack([Z, Yp]), n, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
+        N2 = (self(np.row_stack([Xp, Z]), n, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
+        # N1 = self.coordinates[0](np.row_stack([Z, Yp]), np.array([n])) / self.coordinates[0].gamma  # f1 = 0 nullcline
+        # N2 = self.coordinates[1](np.row_stack([Xp, Z]), np.array([n])) / self.coordinates[1].gamma  # f2 = 0 nullcline
 
-        if equilibria.ndim == 0:
-            pass
-        elif equilibria.ndim == 1:
-            plt.scatter(equilibria[0], equilibria[1])
-        else:
-            plt.scatter(equilibria[0, :], equilibria[1, :])
+        # if equilibria.ndim == 0:
+        #     pass
+        # elif equilibria.ndim == 1:
+        #     plt.scatter(equilibria[0], equilibria[1])
+        # else:
+        #     plt.scatter(equilibria[0, :], equilibria[1, :])
 
         plt.plot(Xp, N2)
         plt.plot(N1, Yp)
 
 
-def unit_phase_condition(v):
-    """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
-    return np.linalg.norm(v) - 1
-
-
-def diff_unit_phase_condition(v):
-    """Evaluate the derivative of the unit phase condition function"""
-    return v / np.linalg.norm(v)
+# def unit_phase_condition(v):
+#     """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
+#     return np.linalg.norm(v) - 1
+#
+#
+# def diff_unit_phase_condition(v):
+#     """Evaluate the derivative of the unit phase condition function"""
+#     return v / np.linalg.norm(v)
 
 
 class SaddleNode:
     """A instance of a saddle-node bifurcation problem for a HillModel with 1 hill coefficient parameter which is
     shared by all HillComponents"""
 
-    def __init__(self, hillModel, phaseCondition, phaseConditionDerivative):
+    def __init__(self, hillModel, phaseCondition=lambda v: np.linalg.norm(v) - 1, phaseConditionDerivative=lambda v: v / np.linalg.norm(v)):
         """Construct an instance of a saddle-node problem for specified HillModel"""
 
         self.model = hillModel
@@ -520,46 +564,53 @@ class SaddleNode:
         self.diffPhaseCondition = phaseConditionDerivative
         self.mapDimension = 2 * hillModel.dimension + 1  # dimension of the zero finding map
 
-    def zero_map(self, u):
+    def unpack_components(self, u):
+        """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, n)"""
+        return u[0:self.model.dimension], u[self.model.dimension:-1], u[-1]
+
+    def zero_map(self, u, parameter):
         """A zero finding map for saddle-node bifurcations of the form g: R^{2n+1} ---> R^{2n+1} whose roots are
         isolated parameters for which a saddle-node bifurcation occurs.
-        INPUT: u = (x, v, n) where x is a state vector, v a tangent vector and n the Hill coefficient"""
+        INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
 
-        # unpack input vector
-        stateVector = u[0:self.model.dimension]
-        tangentVector = u[self.model.dimension:-1]
-        hillCoefficient = u[-1]
-
+        stateVector, tangentVector, hillCoefficient = self.unpack_components(u)  # unpack input vector
         g1 = self.model(stateVector,
-                        hillCoefficient)  # this is zero iff x is an equilibrium for the system at parameter value n
+                        hillCoefficient,
+                        parameter)  # this is zero iff x is an equilibrium for the system at parameter value n
         g2 = self.model.dx(stateVector,
-                           hillCoefficient) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
+                           hillCoefficient,
+                           parameter) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return np.concatenate((g1, g2, g3), axis=None)
 
-    def diff_zero_map(self, u):
+    def diff_zero_map(self, u, parameter):
         """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
         Dg: R^{2n+1} ---> M_{2n+1}(R).
-        INPUT: u = (x, v, n) where x is a state vector, v a tangent vector and n the Hill coefficient"""
+        INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
 
         # unpack input vector and set dimensions for Jacobian blocks
-        stateVector = u[0:self.model.dimension]
-        tangentVector = u[self.model.dimension:-1]
-        hillCoefficient = u[-1]
+        stateVector, tangentVector, hillCoefficient = self.unpack_components(u)  # unpack input vector
         n = self.model.dimension
+        fullParameter = self.model.pass_uniform_hill(hillCoefficient, parameter)  # insert copies of HillCoefficient into parameter vector
+        parameterByCoordinate = self.model.unpack_variable_parameters(
+            fullParameter)  # unpack full parameter vector by coordinate
         Dg = np.zeros([self.mapDimension, self.mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
-        Df = f.dx(stateVector, hillCoefficient)  # store derivative of vector field which appears in 2 blocks
+        Df = self.model.dx(stateVector, hillCoefficient, parameter)  # store derivative of vector field which appears in 2 blocks
+        # TODO: Function calls for derivatives in HIllModel are overloaded to have input syntax (x, n, parm) where as
+        #  the ad hoc Hessian calls use (x, parm). These should be changed to the former.
 
         # BLOCK ROW 1
         Dg[0:n, 0:n] = Df  # block - (1,1)
         # block - (1, 2) is an n-by-n zero block
-        Dg[0:n, -1] = f.dn(stateVector, hillCoefficient)  # block - (1,3)
+        Dg[0:n, -1] = self.model.dn(stateVector, hillCoefficient, parameter)  # block - (1,3)
         # BLOCK ROW 2
-        Dg[n:2 * n, 0:n] = np.row_stack([tangentVector @ f.coordinates[j].dx2(stateVector, hillCoefficient)
-                                         for j in range(2)])  # block - (2,1)
+        Dg[n:2 * n, 0:n] = np.row_stack(
+            [tangentVector @ self.model.coordinates[j].dx2(stateVector, parameterByCoordinate[j])
+             for j in range(n)])  # block - (2,1)
         Dg[n:2 * n, n:2 * n] = Df  # block - (2,2)
-        Dg[n:2 * n, -1] = np.row_stack(
-            [f_i.dndx(stateVector, hillCoefficient) for f_i in f.coordinates]) @ tangentVector  # block - (2,3)
+        Dg[n:2 * n, -1] = np.row_stack(list(
+            map(lambda f_i, parm: f_i.dndx(stateVector, parm), self.model.coordinates,
+                parameterByCoordinate))) @ tangentVector  # block - (2,3)
         # BLOCK ROW 3
         # block - (3, 1) is a 1-by-n zero block
         Dg[-1, n:2 * n] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
@@ -568,10 +619,9 @@ class SaddleNode:
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
-decay = np.array([1, 1], dtype=float)
-p1 = np.array([1, 5, 3], dtype=float)
-p2 = np.array([1, 6, 3], dtype=float)
-x = np.array([4, 3])
+decay = np.array([np.nan, np.nan], dtype=float)  # gamma
+p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
+p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
 
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
@@ -580,20 +630,26 @@ H1 = f1.components[0]
 H2 = f2.components[0]
 n0 = 4.1
 
-SN = SaddleNode(f, unit_phase_condition, diff_unit_phase_condition)
-eq = f.find_equilibria(n0, 10)
+x0 = np.array([4, 3])
+p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
+print(f(x0, n0, p0))
+SN = SaddleNode(f)
+
+# eq = f.find_equilibria(n0, 10)
 # v0 = np.array([1, -.7])
 v0 = np.array([1, 1])
-x0 = eq[:, 1]
+# x0 = eq[:, 1]
 u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
 
-uSol = find_root(SN.zero_map, SN.diff_zero_map, u0, diagnose=True)
+
+uSol = find_root(lambda u: SN.zero_map(u, p0), lambda u: SN.diff_zero_map(u, p0), u0, diagnose=True)
+# compare to uSol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
 print(uSol)
 xSol, vSol, nSol = [uSol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 
 # plot nullclines
 plt.close('all')
 plt.figure()
-f.plot_nullcline(4.1)
+f.plot_nullcline(4.1, p0)
 plt.figure()
-f.plot_nullcline(nSol)
+f.plot_nullcline(nSol, p0)
