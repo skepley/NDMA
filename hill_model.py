@@ -46,8 +46,6 @@ class HillComponent:
         for idx in range(len(self.variableParameters)):
             self.add_parameter_call(self.variableParameters[idx], idx)
 
-        print(self.delta([1, 2, 3, 4]))
-
     def __iter__(self):
         """Make iterable"""
         yield self
@@ -620,36 +618,76 @@ class SaddleNode:
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
-p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
+H1parm = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
+H2parm = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
 
-f = ToggleSwitch(decay, [p1, p2])
+f = ToggleSwitch(decay, [H1parm, H2parm])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
 H1 = f1.components[0]
 H2 = f2.components[0]
 n0 = 4.1
-
-x0 = np.array([4, 3])
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
-print(f(x0, n0, p0))
 SN = SaddleNode(f)
 
 # eq = f.find_equilibria(n0, 10)
-# v0 = np.array([1, -.7])
-v0 = np.array([1, 1])
 # x0 = eq[:, 1]
+
+
+p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
+v0 = np.array([1, -.7])
+x0 = np.array([4, 3])
 u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
 
+def SN_call_temp(SNinstance, parameter, u0):
+    """Temporary SaddleNode call outside the main class definition"""
 
-uSol = find_root(lambda u: SN.zero_map(u, p0), lambda u: SN.diff_zero_map(u, p0), u0, diagnose=True)
-# compare to uSol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
-print(uSol)
-xSol, vSol, nSol = [uSol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
+    return find_root(lambda u: SNinstance.zero_map(u, parameter), lambda u: SNinstance.diff_zero_map(u, parameter), u0, diagnose=True)
+
+
+
+u0Sol = SN_call_temp(SN, p0, u0)
+print(u0Sol)
+x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
+# compare to u0Sol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
 
 # plot nullclines
 plt.close('all')
 plt.figure()
 f.plot_nullcline(4.1, p0)
+plt.title('p = {0}; n = {1}'.format(p0, u0[-1]))
+
 plt.figure()
-f.plot_nullcline(nSol, p0)
+f.plot_nullcline(n0Sol, p0)
+plt.title('p = {0}; n = {1}'.format(p0, n0Sol[0]))
+
+
+## p1
+p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
+u1Sol = SN_call_temp(SN, p1, u0)
+print(u1Sol)
+x1Sol, v1Sol, n1Sol = [u1Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
+
+# plot nullclines
+plt.figure()
+f.plot_nullcline(4.1, p1)
+plt.title('p = {0}; n = {1}'.format(p1, u0[-1]))
+
+plt.figure()
+f.plot_nullcline(n1Sol, p1)
+plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
+
+
+
+## toggle switch plus
+# set some parameters to test
+decay = np.array([np.nan, np.nan], dtype=float)  # gamma
+f1parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
+f2parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
+parameter = [f1parameter, f2parameter]
+interactionSigns = [[1, -1], [1, -1]]
+interactionTypes = [[2], [2]]
+interactionIndex = [[0, 1], [1, 0]]
+tsPlus = HillModel(decay, parameter, interactionSigns, interactionTypes,
+                 interactionIndex)  # define HillModel for toggle switch plus
+
+
