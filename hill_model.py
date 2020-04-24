@@ -628,7 +628,6 @@ H1 = f1.components[0]
 H2 = f2.components[0]
 n0 = 4.1
 SN = SaddleNode(f)
-
 # eq = f.find_equilibria(n0, 10)
 # x0 = eq[:, 1]
 
