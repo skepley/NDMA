@@ -138,6 +138,21 @@ class HillComponent:
                 hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
                        (thetaPower + xPower) ** 3)
 
+    def image(self, parameter=None):
+        """Return the range of this HillComponent given by (ell, ell+delta)"""
+
+        if 'ell' in self.variableParameters:
+            ell = self.ell(parameter)
+        else:
+            ell = self.ell
+
+        if 'delta' in self.variableParameters:
+            delta = self.delta(parameter)
+        else:
+            delta = self.delta
+
+        return np.array([ell, ell + delta])
+
 
 class HillCoordinate:
     """Define a coordinate of the vector field for a Hill system. This is a scalar equation taking the form
@@ -298,17 +313,35 @@ class HillCoordinate:
         H = self.__call__(x, parameter)
         return [sum(H[indexSet]) for indexSet in self.summand]
 
-    def eq_interval(self):
+    # def eq_interval(self):
+    #     """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
+    #
+    #     try:
+    #         minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
+    #         maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+    #         enclosingInterval = np.array([minInteraction, maxInteraction])
+    #     except AttributeError:
+    #         print(
+    #             'Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
+    #     return enclosingInterval
+
+    def eq_interval(self, parameter=None):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
-        try:
+        if parameter is None:  # all parameters are fixed
+            # TODO: This should only require all ell, delta, and gamma variables to be fixed.
             minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
             maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
-            enclosingInterval = np.array([minInteraction, maxInteraction])
-        except AttributeError:
-            print(
-                'Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
-        return enclosingInterval
+
+        else:  # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
+            gamma, parameter = self.curry_gamma(parameter)
+            parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
+                                    j in range(self.nComponent)]
+            rectangle = np.row_stack(list(map(lambda H, parm: H.image(parm), self.components, parameterByComponent)))
+            minInteraction = self.interaction_function(rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
+            maxInteraction = self.interaction_function(
+                rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
+        return [minInteraction, maxInteraction]
 
 
 def find_root(f, Df, initialGuess, diagnose=False):
@@ -375,6 +408,7 @@ class HillModel:
             interactionSign - A length n list of vectors in F_2^{K_i}
             interactionType - A length n list of length q_i lists describing an integer partitions of K_i
             interactionIndex - A length n list whose i^th element is a length K_i list of global indices for the i^th incoming interactions"""
+
         # TODO: Class constructor should not do work!
 
         self.dimension = len(gamma)  # Dimension of vector field i.e. n
@@ -388,65 +422,88 @@ class HillModel:
                                                    0)  # endpoints for concatenated parameter vector by coordinate
         self.nVariableParameter = sum(self.nVarByCoordinate)  # number of variable parameters for this HillModel
 
+    def parse_parameter(self, *parameter):
+        """Default parameter parsing if input is a single vector simply returns the same vector. Otherwise, it assumes
+        input parameters are provided in order and concatenates into a single vector. This function is included in
+        function calls so that subclasses can redefine function calls with customized parameters and overload this
+        function as needed. Overloaded versions should take a variable number of numpy arrays as input and must always
+        return a single numpy vector as output."""
+
+        if parameter:
+            return np.concatenate(parameter)
+        else:
+            return np.array([])
+
     def unpack_variable_parameters(self, parameter):
         """Unpack a parameter vector for the HillModel into component vectors for each distinct coordinate"""
 
         return [parameter[self.variableIndexByCoordinate[j]:self.variableIndexByCoordinate[j + 1]] for
                 j in range(self.dimension)]
 
-    def __call__(self, x, parameter=np.array([])):
+    def __call__(self, x, *parameter):
         """Evaluate the vector field defined by this HillModel instance. This is a function of the form
         f: R^n x R^{m_1} x ... x R^{m_n} ---> R^n where the j^th Hill coordinate has m_j variable parameters. The syntax
         is f(x,p) where p = (p_1,...,p_n) is a variable parameter vector constructed by ordered concatenation of vectors
         of the form p_j = (p_j1,...,p_jK) which is also an ordered concatenation of the variable parameters associated to
         the K-HillComponents for the j^th HillCoordinate."""
 
+        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         if isvector(x):  # input a single vector in R^n
             return np.array(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
         else:  # vectorized input
             return np.row_stack(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
 
-    def dx(self, x, parameter=np.array([])):
+    def dx(self, x, *parameter):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to x.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
+        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
                                   parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
 
-    def dn(self, x, parameter=np.array([])):
+    def dn(self, x, *parameter):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
         of Hill Coefficients. If n is uniform across all HillComponents, then the derivative is a gradient vector obtained
         by summing this Jacobian along rows.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
+        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         return np.vstack(list(map(lambda f_i, parm: f_i.dn(x, parm), self.coordinates,
                                   parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
 
-    def find_equilibria(self, parameter, gridDensity, uniqueRootDigits=7):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
-            parameter - (numpy vector) Evaluations for variable parameters to use for evaluating the root finding algorithm
+            *parameter - (numpy vectors) Evaluations for variable parameters to use for evaluating the root finding algorithm
             gridDensity - (int) density to sample in each dimension.
             uniqueRootDigits - (int) Number of digits to use for distinguishing between floats."""
 
-        # TODO: Include root finding method as vararg
+        # TODO: Include root finding method as kwarg
+
+        # parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+        parameterByCoordinate = self.unpack_variable_parameters(
+            self.parse_parameter(*parameter))  # unpack variable parameters by component
+
         def F(x):
             """Fix parameter values in the zero finding map"""
-            return self.__call__(x, parameter)
+            return self.__call__(x, *parameter)
 
         def DF(x):
             """Fix parameter values in the zero finding map derivative"""
-            return self.dx(x, parameter)
+            return self.dx(x, *parameter)
 
         # build a grid of initial data for Newton algorithm
-        evalGrid = np.meshgrid(*[np.linspace(*f_i.eq_interval(), num=gridDensity) for f_i in self.coordinates])
+        coordinateIntervals = list(
+            map(lambda f_i, parm: np.linspace(*f_i.eq_interval(parm), num=gridDensity), self.coordinates,
+                parameterByCoordinate))
+        evalGrid = np.meshgrid(*coordinateIntervals)
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
-        solns = list(filter(lambda root: root.success,
-                            [find_root(F, DF, X[:, j], diagnose=True)
-                             for j in range(X.shape[1])]))  # return equilibria which converged
+        solns = list(filter(lambda root: root.success, [find_root(F, DF, X[:, j], diagnose=True)
+                                                        for j in
+                                                        range(X.shape[1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
         return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
@@ -476,65 +533,55 @@ class ToggleSwitch(HillModel):
         # class is implemented.
         setattr(self.coordinates[0], 'dx2',
                 lambda x, parm: np.array(
-                    [[0, 0], [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].curry_gamma(parm)[1])]]))
+                    [[0, 0],
+                     [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].curry_gamma(parm)[1])]]))
         setattr(self.coordinates[1], 'dx2',
                 lambda x, parm: np.array(
-                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0], [0, 0]]))
+                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0],
+                     [0, 0]]))
 
         setattr(self.coordinates[0], 'dndx',
-                lambda x, parm: np.array([0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].curry_gamma(parm)[1])]))
+                lambda x, parm: np.array(
+                    [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].curry_gamma(parm)[1])]))
         setattr(self.coordinates[1], 'dndx',
-                lambda x, parm: np.array([self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0]))
+                lambda x, parm: np.array(
+                    [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0]))
 
-    def pass_uniform_hill(self, n, parameter):
-        """Inserts copies of n into the appropriate Hill coefficient indices in the parameter vector"""
+    def parse_parameter(self, N, parameter):
+        """Overload the parameter parsing for HillModels to identify all HillCoefficients as a single parameter, N. The
+        parser Inserts copies of N into the appropriate Hill coefficient indices in the parameter vector."""
 
-        return np.insert(parameter, self.hillIndexByCoordinate, n)
+        return np.insert(parameter, self.hillIndexByCoordinate, N)
 
-    def __call__(self, x, n, parameter):
-        """Overload the toggle switch to identify the Hill coefficients and evaluate as a separate scalar input.
+    def dn(self, x, N, parameter):
+        """Overload the toggle switch derivative to identify the Hill coefficients which means summing over each
+        gradient. This is a hacky fix and hopefully temporary. A correct implementation would just include a means to
+        including the chain rule derivative of the hillCoefficient vector as a function of the form:
+        Nvector = (N, N,...,N) in R^M."""
 
-        INPUT:
-            x - (vector) state vector in R^2
-            n - (float) a single scalar parameter for the Hill coefficients of both coordinates
-            parameter - (vector) remaining free parameters with length between 0 and 8 ordered as
-                (gamma1, ell1, delta1, theta1, gamma2, ell2, delta2, theta2)
-            """
-        return super().__call__(x, self.pass_uniform_hill(n, parameter))
-
-    def dx(self, x, n, parameter=np.array([])):
-        """Overload the toggle switch derivative to identify the Hill coefficients"""
-
-        return super().dx(x, self.pass_uniform_hill(n, parameter))
-
-    def dn(self, x, n, parameter=np.array([])):
-        """Overload the toggle switch derivative to identify the Hill coefficients"""
-
-        Df_dn = super().dn(x, self.pass_uniform_hill(n, parameter))  # Return Jacobian with respect to n = (n1, n2)
-        return np.sum(Df_dn, 1)  # n1 = n2 = n so the derivative is tbe gradient vector of f with respect to n
+        Df_dHill = super().dn(x, N, parameter)  # Return Jacobian with respect to N = (N1, N2)
+        return np.sum(Df_dHill, 1)  # N1 = N2 = N so the derivative is tbe gradient vector of f with respect to N
 
     def plot_nullcline(self, n, parameter=np.array([]), nNodes=100, domainBounds=(10, 10)):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
-        # equilibria = self.find_equilibria(n, 10)
+        equilibria = self.find_equilibria(10, n, parameter)
         Xp = np.linspace(0, domainBounds[0], nNodes)
         Yp = np.linspace(0, domainBounds[1], nNodes)
         Z = np.zeros_like(Xp)
 
         # unpack decay parameters separately
         gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], self.coordinates,
-                                  self.unpack_variable_parameters(self.pass_uniform_hill(n, parameter)))))
+                                  self.unpack_variable_parameters(self.parse_parameter(n, parameter)))))
         N1 = (self(np.row_stack([Z, Yp]), n, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
         N2 = (self(np.row_stack([Xp, Z]), n, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
-        # N1 = self.coordinates[0](np.row_stack([Z, Yp]), np.array([n])) / self.coordinates[0].gamma  # f1 = 0 nullcline
-        # N2 = self.coordinates[1](np.row_stack([Xp, Z]), np.array([n])) / self.coordinates[1].gamma  # f2 = 0 nullcline
 
-        # if equilibria.ndim == 0:
-        #     pass
-        # elif equilibria.ndim == 1:
-        #     plt.scatter(equilibria[0], equilibria[1])
-        # else:
-        #     plt.scatter(equilibria[0, :], equilibria[1, :])
+        if equilibria.ndim == 0:
+            pass
+        elif equilibria.ndim == 1:
+            plt.scatter(equilibria[0], equilibria[1])
+        else:
+            plt.scatter(equilibria[0, :], equilibria[1, :])
 
         plt.plot(Xp, N2)
         plt.plot(N1, Yp)
@@ -554,7 +601,8 @@ class SaddleNode:
     """A instance of a saddle-node bifurcation problem for a HillModel with 1 hill coefficient parameter which is
     shared by all HillComponents"""
 
-    def __init__(self, hillModel, phaseCondition=lambda v: np.linalg.norm(v) - 1, phaseConditionDerivative=lambda v: v / np.linalg.norm(v)):
+    def __init__(self, hillModel, phaseCondition=lambda v: np.linalg.norm(v) - 1,
+                 phaseConditionDerivative=lambda v: v / np.linalg.norm(v)):
         """Construct an instance of a saddle-node problem for specified HillModel"""
 
         self.model = hillModel
@@ -589,11 +637,13 @@ class SaddleNode:
         # unpack input vector and set dimensions for Jacobian blocks
         stateVector, tangentVector, hillCoefficient = self.unpack_components(u)  # unpack input vector
         n = self.model.dimension
-        fullParameter = self.model.pass_uniform_hill(hillCoefficient, parameter)  # insert copies of HillCoefficient into parameter vector
+        fullParameter = self.model.parse_parameter(hillCoefficient,
+                                                   parameter)  # insert copies of HillCoefficient into parameter vector
         parameterByCoordinate = self.model.unpack_variable_parameters(
             fullParameter)  # unpack full parameter vector by coordinate
         Dg = np.zeros([self.mapDimension, self.mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
-        Df = self.model.dx(stateVector, hillCoefficient, parameter)  # store derivative of vector field which appears in 2 blocks
+        Df = self.model.dx(stateVector, hillCoefficient,
+                           parameter)  # store derivative of vector field which appears in 2 blocks
         # TODO: Function calls for derivatives in HIllModel are overloaded to have input syntax (x, n, parm) where as
         #  the ad hoc Hessian calls use (x, parm). These should be changed to the former.
 
@@ -616,77 +666,14 @@ class SaddleNode:
         return Dg
 
 
-# set some parameters to test using MATLAB toggle switch for ground truth
-decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-H1parm = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
-H2parm = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
-
-f = ToggleSwitch(decay, [H1parm, H2parm])
-f1 = f.coordinates[0]
-f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
-n0 = 4.1
-SN = SaddleNode(f)
-# eq = f.find_equilibria(n0, 10)
-# x0 = eq[:, 1]
-
-
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
-v0 = np.array([1, -.7])
-x0 = np.array([4, 3])
-u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
-
-def SN_call_temp(SNinstance, parameter, u0):
-    """Temporary SaddleNode call outside the main class definition"""
-
-    return find_root(lambda u: SNinstance.zero_map(u, parameter), lambda u: SNinstance.diff_zero_map(u, parameter), u0, diagnose=True)
-
-
-
-u0Sol = SN_call_temp(SN, p0, u0)
-print(u0Sol)
-x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
-# compare to u0Sol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
-
-# plot nullclines
-plt.close('all')
-plt.figure()
-f.plot_nullcline(4.1, p0)
-plt.title('p = {0}; n = {1}'.format(p0, u0[-1]))
-
-plt.figure()
-f.plot_nullcline(n0Sol, p0)
-plt.title('p = {0}; n = {1}'.format(p0, n0Sol[0]))
-
-
-## p1
-p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
-u1Sol = SN_call_temp(SN, p1, u0)
-print(u1Sol)
-x1Sol, v1Sol, n1Sol = [u1Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
-
-# plot nullclines
-plt.figure()
-f.plot_nullcline(4.1, p1)
-plt.title('p = {0}; n = {1}'.format(p1, u0[-1]))
-
-plt.figure()
-f.plot_nullcline(n1Sol, p1)
-plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
-
-
-
-## toggle switch plus
-# set some parameters to test
-decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-f1parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
-f2parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
-parameter = [f1parameter, f2parameter]
-interactionSigns = [[1, -1], [1, -1]]
-interactionTypes = [[2], [2]]
-interactionIndex = [[0, 1], [1, 0]]
-tsPlus = HillModel(decay, parameter, interactionSigns, interactionTypes,
-                 interactionIndex)  # define HillModel for toggle switch plus
-
-
+# ## toggle switch plus
+# # set some parameters to test
+# decay = np.array([np.nan, np.nan], dtype=float)  # gamma
+# f1parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
+# f2parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
+# parameter = [f1parameter, f2parameter]
+# interactionSigns = [[1, -1], [1, -1]]
+# interactionTypes = [[2], [2]]
+# interactionIndex = [[0, 1], [1, 0]]
+# tsPlus = HillModel(decay, parameter, interactionSigns, interactionTypes,
+#                    interactionIndex)  # define HillModel for toggle switch plus
