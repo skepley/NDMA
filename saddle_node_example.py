@@ -66,6 +66,7 @@ x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 
 # ==== This one finds a pitchfork bifurcation instead
 p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
+
 v1 = np.array([1, -.7])
 eq1 = f.find_equilibria(10, n0, p1)
 x1 = eq1[:, -1]
