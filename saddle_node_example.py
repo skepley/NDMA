@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from hill_model import ToggleSwitch, SaddleNode, find_root
 
+
 def SN_call_temp(SNinstance, parameter, u0):
     """Temporary SaddleNode call outside the main class definition"""
 
@@ -43,6 +44,14 @@ p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
 # print(f(x0, n0, p0))
 SN = SaddleNode(f)
 
+# ==== plot saddle node minimizer
+
+
+pMin = np.array([1, 6.41557146e-01, 6.25129310e+00, 2.42626928e+00, 1, 1.18938253e-04,
+               1.11137886e+01, 1.78761333e+00], dtype=float)
+f.plot_nullcline(1.700015274083754, pMin)
+
+stopHere
 # ==== find saddle node for a parameter choice
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 v0 = np.array([1, -.7])
@@ -54,16 +63,22 @@ u0Sol = SN_call_temp(SN, p0, u0)
 x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 # # compare to u0Sol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
 #
-# # plot nullclines and equilibria
-# plt.close('all')
-# plt.figure()
-# f.plot_nullcline(n0, p0)
-# plt.title('p = {0}; n = {1}'.format(p0, u0[-1]))
-# plt.figure()
-# f.plot_nullcline(n0Sol, p0)
-# plt.title('p = {0}; n = {1}'.format(p0, n0Sol[0]))
+# plot nullclines and equilibria
+plt.close('all')
+plt.figure()
+f.plot_nullcline(n0, p0)
+plt.title('p = {0}; n = {1}'.format(p0, u0[-1]))
+plt.figure()
+f.plot_nullcline(n0Sol, p0)
+plt.title('p = {0}; n = {1}'.format(p0, n0Sol[0]))
 
+plt.close('all')
+plt.figure()
+for hillC in np.linspace(1, 3, 5):
+    plt.figure()
+    f.plot_nullcline(hillC, p0)
 
+stopHere
 # ==== This one finds a pitchfork bifurcation instead
 p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
 
@@ -75,14 +90,15 @@ u1Sol = SN_call_temp(SN, p1, u1)
 # print(u1Sol)
 x1Sol, v1Sol, n1Sol = [u1Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 
-# # plot nullclines
-# plt.figure()
-# f.plot_nullcline(n0, p1)
-# plt.title('p = {0}; n = {1}'.format(p1, u0[-1]))
-# plt.figure()
-# f.plot_nullcline(n1Sol, p1)
-# plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
+# plot nullclines
+plt.figure()
+f.plot_nullcline(n0, p1)
+plt.title('p = {0}; n = {1}'.format(p1, u0[-1]))
+plt.figure()
+f.plot_nullcline(n1Sol, p1)
+plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
 
+stopHere
 # ==== Animation of continuation in N
 # create a an array of Hill coefficients to plot
 nFrame = 25

@@ -495,15 +495,21 @@ class HillModel:
             """Fix parameter values in the zero finding map derivative"""
             return self.dx(x, *parameter)
 
+        def eq_is_positive(equilibrium):
+            """Return true if and only if an equlibrium is positive"""
+            return np.all(equilibrium > 0)
+
         # build a grid of initial data for Newton algorithm
         coordinateIntervals = list(
             map(lambda f_i, parm: np.linspace(*f_i.eq_interval(parm), num=gridDensity), self.coordinates,
                 parameterByCoordinate))
         evalGrid = np.meshgrid(*coordinateIntervals)
         X = np.row_stack([G_i.flatten() for G_i in evalGrid])
-        solns = list(filter(lambda root: root.success, [find_root(F, DF, X[:, j], diagnose=True)
-                                                        for j in
-                                                        range(X.shape[1])]))  # return equilibria which converged
+        solns = list(
+            filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, X[:, j], diagnose=True)
+                                                                          for j in
+                                                                          range(X.shape[
+                                                                                    1])]))  # return equilibria which converged
         equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
         return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
@@ -664,7 +670,6 @@ class SaddleNode:
         Dg[-1, n:2 * n] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
         # block - (3, 1) is a 1-by-1 zero block
         return Dg
-
 
 # ## toggle switch plus
 # # set some parameters to test
