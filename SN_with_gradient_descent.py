@@ -17,6 +17,7 @@ Optional file header info (to give more details about the function than in the H
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from scipy.optimize import minimize
 from hill_model import ToggleSwitch, SaddleNode, find_root
 
 
@@ -46,8 +47,37 @@ def SN_call(SNinstance, parameter, n0):
     return np.min(hillCoefficients)
 
 
+def SN_call_grid(SNinstance, parameter):
+
+    # to avoid getting to negative paramter values, we just return infinity if the parameters are biologically not good
+    if np.any(parameter < 0):
+        return np.inf
+
+    # set multiple values of the Hill coefficient and test for the convergence to a saddle node
+    n0_grid = np.linspace(2, 4, 3)
+    list_minima = list(SN_call(SNinstance, parameter, np.array([n])) for n in n0_grid)
+
+    return np.min(np.array(list_minima))
+
+
+def optimizing_parameters(SNinstance, parameter0):
+
+    def local_function(parameter):
+        n = SN_call_grid(SNinstance, parameter)
+        print(n)
+        print(parameter)
+        return n
+
+    best_parameter = minimize(local_function, parameter0, method='nelder-mead', options={'xatol': 1e-2})
+
+     # n_best = local_function(best_parameter)
+
+    return best_parameter #, n_best
+
+
+
 # set some parameters to test using MATLAB toggle switch for ground truth
-decay = np.array([np.nan, np.nan], dtype=float)  # gamma
+decay = np.array([1, 1], dtype=float)  # gamma
 p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
 p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
 
@@ -59,14 +89,18 @@ H2 = f2.components[0]
 n0 = 4.1
 
 x0 = np.array([4, 3])
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
+p0 = np.array([1, 5, 3, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
 SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
+p0 = np.array([1, 5, 3, 1, 5, 3], dtype=float)
 SNpoints = SN_call(SN, p0, np.array([4.1]))
 print(SNpoints)
+
+best_par = optimizing_parameters(SN, p0)
+
+print(best_par)
 # v0 = np.array([1, -.7])
 # eq0 = f.find_equilibria(10, n0, p0)
 # x0 = eq0[:, -1]
