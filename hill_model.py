@@ -224,7 +224,8 @@ class HillCoordinate:
             interactionIndex - (list) A length K+1 vector of global state variable indices. interactionIndex[0] is the global index
                 for this coordinate and interactionIndex[1:] the indices of the K incoming interacting nodes"""
 
-        # TODO: Class constructor should not do work!
+        # TODO: 1. Class constructor should not do work!
+        #       2. Handing local vs global indexing of state variable vectors should be moved to the HillModel class instead of this class.
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
@@ -248,17 +249,6 @@ class HillCoordinate:
         self.nVariableParameter = sum(
             self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate.
 
-    def curry_gamma(self, parameter):
-        """Returns the value of gamma and a curried version of a variable parameter argument"""
-        print('This function should not be called anymore')
-        raise KeyboardInterrupt
-
-        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
-        if self.gammaIsVariable:
-            return parameter[0], parameter[1:]
-        else:  # return fixed gamma and unaltered parameter
-            return self.gamma, parameter
-
     def parse_parameters(self, parameter):
         """Returns the value of gamma and slices of the parameter vector divided by component"""
 
@@ -268,7 +258,7 @@ class HillCoordinate:
         else:
             gamma = self.gamma
         return gamma, [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                        j in range(self.nComponent)]
+                       j in range(self.nComponent)]
 
     def __call__(self, x, parameter=np.array([])):
         """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
@@ -318,7 +308,24 @@ class HillCoordinate:
         """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
            The parameter must be a variable parameter for one or more HillComponents."""
 
-        # diffComponent =
+        if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
+            return -1
+        else:  # First obtain a local index in the HillComponent for the differentiation variable
+            diffComponent = np.searchsorted(self.variableIndexByComponent,
+                                            diffIndex + 0.5)-1  # get the component which contains the differentiation variable. Adding 0.5
+            # makes the returned value consistent in the case that the diffIndex is an endpoint of the variable index list
+            diffParameterIndex = diffIndex - self.variableIndexByComponent[
+                diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
+
+            # Now evaluate the derivative through the HillComponent and embed into tangent space of R^n
+            gamma, parameterByComponent = self.parse_parameters(parameter)
+            xLocal = x[
+                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+            diffInteraction = self.diff_interaction(xLocal)[diffComponent]  # evaluate outer term in chain rule
+            # TODO: diffInteraction should allow calls to individual components. Currently it always returns the entire vector of
+            #       derivatives for every component.
+            dH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent], parameterByComponent[diffComponent])  # evaluate inner term in chain rule
+            return diffInteraction * dH
 
     def dn(self, x, parameter=np.array([])):
         """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.

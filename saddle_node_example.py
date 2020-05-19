@@ -44,14 +44,8 @@ p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
 # print(f(x0, n0, p0))
 SN = SaddleNode(f)
 
-# ==== plot saddle node minimizer
 
 
-pMin = np.array([1, 6.41557146e-01, 6.25129310e+00, 2.42626928e+00, 1, 1.18938253e-04,
-               1.11137886e+01, 1.78761333e+00], dtype=float)
-f.plot_nullcline(1.700015274083754, pMin)
-
-stopHere
 # ==== find saddle node for a parameter choice
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 v0 = np.array([1, -.7])
@@ -62,7 +56,8 @@ u0Sol = SN_call_temp(SN, p0, u0)
 # print(u0Sol)
 x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 # # compare to u0Sol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
-#
+
+
 # plot nullclines and equilibria
 plt.close('all')
 plt.figure()
