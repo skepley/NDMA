@@ -38,13 +38,15 @@ print(H1.dx(x0))
 print(H2.dx(x0, [delta, n]))
 print(H3.dx(x0, [ell, delta, theta, n]))
 
-print(H1.dx(x0, [], 2))
-print(H2.dx(x0, [delta, n], 2))
-print(H3.dx(x0, [ell, delta, theta, n], 2))
+print(H1.dx2(x0, []))
+print(H2.dx2(x0, [delta, n]))
+print(H3.dx2(x0, [ell, delta, theta, n]))
 
 print(H1.dn(x0))
 print(H2.dn(x0, [delta, n]))
+print(H2.diff(1, x0, [delta, n]))
 print(H3.dn(x0, [ell, delta, theta, n]))
+print(H3.diff(1, x0, [ell, delta, theta, n]))
 
 print(H1.dndx(x0))
 print(H2.dndx(x0, [delta, n]))

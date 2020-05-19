@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 from scipy import optimize
 from numpy import log
 
-plt.close('all')
-
 
 def isvector(array):
     """Returns true if input is a numpy vector"""
@@ -38,6 +36,9 @@ def ezcat(*coordinates):
         return np.concatenate([np.array([coordinates[0]]), ezcat(*coordinates[1:])])
 
 
+PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
+
+
 class HillComponent:
     """A component of a Hill system of the form ell + delta*H(x; ell, delta, theta, n) where H is an increasing or decreasing Hill function.
     Any of these parameters can be considered as a fixed value for a Component or included in the callable variables. The
@@ -49,7 +50,7 @@ class HillComponent:
 
         self.sign = interactionSign
         self.parameterValues = np.zeros(4)  # initialize vector of parameter values
-        parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
+        parameterNames = PARAMETER_NAMES.copy()  # ordered list of possible parameter names
         parameterCallIndex = {parameterNames[j]: j for j in range(4)}  # calling index for parameter by name
         for parameterName, parameterValue in kwargs.items():
             setattr(self, parameterName, parameterValue)  # fix input parameter
@@ -136,8 +137,39 @@ class HillComponent:
         return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall * (
                 (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
 
+    def diff(self, diffIndex, x, parameter=np.array([])):
+        """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
+        The parameter must be a variable parameter for the HillComponent."""
+
+        diffParameter = self.variableParameters[diffIndex]  # get the name of the differentiation variable
+
+        if diffParameter == 'ell':
+            return 1.
+        else:
+            ell, delta, theta, hillCoefficient = self.curry_parameters(
+                parameter)  # unpack fixed and variable parameters
+            xPower = x ** hillCoefficient
+
+        if diffParameter == 'delta':
+            thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
+            if self.sign == 1:
+                dH = xPower / (thetaPower + xPower) ** 2
+            else:
+                dH = thetaPower / (thetaPower + xPower) ** 2
+
+        elif diffParameter == 'theta':
+            thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
+            thetaPower = theta * thetaPowerSmall
+            dH = self.sign(-delta * hillCoefficient * xPower * thetaPowerSmall) / ((thetaPower + xPower) ** 2)
+
+        elif diffParameter == 'hillCoefficient':
+            thetaPower = theta ** hillCoefficient
+            dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
+
+        return dH
+
     def dn(self, x, parameter=np.array([])):
-        """Returns the derivative of a Hill component with respect to n"""
+        """Returns the derivative of a Hill component with respect to n. """
 
         ell, delta, theta, hillCoefficient = self.curry_parameters(
             parameter)  # unpack fixed and variable parameter values
@@ -210,19 +242,33 @@ class HillCoordinate:
             self.nVarByComponent = list(
                 map(lambda j: np.count_nonzero(np.isnan(self.parameterValues[j, :])), range(self.nComponent)))
         # endpoints for concatenated parameter vector by coordinate
-        self.variableIndexByComponent = np.insert(np.cumsum(self.nVarByComponent), 0,
-                                                  0)  # endpoints for concatenated parameter vector by coordinate
+        self.variableIndexByComponent = np.cumsum([self.gammaIsVariable] + self.nVarByComponent)
+        # endpoints for concatenated parameter vector by coordinate. This is a
+        # vector of length K+1. The kth component parameters are the slice variableIndexByComponent[k:k+1] for k = 0...K-1
         self.nVariableParameter = sum(
-            self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate
+            self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate.
 
     def curry_gamma(self, parameter):
         """Returns the value of gamma and a curried version of a variable parameter argument"""
+        print('This function should not be called anymore')
+        raise KeyboardInterrupt
 
         # If gamma is not fixed, then it must be the first coordinate of the parameter vector
         if self.gammaIsVariable:
             return parameter[0], parameter[1:]
         else:  # return fixed gamma and unaltered parameter
             return self.gamma, parameter
+
+    def parse_parameters(self, parameter):
+        """Returns the value of gamma and slices of the parameter vector divided by component"""
+
+        # If gamma is not fixed, then it must be the first coordinate of the parameter vector
+        if self.gammaIsVariable:
+            gamma = parameter[0]
+        else:
+            gamma = self.gamma
+        return gamma, [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
+                        j in range(self.nComponent)]
 
     def __call__(self, x, parameter=np.array([])):
         """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
@@ -233,9 +279,7 @@ class HillCoordinate:
         if isvector(x):  # Evaluate coordinate for a single x in R^n
             # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
             # the j^th Hill component.
-            gamma, parameter = self.curry_gamma(parameter)
-            parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                    j in range(self.nComponent)]
+            gamma, parameterByComponent = self.parse_parameters(parameter)
             hillComponentValues = np.array(
                 list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
                          parameterByComponent)))  # evaluate Hill components
@@ -256,14 +300,12 @@ class HillCoordinate:
     def dx(self, x, parameter=np.array([])):
         """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
 
-        gamma, parameter = self.curry_gamma(parameter)
+        gamma, parameterByComponent = self.parse_parameters(parameter)
         dim = len(x)  # dimension of vector field
         Df = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
-        parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                j in range(self.nComponent)]  # unpack variable parameters by component
         DHillComponent = np.array(
             list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
@@ -272,20 +314,24 @@ class HillCoordinate:
         Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
         return Df
 
+    def diff(self, diffIndex, x, parameter=np.array([])):
+        """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
+           The parameter must be a variable parameter for one or more HillComponents."""
+
+        # diffComponent =
+
     def dn(self, x, parameter=np.array([])):
         """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.
         Evaluation requires specifying x in R^n and p in R^m. This method does not assume that all HillCoordinates have
         a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
         should be the sum of the gradient vector returned"""
 
-        gamma, parameter = self.curry_gamma(parameter)
+        gamma, parameterByComponent = self.parse_parameters(parameter)
         dim = len(x)  # dimension of vector field
         df_dn = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
-        parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                j in range(self.nComponent)]  # unpack variable parameters by component
         dHillComponent_dn = np.array(
             list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
@@ -334,18 +380,6 @@ class HillCoordinate:
         H = self.__call__(x, parameter)
         return [sum(H[indexSet]) for indexSet in self.summand]
 
-    # def eq_interval(self):
-    #     """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
-    #
-    #     try:
-    #         minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
-    #         maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
-    #         enclosingInterval = np.array([minInteraction, maxInteraction])
-    #     except AttributeError:
-    #         print(
-    #             'Current implementation requires fixed ell, delta for all HillComponents and fixed gamma for this HillCoordinate')
-    #     return enclosingInterval
-
     def eq_interval(self, parameter=None):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
@@ -355,9 +389,7 @@ class HillCoordinate:
             maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
 
         else:  # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
-            gamma, parameter = self.curry_gamma(parameter)
-            parameterByComponent = [parameter[self.variableIndexByComponent[j]:self.variableIndexByComponent[j + 1]] for
-                                    j in range(self.nComponent)]
+            gamma, parameterByComponent = self.parse_parameters(parameter)
             rectangle = np.row_stack(list(map(lambda H, parm: H.image(parm), self.components, parameterByComponent)))
             minInteraction = self.interaction_function(rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
             maxInteraction = self.interaction_function(
@@ -613,7 +645,6 @@ class ToggleSwitch(HillModel):
         plt.plot(Xp, N2)
         plt.plot(N1, Yp)
 
-
 # def unit_phase_condition(v):
 #     """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
 #     return np.linalg.norm(v) - 1
@@ -622,8 +653,6 @@ class ToggleSwitch(HillModel):
 # def diff_unit_phase_condition(v):
 #     """Evaluate the derivative of the unit phase condition function"""
 #     return v / np.linalg.norm(v)
-
-
 
 
 # ## toggle switch plus
