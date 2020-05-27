@@ -6,12 +6,13 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
     Date: 2/29/20; Last revision: 3/4/20
 """
 import numpy as np
+import warnings
 import matplotlib.pyplot as plt
 from scipy import optimize
 from numpy import log
 
 
-def isvector(array):
+def is_vector(array):
     """Returns true if input is a numpy vector"""
 
     return len(np.shape(array)) == 1
@@ -34,6 +35,56 @@ def ezcat(*coordinates):
         return np.concatenate([coordinates[0], ezcat(*coordinates[1:])])
     except ValueError:
         return np.concatenate([np.array([coordinates[0]]), ezcat(*coordinates[1:])])
+
+
+def find_root(f, Df, initialGuess, diagnose=False):
+    """Default root finding method to use if one is not specified"""
+
+    solution = optimize.root(f, initialGuess, jac=Df, method='hybr')  # set root finding algorithm
+    if diagnose:
+        return solution  # return the entire solution object including iterations and diagnostics
+    else:
+        return solution.x  # return only the solution vector
+
+
+def full_newton(f, Df, x0, maxDefect=1e-13):
+    """A full Newton based root finding algorithm"""
+
+    def is_singular(matrix, rank):
+        """Returns true if the derivative becomes singular for any reason"""
+        return np.isnan(matrix).any() or np.isinf(matrix).any() or np.linalg.matrix_rank(matrix) < rank
+
+    fDim = len(x0)  # dimension of the domain/image of f
+    maxIterate = 100
+
+    if not is_vector(x0):  # an array whose columns are initial guesses
+        print('not implemented yet')
+
+    else:  # x0 is a single initial guess
+        # initialize iteration
+        x = x0.copy()
+        y = f(x)
+        Dy = Df(x)
+        iDefect = np.linalg.norm(y)  # initialize defect
+        iIterate = 1
+        while iDefect > maxDefect and iIterate < maxIterate and not is_singular(Dy, fDim):
+            if fDim == 1:
+                x -= y / Dy
+            else:
+                x -= np.linalg.solve(Dy, y)  # update x
+
+            y = f(x)  # update f(x)
+            print(y)
+            Dy = Df(x)  # update Df(x)
+            iDefect = np.linalg.norm(y)  # initialize defect
+            print(iDefect)
+            iIterate += 1
+
+        if iDefect < maxDefect:
+            return x
+        else:
+            print('Newton failed to converge')
+            return np.nan
 
 
 PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
@@ -266,13 +317,11 @@ class HillCoordinate:
         of variable parameters for this Hill coordinate"""
 
         # TODO: Currently the input parameter must be a numpy array even if there is only a single parameter.
-        if isvector(x):  # Evaluate coordinate for a single x in R^n
+        if is_vector(x):  # Evaluate coordinate for a single x in R^n
             # slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
             # the j^th Hill component.
             gamma, parameterByComponent = self.parse_parameters(parameter)
-            hillComponentValues = np.array(
-                list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
-                         parameterByComponent)))  # evaluate Hill components
+            hillComponentValues = self.evaluate_components(x, parameter)
             nonlinearTerm = self.interaction_function(hillComponentValues)  # compose with interaction function
             return -gamma * x[self.index] + nonlinearTerm
 
@@ -280,12 +329,48 @@ class HillCoordinate:
         else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
             return np.array([self(x[:, j], parameter) for j in range(np.shape(x)[1])])
 
-    def interaction_function(self, parameter):
+    def evaluate_components(self, x, parameter):
+        """Evaluate each HillComponent and return as a vector in R^K"""
+
+        gamma, parameterByComponent = self.parse_parameters(parameter)
+        return np.array(
+            list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
+                     parameterByComponent)))  # evaluate Hill components
+
+    def evaluate_summand(self, x, parameter, m=None):
+        """Evaluate the Hill summands"""
+
+        gamma, parameterByComponent = self.parse_parameters(parameter)
+
+        if m is None:  # Return all summand evaluations as a vector in R^q
+            return np.array([self.evaluate_summand(x, parameter, m=summandIdx) for summandIdx in range(len(self.summand))])
+        else:
+            parm = parameterByComponent[m]
+            interactionIndex = [self.interactionIndex[k] for k in self.summand[m-1]]
+            componentValues = np.array(
+                list(map(lambda k: self.components[k](x[interactionIndex[k]], parm), self.summand[m-1])))  # evaluate Hill components
+            return np.sum(componentValues)
+
+
+    def interaction_function(self, componentValues):
         """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
 
-        return np.sum(
-            parameter)  # dummy functionality computes all sum interaction. Updated version below just needs to be tested.
         # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
+
+        if len(self.summand) == 1:  # this is the all sum interaction type
+            return np.sum(componentValues)
+        else:
+
+
+            return
+
+
+
+
+    def summand_index(self, componentIdx):
+        """Returns the summand index of a component index. This is a map of the form, I : {1,...,K} --> {1,...,q}"""
+
+        return self.summand.index(filter(lambda L: componentIdx in L, self.summand).__next__())
 
     def dx(self, x, parameter=np.array([])):
         """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
@@ -312,7 +397,7 @@ class HillCoordinate:
             return -1
         else:  # First obtain a local index in the HillComponent for the differentiation variable
             diffComponent = np.searchsorted(self.variableIndexByComponent,
-                                            diffIndex + 0.5)-1  # get the component which contains the differentiation variable. Adding 0.5
+                                            diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
             # makes the returned value consistent in the case that the diffIndex is an endpoint of the variable index list
             diffParameterIndex = diffIndex - self.variableIndexByComponent[
                 diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
@@ -324,7 +409,8 @@ class HillCoordinate:
             diffInteraction = self.diff_interaction(xLocal)[diffComponent]  # evaluate outer term in chain rule
             # TODO: diffInteraction should allow calls to individual components. Currently it always returns the entire vector of
             #       derivatives for every component.
-            dH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent], parameterByComponent[diffComponent])  # evaluate inner term in chain rule
+            dH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent], parameterByComponent[
+                diffComponent])  # evaluate inner term in chain rule
             return diffInteraction * dH
 
     def dn(self, x, parameter=np.array([])):
@@ -333,6 +419,7 @@ class HillCoordinate:
         a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
         should be the sum of the gradient vector returned"""
 
+        warnings.warn("The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
         gamma, parameterByComponent = self.parse_parameters(parameter)
         dim = len(x)  # dimension of vector field
         df_dn = np.zeros(dim, dtype=float)
@@ -349,11 +436,9 @@ class HillCoordinate:
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
 
-        parameterNames = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of possible parameter names
-
         def row2dict(row):
             """convert ordered row of parameter matrix to kwarg"""
-            return {parameterNames[j]: row[j] for j in range(4) if
+            return {PARAMETER_NAMES[j]: row[j] for j in range(4) if
                     not np.isnan(row[j])}
 
         if self.nComponent == 1:
@@ -402,56 +487,6 @@ class HillCoordinate:
             maxInteraction = self.interaction_function(
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
         return [minInteraction, maxInteraction]
-
-
-def find_root(f, Df, initialGuess, diagnose=False):
-    """Default root finding method to use if one is not specified"""
-
-    solution = optimize.root(f, initialGuess, jac=Df, method='hybr')  # set root finding algorithm
-    if diagnose:
-        return solution  # return the entire solution object including iterations and diagnostics
-    else:
-        return solution.x  # return only the solution vector
-
-
-def full_newton(f, Df, x0, maxDefect=1e-13):
-    """A full Newton based root finding algorithm"""
-
-    def is_singular(matrix, rank):
-        """Returns true if the derivative becomes singular for any reason"""
-        return np.isnan(matrix).any() or np.isinf(matrix).any() or np.linalg.matrix_rank(matrix) < rank
-
-    fDim = len(x0)  # dimension of the domain/image of f
-    maxIterate = 100
-
-    if not isvector(x0):  # an array whose columns are initial guesses
-        print('not implemented yet')
-
-    else:  # x0 is a single initial guess
-        # initialize iteration
-        x = x0.copy()
-        y = f(x)
-        Dy = Df(x)
-        iDefect = np.linalg.norm(y)  # initialize defect
-        iIterate = 1
-        while iDefect > maxDefect and iIterate < maxIterate and not is_singular(Dy, fDim):
-            if fDim == 1:
-                x -= y / Dy
-            else:
-                x -= np.linalg.solve(Dy, y)  # update x
-
-            y = f(x)  # update f(x)
-            print(y)
-            Dy = Df(x)  # update Df(x)
-            iDefect = np.linalg.norm(y)  # initialize defect
-            print(iDefect)
-            iIterate += 1
-
-        if iDefect < maxDefect:
-            return x
-        else:
-            print('Newton failed to converge')
-            return np.nan
 
 
 class HillModel:
@@ -509,7 +544,7 @@ class HillModel:
 
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        if isvector(x):  # input a single vector in R^n
+        if is_vector(x):  # input a single vector in R^n
             return np.array(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
         else:  # vectorized input
             return np.row_stack(list(map(lambda f_i, parm: f_i(x, parm), self.coordinates, parameterByCoordinate)))
@@ -600,18 +635,18 @@ class ToggleSwitch(HillModel):
         setattr(self.coordinates[0], 'dx2',
                 lambda x, parm: np.array(
                     [[0, 0],
-                     [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].curry_gamma(parm)[1])]]))
+                     [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].parse_parameters(parm)[1])]]))
         setattr(self.coordinates[1], 'dx2',
                 lambda x, parm: np.array(
-                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0],
+                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0],
                      [0, 0]]))
 
         setattr(self.coordinates[0], 'dndx',
                 lambda x, parm: np.array(
-                    [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].curry_gamma(parm)[1])]))
+                    [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].parse_parameters(parm)[1])]))
         setattr(self.coordinates[1], 'dndx',
                 lambda x, parm: np.array(
-                    [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].curry_gamma(parm)[1]), 0]))
+                    [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0]))
 
     def parse_parameter(self, N, parameter):
         """Overload the parameter parsing for HillModels to identify all HillCoefficients as a single parameter, N. The
@@ -625,7 +660,7 @@ class ToggleSwitch(HillModel):
         including the chain rule derivative of the hillCoefficient vector as a function of the form:
         Nvector = (N, N,...,N) in R^M."""
 
-        Df_dHill = super().dn(x, N, parameter)  # Return Jacobian with respect to N = (N1, N2)
+        Df_dHill = super().dn(x, N, parameter)  # Return Jacobian with respect to N = (N1, N2)  # OLD VERSION
         return np.sum(Df_dHill, 1)  # N1 = N2 = N so the derivative is tbe gradient vector of f with respect to N
 
     def plot_nullcline(self, n, parameter=np.array([]), nNodes=100, domainBounds=(10, 10)):
@@ -637,7 +672,7 @@ class ToggleSwitch(HillModel):
         Z = np.zeros_like(Xp)
 
         # unpack decay parameters separately
-        gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], self.coordinates,
+        gamma = np.array(list(map(lambda f_i, parm: f_i.parse_parameters(parm)[0], self.coordinates,
                                   self.unpack_variable_parameters(self.parse_parameter(n, parameter)))))
         N1 = (self(np.row_stack([Z, Yp]), n, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
         N2 = (self(np.row_stack([Xp, Z]), n, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline

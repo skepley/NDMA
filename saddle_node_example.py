@@ -16,8 +16,8 @@ Optional file header info (to give more details about the function than in the H
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from hill_model import ToggleSwitch, SaddleNode, find_root
-
+from hill_model import *
+from saddle_node import *
 
 def SN_call_temp(SNinstance, parameter, u0):
     """Temporary SaddleNode call outside the main class definition"""
