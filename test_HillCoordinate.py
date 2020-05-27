@@ -59,3 +59,5 @@ print(f4.evaluate_summand(x, p4, 0))
 print(f4.evaluate_summand(x, p4, 1))
 print(f4.evaluate_summand(x, p4))
 print(f4.diff_interaction(x, p4))
+for j in range(f4.nVariableParameter):
+    print(j, f4.diff(j, x, p4))

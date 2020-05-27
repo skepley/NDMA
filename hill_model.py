@@ -211,7 +211,7 @@ class HillComponent:
         elif diffParameter == 'theta':
             thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
             thetaPower = theta * thetaPowerSmall
-            dH = self.sign(-delta * hillCoefficient * xPower * thetaPowerSmall) / ((thetaPower + xPower) ** 2)
+            dH = self.sign * (-delta * hillCoefficient * xPower * thetaPowerSmall) / ((thetaPower + xPower) ** 2)
 
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
@@ -381,7 +381,7 @@ class HillCoordinate:
                 allSummands = self.evaluate_summand(x, parameter)
                 I_k = self.summand_index(k)  # get the summand index containing the k^th Hill component
                 return np.prod(
-                    [allSummands[self.summand_index[m]] for m in range(self.nComponent) if m != I_k])  # multiply over
+                    [allSummands[self.summand_index(k)] for m in range(self.nComponent) if m != I_k])  # multiply over
             # all summands which do not contain the k^th component
 
     def summand_index(self, componentIdx):
@@ -429,26 +429,7 @@ class HillCoordinate:
                 diffComponent])  # evaluate inner term in chain rule
             return diffInteraction * dH
 
-    def dn(self, x, parameter=np.array([])):
-        """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.
-        Evaluation requires specifying x in R^n and p in R^m. This method does not assume that all HillCoordinates have
-        a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
-        should be the sum of the gradient vector returned"""
 
-        warnings.warn(
-            "The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        dim = len(x)  # dimension of vector field
-        df_dn = np.zeros(dim, dtype=float)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(x, parameter)  # evaluate outer term in chain rule
-        dHillComponent_dn = np.array(
-            list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
-                     parameterByComponent)))  # evaluate inner term in chain rule
-        df_dn[
-            self.interactionIndex] = diffInteraction * dHillComponent_dn  # evaluate gradient of nonlinear part via chain rule
-        return df_dn
 
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
@@ -490,6 +471,26 @@ class HillCoordinate:
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
         return [minInteraction, maxInteraction]
 
+    def dn(self, x, parameter=np.array([])):
+        """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.
+        Evaluation requires specifying x in R^n and p in R^m. This method does not assume that all HillCoordinates have
+        a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
+        should be the sum of the gradient vector returned"""
+
+        warnings.warn(
+            "The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
+        gamma, parameterByComponent = self.parse_parameters(parameter)
+        dim = len(x)  # dimension of vector field
+        df_dn = np.zeros(dim, dtype=float)
+        xLocal = x[
+            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        diffInteraction = self.diff_interaction(x, parameter)  # evaluate outer term in chain rule
+        dHillComponent_dn = np.array(
+            list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
+                     parameterByComponent)))  # evaluate inner term in chain rule
+        df_dn[
+            self.interactionIndex] = diffInteraction * dHillComponent_dn  # evaluate gradient of nonlinear part via chain rule
+        return df_dn
 
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
