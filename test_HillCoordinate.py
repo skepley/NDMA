@@ -53,5 +53,9 @@ print([f3.diff(j, x, p3) for j in range(f3.nVariableParameter)])
 parameter4 = np.repeat(np.nan, 12).reshape(3, 4)
 interactionType = [2, 1]
 interactionSign = [1, 1, -1]
+p4 = np.arange(12)
 f4 = HillCoordinate(parameter4, interactionSign, interactionType, [0, 1, 2, 3], gamma=gamma)
-summand = [[0, 1], [2], [3, 4]]
+print(f4.evaluate_summand(x, p4, 0))
+print(f4.evaluate_summand(x, p4, 1))
+print(f4.evaluate_summand(x, p4))
+print(f4.diff_interaction(x, p4))

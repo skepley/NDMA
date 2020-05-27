@@ -277,6 +277,7 @@ class HillCoordinate:
 
         # TODO: 1. Class constructor should not do work!
         #       2. Handing local vs global indexing of state variable vectors should be moved to the HillModel class instead of this class.
+        #       3. There is a lot of redundancy between the "summand" methods and "component" methods. It is stil not clear how the code needs to be refactored.
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
@@ -338,37 +339,54 @@ class HillCoordinate:
                      parameterByComponent)))  # evaluate Hill components
 
     def evaluate_summand(self, x, parameter, m=None):
-        """Evaluate the Hill summands"""
+        """Evaluate the Hill summands at a given parameter. This is a map taking values in R^q. If m is given in arange(q)
+        this returns only the m^th summand."""
 
         gamma, parameterByComponent = self.parse_parameters(parameter)
 
         if m is None:  # Return all summand evaluations as a vector in R^q
-            return np.array([self.evaluate_summand(x, parameter, m=summandIdx) for summandIdx in range(len(self.summand))])
+            return np.array(
+                [self.evaluate_summand(x, parameter, m=summandIdx) for summandIdx in range(len(self.summand))])
         else:
-            parm = parameterByComponent[m]
-            interactionIndex = [self.interactionIndex[k] for k in self.summand[m-1]]
+            summand = self.summand[m]
+            # parmBySummand = [parameterByComponent[k] for k in summand]
+            # interactionIndex = [self.interactionIndex[k] for k in summand]
             componentValues = np.array(
-                list(map(lambda k: self.components[k](x[interactionIndex[k]], parm), self.summand[m-1])))  # evaluate Hill components
+                list(map(lambda k: self.components[k](x[self.interactionIndex[k]], parameterByComponent[k]),
+                         summand)))  # evaluate Hill components
             return np.sum(componentValues)
-
 
     def interaction_function(self, componentValues):
         """Evaluate the polynomial interaction function at a parameter in (0,inf)^{K}"""
 
-        # return np.prod([sum([parm[idx] for idx in sumList]) for sumList in self.summand])
-
         if len(self.summand) == 1:  # this is the all sum interaction type
             return np.sum(componentValues)
         else:
+            return np.prod([sum([componentValues[idx] for idx in summand]) for summand in self.summand])
 
-
-            return
-
-
-
+    def diff_interaction(self, x, parameter, k=None):
+        """Return the partial derivative of the interaction function in the specified coordinate. If no coordinate is given
+        it returns the full gradient vector with all K partials."""
+        if k is None:
+            if len(self.interactionType) == 1:
+                return np.ones(self.nComponent)
+            else:
+                allSummands = self.evaluate_summand(x, parameter)
+                fullProduct = np.prod(allSummands)
+                return fullProduct / np.array([allSummands[self.summand_index(k)] for k in range(self.nComponent)])
+        else:
+            if len(self.interactionType) == 1:
+                return 1.
+            else:
+                allSummands = self.evaluate_summand(x, parameter)
+                I_k = self.summand_index(k)  # get the summand index containing the k^th Hill component
+                return np.prod(
+                    [allSummands[self.summand_index[m]] for m in range(self.nComponent) if m != I_k])  # multiply over
+            # all summands which do not contain the k^th component
 
     def summand_index(self, componentIdx):
-        """Returns the summand index of a component index. This is a map of the form, I : {1,...,K} --> {1,...,q}"""
+        """Returns the summand index of a component index. This is a map of the form, I : {1,...,K} --> {1,...,q} which
+        identifies to which summand the k^th component contributes."""
 
         return self.summand.index(filter(lambda L: componentIdx in L, self.summand).__next__())
 
@@ -380,7 +398,7 @@ class HillCoordinate:
         Df = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
+        diffInteraction = self.diff_interaction(x, parameter)  # evaluate outer term in chain rule
         DHillComponent = np.array(
             list(map(lambda H, x, parm: H.dx(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
@@ -406,9 +424,7 @@ class HillCoordinate:
             gamma, parameterByComponent = self.parse_parameters(parameter)
             xLocal = x[
                 self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-            diffInteraction = self.diff_interaction(xLocal)[diffComponent]  # evaluate outer term in chain rule
-            # TODO: diffInteraction should allow calls to individual components. Currently it always returns the entire vector of
-            #       derivatives for every component.
+            diffInteraction = self.diff_interaction(x, parameter, k=diffComponent)  # evaluate outer term in chain rule
             dH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent], parameterByComponent[
                 diffComponent])  # evaluate inner term in chain rule
             return diffInteraction * dH
@@ -419,13 +435,14 @@ class HillCoordinate:
         a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
         should be the sum of the gradient vector returned"""
 
-        warnings.warn("The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
+        warnings.warn(
+            "The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
         gamma, parameterByComponent = self.parse_parameters(parameter)
         dim = len(x)  # dimension of vector field
         df_dn = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(xLocal)  # evaluate outer term in chain rule
+        diffInteraction = self.diff_interaction(x, parameter)  # evaluate outer term in chain rule
         dHillComponent_dn = np.array(
             list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
@@ -456,21 +473,6 @@ class HillCoordinate:
                                  0)  # summand endpoint indices including initial zero
         localIndex = list(range(self.nComponent))
         return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactionType))]
-
-    def diff_interaction(self, xLocal):
-        """Dummy functionality for evaluating the derivative of the interaction function"""
-
-        if len(self.interactionType) == 1:
-            return np.ones(len(xLocal))
-        else:
-            raise KeyboardInterrupt
-
-    def summand_map(self, x, parameter=np.array([])):
-        """Apply the summand map of the form: f_i : R^n ---> p = (p1,...,p_q) which is a partial composition
-        with the interaction function."""
-
-        H = self.__call__(x, parameter)
-        return [sum(H[indexSet]) for indexSet in self.summand]
 
     def eq_interval(self, parameter=None):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
