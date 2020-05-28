@@ -393,27 +393,64 @@ class HillCoordinate:
 
         return self.summand.index(filter(lambda L: componentIdx in L, self.summand).__next__())
 
-    def dx(self, x, parameter=np.array([])):
-        """Return the derivative (gradient vector) evaluated at x in R^n and p in R^m as a row vector"""
+    def dx(self, x, parameter, diffIndex=None):
+        """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
         # TODO: The HillModel class should do the embedding into phase dimension (see dx2 for example).
 
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        dim = len(x)  # dimension of vector field
-        Df = np.zeros(dim, dtype=float)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(x,
-                                                parameter)  # evaluate derivative of interaction function (outer term in chain rule)
-        DHillComponent = np.array(
-            list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
-                     parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
-        Df[
-            self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
-        Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
-        return Df
+        if diffIndex is None:
+            gamma, parameterByComponent = self.parse_parameters(parameter)
+            dim = len(x)  # dimension of vector field
+            Df = np.zeros(dim, dtype=float)
+            xLocal = x[
+                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+            diffInteraction = self.diff_interaction(x,
+                                                    parameter)  # evaluate derivative of interaction function (outer term in chain rule)
+            DHillComponent = np.array(
+                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
+                         parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
+            Df[
+                self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+            Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
+            return Df
+
+        else:  # At some point we may need to call partial derivatives with respect to specific state variables by index
+            return
+
+    def diff(self, x, parameter, diffIndex=None):
+        """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
+           The parameter must be a variable parameter for one or more HillComponents."""
+
+        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
+        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
+        #       changed at the same time as it is changed in the dx method.
+
+        if diffIndex is None:  # return the full gradient with respect to parameters as a vector in R^m
+            return np.array([self.diff(x, parameter, diffIndex=k) for k in range(self.nVariableParameter)])
+
+        else:  # return a single partial derivative as a scalar
+            if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
+                return -1
+            else:  # First obtain a local index in the HillComponent for the differentiation variable
+                diffComponent = np.searchsorted(self.variableIndexByComponent,
+                                                diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
+                # makes the returned value consistent in the case that the diffIndex is an endpoint of the variable index list
+                diffParameterIndex = diffIndex - self.variableIndexByComponent[
+                    diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
+
+                # Now evaluate the derivative through the HillComponent and embed into tangent space of R^n
+                gamma, parameterByComponent = self.parse_parameters(parameter)
+                xLocal = x[
+                    self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+                diffInteraction = self.diff_interaction(x, parameter,
+                                                        k=diffComponent)  # evaluate outer term in chain rule
+                dpH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
+                                                          parameterByComponent[
+                                                              diffComponent])  # evaluate inner term in chain rule
+                return diffInteraction * dpH
 
     def dx2(self, x, parameter):
-        """Return the second derivative (Hessian matrix) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
+        """Return the second derivative (Hessian matrix) with respect to the state variable vector evaluated at x in
+        R^n and p in R^m as a K-by-K matrix"""
 
         # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
         #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
@@ -463,33 +500,53 @@ class HillCoordinate:
             # diagonal terms of mixedPartials irrelevant
             return D2f
 
-    def diff(self, x, parameter, diffIndex=None):
-        """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
-           The parameter must be a variable parameter for one or more HillComponents."""
+    def dxdiff(self, x, parameter, diffIndex=None):
+        """Return the mixed second derivative with respect to x and a scalar parameter evaluated at x in
+        R^n and p in R^m as a gradient vector in R^K. If no parameter index is specified this returns the
+        full second derivative as the m-by-K Hessian matrix of mixed partials"""
 
-        if diffIndex is None:  # return the full gradient of f_i with respect to parameters
-            return np.array([self.diff(x, parameter, diffIndex=k) for k in range(self.nVariableParameter)])
+        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
+        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
+        #       changed at the same time as it is changed in the dx method.
 
-        else:  # return a single partial derivative as a scalar
-            if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
-                return -1
-            else:  # First obtain a local index in the HillComponent for the differentiation variable
-                diffComponent = np.searchsorted(self.variableIndexByComponent,
-                                                diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
-                # makes the returned value consistent in the case that the diffIndex is an endpoint of the variable index list
-                diffParameterIndex = diffIndex - self.variableIndexByComponent[
-                    diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
+        if diffIndex is None:
+            raise KeyboardInterrupt
 
-                # Now evaluate the derivative through the HillComponent and embed into tangent space of R^n
-                gamma, parameterByComponent = self.parse_parameters(parameter)
-                xLocal = x[
-                    self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-                diffInteraction = self.diff_interaction(x, parameter,
-                                                        k=diffComponent)  # evaluate outer term in chain rule
-                dH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
+        else:
+            gamma, parameterByComponent = self.parse_parameters(parameter)
+            xLocal = x[
+                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+            diffComponent = np.searchsorted(self.variableIndexByComponent,
+                                            diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
+            # makes the returned value consistent in the case that the diffIndex is an endpoint of the variable index list
+            diffParameterIndex = diffIndex - self.variableIndexByComponent[
+                diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
+
+            allSummands = self.evaluate_summand(x, parameter)
+            I_k = self.summand_index(diffComponent)  # get the summand index containing the k^th Hill component
+
+            Dxfp = self.dx(x,
+                           parameter)  # initialize derivative of DxH with respect to differentiation parameter using the
+            # full gradient vector of partials of H_k with respect to x in R^K
+
+            # handle the I(j) != I(k) case
+            Dxfp[self.summand[I_k]] = 0  # zero out all components satisfying I(j) = I(k)
+            DpH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
+                                                      parameterByComponent[
+                                                          diffComponent])  # evaluate partial derivative of H_k with respect to differentiation parameter
+            Dxfp *= DpH / np.array([allSummands[self.summand_index(j)] for j in range(self.nComponent)])
+            # scale by derivative of H_k with respect to differentiation parameter divided by p_I(j)
+
+            # handle the j = k case
+            DxHp = self.components[diffComponent].dxdiff(diffParameterIndex, xLocal[diffComponent],
                                                          parameterByComponent[
-                                                             diffComponent])  # evaluate inner term in chain rule
-                return diffInteraction * dH
+                                                             diffComponent])  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
+
+            Dxfp[diffComponent] = DxHp * np.prod(
+                [allSummands[self.summand_index(diffComponent)] for m in range(self.nComponent) if
+                 m != I_k])  # multiply over
+            # all summands which do not contain the k^th component
+            return Dxfp
 
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
