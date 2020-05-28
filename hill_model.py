@@ -225,28 +225,31 @@ class HillComponent:
         The parameter must be a variable parameter for the HillComponent."""
 
         # ordering of the variables decrease options
-        if diffIndex[0]>diffIndex[1]:
+        if diffIndex[0] > diffIndex[1]:
             diffIndex = diffIndex[[1, 0]]
 
         diffParameter0 = self.variableParameters[diffIndex[0]]  # get the name of the differentiation variable
         diffParameter1 = self.variableParameters[diffIndex[1]]  # get the name of the differentiation variable
 
-        if diffParameter0 == 'ell' or diffParameter1 == 'ell':
+        if diffParameter0 == 'ell':
             return 0.
         else:
             ell, delta, theta, hillCoefficient = self.curry_parameters(
                 parameter)  # unpack fixed and variable parameters
-            xPower = x ** hillCoefficient
 
+        # precompute some powers
+        # this is the only power of x e will need
+        xPower = x ** hillCoefficient
+        # here we check which powers of theta we will need and compute them
         if diffParameter0 == 'theta' and diffParameter1 == 'theta':
-            thetaPower_der_der = theta ** (hillCoefficient - 2)
-            thetaPower_der = theta * thetaPower_der_der  # compute power of theta only once
-            thetaPower = theta * thetaPower_der
+            thetaPower_minusminus = theta ** (hillCoefficient - 2)
+            thetaPower_minus = theta * thetaPower_minusminus  # compute power of theta only once
+            thetaPower = theta * thetaPower_minus
 
         else:
             if diffParameter0 == 'theta' or diffParameter1 == 'theta':
-                thetaPower_der = theta ** (hillCoefficient - 1)  # compute power of theta only once
-                thetaPower = theta * thetaPower_der
+                thetaPower_minus = theta ** (hillCoefficient - 1)  # compute power of theta only once
+                thetaPower = theta * thetaPower_minus
             else:
                 thetaPower = theta ** hillCoefficient
 
@@ -254,17 +257,20 @@ class HillComponent:
             if diffParameter1 == 'delta':
                 return 0.
             if diffParameter1 == 'theta':
-                dH = self.sign(-1 * hillCoefficient * xPower * thetaPower_der) / ((thetaPower + xPower) ** 2)
+                dH = self.sign * -1 * hillCoefficient * xPower * thetaPower_minus / ((thetaPower + xPower) ** 2)
             if diffParameter1 == 'hillCoefficient':
-                dH = self.sign * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
+                dH = self.sign * xPower * thetaPower * log(theta / x) / ((thetaPower + xPower) ** 2)
 
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
-                dH = self.sign * -delta * hillCoefficient * xPower * (thetaPower_der_der * ((thetaPower + xPower) ** 2) - thetaPower_der * 2 * (thetaPower + xPower) * thetaPower_der )/ ((thetaPower + xPower) ** 4)
+                dH = self.sign * -delta * hillCoefficient * xPower * (thetaPower_minusminus * (hillCoefficient - 1) *
+                    (thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
+                    thetaPower_minus )/ ((thetaPower + xPower) ** 3)
             if diffParameter1 == 'hillCoefficient':
-                dH = self.sign * delta * xPower * ( (thetaPower_der * log(x / theta) + thetaPower * (log(x) - 1/theta))
-                                                    -  thetaPower_der * 2 * (thetaPower + xPower) * thetaPower_der )\
-                     / ((thetaPower + xPower) ** 4)
+                dH = - self.sign * delta * xPower * thetaPower_minus * \
+                     ( (1 + hillCoefficient * log(theta * x))(thetaPower + xPower)
+                        - 2 * hillCoefficient * (log(theta) * thetaPower + log(x) * xPower)) \
+                     / ((thetaPower + xPower) ** 3)
                 #dH = self.sign * -delta * hillCoefficient * xPower * thetaPowerSmall / ((thetaPower + xPower) ** 2)
 
         elif diffParameter0 == 'hillCoefficient':
@@ -725,6 +731,7 @@ class HillModel:
             interactionIndex - A length n list whose i^th element is a length K_i list of global indices for the i^th incoming interactions"""
 
         # TODO: Class constructor should not do work!
+        # TODO? check if the interaction elements make sense together (i.e. they have the same dimensionality)
 
         self.dimension = len(gamma)  # Dimension of vector field i.e. n
         self.coordinates = [HillCoordinate(parameter[j], interactionSign[j],
