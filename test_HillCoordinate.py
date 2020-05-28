@@ -26,7 +26,6 @@ p1 = np.array([fullParm[0, 0], fullParm[1, 1], fullParm[1, -1]], dtype=float)
 f1 = HillCoordinate(parameter1, interactionSign, interactionType, [0, 1, 2], gamma=gamma)
 print(f1(x, p1))
 print(f1.dx(x, p1))  # derivative is embedded back as a vector in R^6
-# print([f1.diff(j, x, p1) for j in range(3)])
 
 
 parameter2 = np.copy(fullParm)
@@ -36,9 +35,9 @@ p2 = np.array([gamma, fullParm[0, -1], fullParm[1, 0]], dtype=float)
 f2 = HillCoordinate(parameter2, interactionSign, interactionType, [0, 1, 2])  # gamma is a variable parameter too
 print(f2(x, p2))
 print(f2.dx(x, p2))
-# print([f2.diff(j, x, p2) for j in range(3)])
 print(f2.dn(x, p2))
-print(f2.diff(1, x, p2))
+print(f2.diff(x, p2, 1))
+print(f2.dx2(x, p2))
 
 # check that diff and dn produce equivalent derivatives
 parameter3 = np.copy(fullParm)
@@ -47,7 +46,7 @@ parameter3[0, -1] = parameter3[1, -1] = np.nan
 p3 = np.array([fullParm[0, -1], fullParm[1, -1]], dtype=float)
 f3 = HillCoordinate(parameter3, interactionSign, interactionType, [0, 1, 2],
                     gamma=gamma)  # gamma is a variable parameter too
-print([f3.diff(j, x, p3) for j in range(f3.nVariableParameter)])
+print([f3.diff(x, p3, j) for j in range(f3.nVariableParameter)])
 
 # check summand evaluations
 parameter4 = np.repeat(np.nan, 12).reshape(3, 4)
@@ -55,9 +54,6 @@ interactionType = [2, 1]
 interactionSign = [1, 1, -1]
 p4 = np.arange(12)
 f4 = HillCoordinate(parameter4, interactionSign, interactionType, [0, 1, 2, 3], gamma=gamma)
-print(f4.evaluate_summand(x, p4, 0))
-print(f4.evaluate_summand(x, p4, 1))
-print(f4.evaluate_summand(x, p4))
 print(f4.diff_interaction(x, p4))
-for j in range(f4.nVariableParameter):
-    print(j, f4.diff(j, x, p4))
+print(f4.diff(x, p4))
+print(f4.dx2(x, p4))
