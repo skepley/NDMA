@@ -299,27 +299,21 @@ class HillComponent:
 
         if diffParameter == 'delta':
             thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
-            if self.sign == 1:
-                dH = xPower / (thetaPower + xPower) ** 2
-                ddH = (xPower_der * ((thetaPower + xPower) ** 2) - xPower * 2 * (thetaPower + xPower) * xPower_der) / (thetaPower + xPower) ** 4
-            else:
-                dH = thetaPower / (thetaPower + xPower) ** 2
-                ddH = thetaPower * 2 * (thetaPower + xPower) * xPower_der / (thetaPower + xPower) ** 4
+            ddH = self.sign * hillCoefficient * thetaPower * xPower_der / (thetaPower + xPower) ** 3
 
         elif diffParameter == 'theta':
             thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
             thetaPower = theta * thetaPowerSmall
             dH = self.sign * (-delta * hillCoefficient * xPower * thetaPowerSmall) / ((thetaPower + xPower) ** 2)
-            ddH = self.sign * (-delta * hillCoefficient * thetaPowerSmall) * \
-                (xPower_der * ((thetaPower + xPower) ** 2) - xPower * 2 *
-                 (thetaPower + xPower) * xPower_der) / (thetaPower + xPower) ** 4
+            ddH = self.sign * delta * hillCoefficient ** 2 * thetaPowerSmall * xPower_der * \
+                  (xPower - thetaPower) / (thetaPower + xPower) ** 3
 
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
             dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
-            ddH = self.sign * delta * thetaPower * ((1/x * xPower * log(1 / theta) +
-                                                      xPower_der * log(x / theta)) * ((thetaPower + xPower) ** 2) -
-                                                    xPower * 2 * (thetaPower + xPower) * xPower_der) / (thetaPower + xPower) ** 4
+            ddH = self.sign * delta * thetaPower * xPower_der * (
+                (1 + hillCoefficient * log(x/theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(x/theta)
+                ) / (thetaPower + xPower) ** 3
 
         return ddH
 
