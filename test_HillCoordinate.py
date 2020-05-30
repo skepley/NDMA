@@ -10,7 +10,7 @@ Function and design testing for the HillComponent class
 """
 
 import numpy as np
-from hill_model import HillCoordinate, is_vector
+from hill_model import *
 
 gamma = 1.2
 interactionSign = [1, -1]
@@ -54,6 +54,6 @@ interactionType = [2, 1]
 interactionSign = [1, 1, -1]
 p4 = np.arange(12)
 f4 = HillCoordinate(parameter4, interactionSign, interactionType, [0, 1, 2, 3], gamma=gamma)
-print(f4.diff_interaction(x, p4))
+print(f4.diff_interaction(x, p4, 1))
 print(f4.diff(x, p4))
 print(f4.dx2(x, p4))

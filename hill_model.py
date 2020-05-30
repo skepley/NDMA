@@ -8,8 +8,14 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
+from itertools import product, permutations
 from scipy import optimize
 from numpy import log
+
+
+def npA():
+    """Return a random numpy vector for testing"""
+    return np.random.rand(5, 5)
 
 
 def is_vector(array):
@@ -85,6 +91,23 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
         else:
             print('Newton failed to converge')
             return np.nan
+
+
+def compose_interaction(interactionType, values):
+    """Evaluate an interaction function of given type at the specified values.
+
+    Input:
+    interactionType: A partition of the integers {1,...,K} specified as an ordered list of integers which sum
+        to exactly K. Example: [1,2,3] specifies the partition of {1,...,6} given by {1}, {2,3}, {4,5,6}
+    values: A vector in R^K.
+    Output:
+    A vector of summands corresponding to the lists in the interactionType."""
+
+    sumEndpoints = np.insert(np.cumsum(interactionType), 0,
+                             0)  # summand endpoint indices including initial zero
+    integerList = list(range(len(values)))  # list of integers [1,...,K]
+    indicesBySummand = [integerList[sumEndpoints[idx]:sumEndpoints[idx + 1]] for idx in range(len(interactionType))]
+    return np.array(list(map(lambda summandIndex: np.sum(values[summandIndex]), indicesBySummand)))
 
 
 PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
@@ -338,6 +361,12 @@ class HillCoordinate:
             list(map(lambda H, idx, parm: H(x[idx], parm), self.components, self.interactionIndex,
                      parameterByComponent)))  # evaluate Hill components
 
+    def summand_index(self, componentIdx):
+        """Returns the summand index of a component index. This is a map of the form, I : {1,...,K} --> {1,...,q} which
+        identifies to which summand the k^th component contributes."""
+
+        return self.summand.index(filter(lambda L: componentIdx in L, self.summand).__next__())
+
     def evaluate_summand(self, x, parameter, m=None):
         """Evaluate the Hill summands at a given parameter. This is a map taking values in R^q. If m is given in arange(q)
         this returns only the m^th summand."""
@@ -364,34 +393,88 @@ class HillCoordinate:
         else:
             return np.prod([sum([componentValues[idx] for idx in summand]) for summand in self.summand])
 
-    def diff_interaction(self, x, parameter, k=None):
-        """Return the partial derivative of the interaction function in the specified coordinate. If no coordinate is given
-        it returns the full gradient vector with all K partials."""
+    def diff_interaction(self, x, parameter, diffOrder, diffIndex=None):
+        """Return the partial derivative of the specified order for interaction function in the coordinate specified by
+        diffIndex. If diffIndex is not specified, it returns the full derivative as a vector with all K partials of
+        order diffOrder."""
 
-        if k is None:  # compute the full gradient of p with respect to all components
-            if len(self.interactionType) == 1:
-                return np.ones(self.nComponent)
-            else:
-                allSummands = self.evaluate_summand(x, parameter)
-                fullProduct = np.prod(allSummands)
-                DxProducts = fullProduct / allSummands  # evaluate all partials only once using q multiplies. The m^th term looks like P/p_m.
-                return np.array([DxProducts[self.summand_index(k)] for k in range(self.nComponent)])
+        # TODO: Fix the input to this function. It should accept the composition values as input, not evaluate them. This way it can be
+        #       utilized for higher order derivatives as well by composing with the correct partial derivatives.
+
+        def nonzero_index(order):
+            """Return the indices for which the given order derivative of an interaction function is nonzero. This happens
+            precisely for every multi-index in the tensor for which each component is drawn from a different summand."""
+
+            summandTuples = permutations(self.summand, order)
+            summandProducts = []  # initialize cartesian product of all summand tuples
+            for tup in summandTuples:
+                summandProducts += list(product(*tup))
+
+            return np.array(summandProducts)
+
+        nSummand = len(self.interactionType)  # number of summands
+        if diffIndex is None:  # compute the full gradient of p with respect to all components
+
+            if diffOrder == 1:  # compute first derivative of interaction function composed with Hill Components
+                if nSummand == 1:  # the all sum special case
+                    return np.ones(self.nComponent)
+                else:
+                    allSummands = self.evaluate_summand(x, parameter)
+                    fullProduct = np.prod(allSummands)
+                    DxProducts = fullProduct / allSummands  # evaluate all partials only once using q multiplies. The m^th term looks like P/p_m.
+                    return np.array([DxProducts[self.summand_index(k)] for k in
+                                     range(self.nComponent)])  # broadcast duplicate summand entries to all members
+
+            elif diffOrder == 2:  # compute second derivative of interaction function composed with Hill Components as a 2-tensor
+                if nSummand == 1:  # the all sum special case
+                    return np.zeros(diffOrder * [self.nComponent])  # initialize Hessian of interaction function
+
+                elif nSummand == 2:  # the 2 summands special case
+                    DpH = np.zeros(diffOrder * [self.nComponent])  # initialize derivative tensor
+                    idxArray = nonzero_index(diffOrder)  # array of nonzero indices for derivative tensor
+                    DpH[idxArray[:, 0], idxArray[:, 1]] = 1  # set nonzero terms to 1
+                    return DpH
+
+                else:
+                    DpH = np.zeros(2 * [self.nComponent])  # initialize Hessian of interaction function
+                    # compute Hessian matrix of interaction function by summand membership
+                    allSummands = self.evaluate_summand(x, parameter)
+                    fullProduct = np.prod(allSummands)
+                    DxProducts = fullProduct / allSummands  # evaluate all partials using only nSummand-many multiplies
+                    DxxProducts = np.outer(DxProducts,
+                                           1.0 / allSummands)  # evaluate all second partials using only nSummand-many additional multiplies.
+                    # Only the cross-diagonal terms of this matrix are meaningful.
+                    for row in range(nSummand):  # compute Hessian of interaction function (outside term of chain rule)
+                        for col in range(row + 1, nSummand):
+                            Irow = self.summand[row]
+                            Icolumn = self.summand[col]
+                            DpH[np.ix_(Irow, Icolumn)] = DpH[np.ix_(Icolumn, Irow)] = DxxProducts[row, col]
+
+            elif diffOrder == 3:  # compute third derivative of interaction function composed with Hill Components as a 3-tensor
+                if nSummand <= 2:  # the all sum or 2-summand special cases
+                    return np.zeros(diffOrder * [self.nComponent])  # initialize Hessian of interaction function
+
+                elif nSummand == 3:  # the 2 summands special case
+                    DpH = np.zeros(diffOrder * [self.nComponent])  # initialize derivative tensor
+                    idxArray = nonzero_index(diffOrder)  # array of nonzero indices for derivative tensor
+                    DpH[idxArray[:, 0], idxArray[:, 1], idxArray[:, 2]] = 1  # set nonzero terms to 1
+                    return DpH
+                else:
+                    raise KeyboardInterrupt
 
         else:  # compute a single partial derivative of p
-            if len(self.interactionType) == 1:
-                return 1.0
+            if diffOrder == 1:  # compute first partial derivatives
+                if len(self.interactionType) == 1:
+                    return 1.0
+                else:
+                    allSummands = self.evaluate_summand(x, parameter)
+                    I_k = self.summand_index(diffIndex)  # get the summand index containing the k^th Hill component
+                    return np.prod(
+                        [allSummands[self.summand_index(diffIndex)] for m in range(self.nComponent) if
+                         m != I_k])  # multiply over
+                # all summands which do not contain the k^th component
             else:
-                allSummands = self.evaluate_summand(x, parameter)
-                I_k = self.summand_index(k)  # get the summand index containing the k^th Hill component
-                return np.prod(
-                    [allSummands[self.summand_index(k)] for m in range(self.nComponent) if m != I_k])  # multiply over
-            # all summands which do not contain the k^th component
-
-    def summand_index(self, componentIdx):
-        """Returns the summand index of a component index. This is a map of the form, I : {1,...,K} --> {1,...,q} which
-        identifies to which summand the k^th component contributes."""
-
-        return self.summand.index(filter(lambda L: componentIdx in L, self.summand).__next__())
+                raise KeyboardInterrupt
 
     def dx(self, x, parameter, diffIndex=None):
         """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
@@ -404,7 +487,8 @@ class HillCoordinate:
             xLocal = x[
                 self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
             diffInteraction = self.diff_interaction(x,
-                                                    parameter)  # evaluate derivative of interaction function (outer term in chain rule)
+                                                    parameter,
+                                                    1)  # evaluate derivative of interaction function (outer term in chain rule)
             DHillComponent = np.array(
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
@@ -441,8 +525,8 @@ class HillCoordinate:
                 gamma, parameterByComponent = self.parse_parameters(parameter)
                 xLocal = x[
                     self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-                diffInteraction = self.diff_interaction(x, parameter,
-                                                        k=diffComponent)  # evaluate outer term in chain rule
+                diffInteraction = self.diff_interaction(x, parameter, 1,
+                                                        diffIndex=diffComponent)  # evaluate outer term in chain rule
                 dpH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
                                                           parameterByComponent[
                                                               diffComponent])  # evaluate inner term in chain rule
@@ -470,9 +554,6 @@ class HillCoordinate:
         #       This should be done if this method ever becomes a bottleneck.
 
         else:  # interaction function contributes derivative terms via chain rule
-            DHillComponent = np.array(
-                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
-                         parameterByComponent)))  # evaluate vector of partial derivatives for Hill components
 
             # compute off diagonal terms in Hessian matrix by summand membership
             allSummands = self.evaluate_summand(x, parameter)
@@ -493,6 +574,10 @@ class HillCoordinate:
                 for col in range(row + 1, nSummand):
                     offDiagonal[np.ix_(self.summand[row], self.summand[col])] = offDiagonal[
                         np.ix_(self.summand[col], self.summand[row])] = DxxProducts[row, col]
+
+            DHillComponent = np.array(
+                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
+                         parameterByComponent)))  # evaluate vector of partial derivatives for Hill components
             mixedPartials = np.outer(DHillComponent,
                                      DHillComponent)  # mixed partial matrix is outer product of gradients!
             D2f += offDiagonal * mixedPartials
@@ -601,7 +686,7 @@ class HillCoordinate:
         df_dn = np.zeros(dim, dtype=float)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(x, parameter)  # evaluate outer term in chain rule
+        diffInteraction = self.diff_interaction(x, parameter, 1)  # evaluate outer term in chain rule
         dHillComponent_dn = np.array(
             list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
                      parameterByComponent)))  # evaluate inner term in chain rule
