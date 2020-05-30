@@ -456,17 +456,16 @@ class HillCoordinate:
     def __repr__(self):
         """Return a canonical string representation of a Hill coordinate"""
 
-        reprString = 'Hill Coordinate: {0} \n'.format(self.index) + 'Interaction Type: {0} \n'.format(
-            self.interactionType) + (
+        reprString = 'Hill Coordinate: {0} \n'.format(self.index) + 'Interaction Type: p = ' + (
+                '(' + ')('.join([' + '.join(['z_{0}'.format(idx+1) for idx in summand]) for summand in self.summand]) + ')\n') + (
                              'Components: H = (' + ', '.join(
-                         map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.components]))) + ') \n'
-
-        if self.gammaIsVariable:
-            reprString += 'gamma, '
+                         map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.components])) + ') \n')
 
         # initialize index strings
-        stateIndexString = 'State Variables: x = ('
+        stateIndexString = 'State Variables: x = (x_{0}; '.format(self.index)
         variableIndexString = 'Variable Parameters: lambda = ('
+        if self.gammaIsVariable:
+            variableIndexString += 'gamma, '
 
         for k in range(self.nComponent):
             idx = self.interactionIndex[k]
