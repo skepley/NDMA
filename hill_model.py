@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from itertools import product, permutations
 from scipy import optimize
 from numpy import log
+import textwrap
 
 
 def npA():
@@ -182,7 +183,7 @@ class HillComponent:
         """Return a canonical string representation of a Hill component"""
 
         reprString = 'Hill Component: \n' + 'sign = {0} \n'.format(self.sign)
-        for parameterName in ['ell', 'delta', 'theta', 'hillCoefficient']:
+        for parameterName in PARAMETER_NAMES:
             if parameterName not in self.variableParameters:
                 reprString += parameterName + ' = {0} \n'.format(getattr(self, parameterName))
         reprString += 'Variable Parameters: {' + ', '.join(self.variableParameters) + '}\n'
@@ -242,7 +243,6 @@ class HillComponent:
 
         return dH
 
-
     def diff2(self, diffIndex, x, parameter=np.array([])):
         """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
         The parameter must be a variable parameter for the HillComponent."""
@@ -287,21 +287,22 @@ class HillComponent:
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
                 dH = self.sign * -delta * hillCoefficient * xPower * (thetaPower_minusminus * (hillCoefficient - 1) *
-                    (thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
-                    thetaPower_minus )/ ((thetaPower + xPower) ** 3)
+                                                                      (
+                                                                              thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
+                                                                      thetaPower_minus) / ((thetaPower + xPower) ** 3)
             if diffParameter1 == 'hillCoefficient':
                 dH = - self.sign * delta * xPower * thetaPower_minus * \
-                     ( (1 + hillCoefficient * log(theta * x))(thetaPower + xPower)
-                        - 2 * hillCoefficient * (log(theta) * thetaPower + log(x) * xPower)) \
+                     ((1 + hillCoefficient * log(theta * x))(thetaPower + xPower)
+                      - 2 * hillCoefficient * (log(theta) * thetaPower + log(x) * xPower)) \
                      / ((thetaPower + xPower) ** 3)
-                #dH = self.sign * -delta * hillCoefficient * xPower * thetaPowerSmall / ((thetaPower + xPower) ** 2)
+                # dH = self.sign * -delta * hillCoefficient * xPower * thetaPowerSmall / ((thetaPower + xPower) ** 2)
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
             dH = self.sign * delta / ((thetaPower + xPower) ** 4) * (
-                    log(x * theta) * log (x/theta) *( thetaPower + xPower) ** 2 -
-                    log(x / theta) * 2 * (thetaPower + xPower) * (thetaPower*log(theta) + xPower * log(x))
-                    )
+                    log(x * theta) * log(x / theta) * (thetaPower + xPower) ** 2 -
+                    log(x / theta) * 2 * (thetaPower + xPower) * (thetaPower * log(theta) + xPower * log(x))
+            )
 
         return dH
 
@@ -335,11 +336,11 @@ class HillComponent:
             thetaPower = theta ** hillCoefficient
             dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                (1 + hillCoefficient * log(x/theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(x/theta)
-                ) / (thetaPower + xPower) ** 3
+                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(
+                x / theta)
+            ) / (thetaPower + xPower) ** 3
 
         return ddH
-
 
     def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n. """
@@ -451,6 +452,37 @@ class HillCoordinate:
         # TODO: vectorized evaluation is a little bit hacky and should be rewritten to be more efficient
         else:  # vectorized evaluation where x is a matrix of column vectors to evaluate
             return np.array([self(x[:, j], parameter) for j in range(np.shape(x)[1])])
+
+    def __repr__(self):
+        """Return a canonical string representation of a Hill coordinate"""
+
+        reprString = 'Hill Coordinate: {0} \n'.format(self.index) + 'Interaction Type: {0} \n'.format(
+            self.interactionType) + (
+                             'Components: H = (' + ', '.join(
+                         map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.components]))) + ') \n'
+
+        if self.gammaIsVariable:
+            reprString += 'gamma, '
+
+        # initialize index strings
+        stateIndexString = 'State Variables: x = ('
+        variableIndexString = 'Variable Parameters: lambda = ('
+
+        for k in range(self.nComponent):
+            idx = self.interactionIndex[k]
+            stateIndexString += 'x_{0}, '.format(idx)
+            if self.components[k].variableParameters:
+                variableIndexString += ', '.join(
+                    [var + '_{0}'.format(idx) for var in self.components[k].variableParameters])
+                variableIndexString += ', '
+
+        # remove trailing commas and close brackets
+        variableIndexString = variableIndexString[:-2]
+        stateIndexString = stateIndexString[:-2]
+        variableIndexString += ')\n'
+        stateIndexString += ')\n'
+        reprString += stateIndexString + '\n          '.join(textwrap.wrap(variableIndexString, 80))
+        return reprString
 
     def evaluate_components(self, x, parameter):
         """Evaluate each HillComponent and return as a vector in R^K"""
