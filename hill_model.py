@@ -342,6 +342,134 @@ class HillComponent:
 
         return ddH
 
+    def dx2diff(self, diffIndex, x, parameter=np.array([])):
+        """Evaluate the derivative of a Hill component with respect to the state variable and a parameter at the specified
+        local index.
+        The parameter must be a variable parameter for the HillComponent."""
+
+        diffParameter = self.variableParameters[diffIndex]  # get the name of the differentiation variable
+
+        if diffParameter == 'ell':
+            return 0.
+        else:
+            ell, delta, theta, hillCoefficient = self.curry_parameters(
+                parameter)  # unpack fixed and variable parameters
+
+        hill = hillCoefficient
+
+        if diffParameter == 'delta':
+            xPower_der = x ** (hillCoefficient - 1)
+            xPower = x * xPower_der
+            thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
+            d3H = self.sign * hillCoefficient * thetaPower * xPower_der * (
+                    (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
+
+        elif diffParameter == 'theta':
+            xPower_derder = x ** (hillCoefficient - 2)
+            xPower = x * xPower_derder * x
+            x2Power = xPower * xPower
+            thetaPower_der = theta ** (hillCoefficient - 1)  # compute power of theta only once
+            thetaPower = theta * thetaPower_der
+            theta2Power = thetaPower * thetaPower
+
+            d3H = self.sign * hill ** 2 * delta * xPower_derder * thetaPower_der * \
+                  (4 * hill * thetaPower * xPower + (-hill + 1) * theta2Power - (hill + 1) * x2Power) / (
+                          (thetaPower + xPower) ** 4)
+
+        elif diffParameter == 'hillCoefficient':
+            xPower_derder = x ** (hillCoefficient - 2)
+            xPower = x * xPower_derder * x
+            x2Power = xPower * xPower
+
+            thetaPower = theta ** hillCoefficient
+            theta2Power = thetaPower * thetaPower
+
+            d3H = self.sign * delta * (thetaPower * xPower_derder *
+                                       ((thetaPower + xPower) * ((2 * hill - 1) * thetaPower - (2 * hill + 1) * xPower)
+                                        - hill * ((hill - 1) * theta2Power - 4 * hill * thetaPower * xPower + (hill + 1)
+                                                  * x2Power) * (log(theta) - log(x))))/((thetaPower + xPower) ** 4)
+
+        return d3H
+
+    def dxdiff2(self, diffIndex, x, parameter=np.array([])):
+        """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
+        The parameter must be a variable parameter for the HillComponent."""
+
+        # ordering of the variables decrease options
+        if diffIndex[0] > diffIndex[1]:
+            diffIndex = diffIndex[[1, 0]]
+
+        diffParameter0 = self.variableParameters[diffIndex[0]]  # get the name of the differentiation variable
+        diffParameter1 = self.variableParameters[diffIndex[1]]  # get the name of the differentiation variable
+
+        if diffParameter0 == 'ell':
+            return 0.
+        else:
+            ell, delta, theta, hillCoefficient = self.curry_parameters(
+                parameter)  # unpack fixed and variable parameters
+
+        hill = hillCoefficient
+
+        # precompute some powers
+        # this is the only power of x e will need
+        xPower_minus = x ** (hill - 1)
+        xPower = x * xPower_minus
+        # here we check which powers of theta we will need and compute them
+        if diffParameter0 == 'theta' and diffParameter1 == 'theta':
+            thetaPower_minusminus = theta ** (hillCoefficient - 2)
+            thetaPower_minus = theta * thetaPower_minusminus  # compute power of theta only once
+            thetaPower = theta * thetaPower_minus
+
+        else:
+            if diffParameter0 == 'theta' or diffParameter1 == 'theta':
+                thetaPower_minus = theta ** (hillCoefficient - 1)  # compute power of theta only once
+                thetaPower = theta * thetaPower_minus
+            else:
+                thetaPower = theta ** hillCoefficient
+
+        if diffParameter0 == 'delta':
+            if diffParameter1 == 'delta':
+                return 0.
+            if diffParameter1 == 'theta':
+                dH = self.sign * hill ** 2 * thetaPower_minus * xPower_minus * (xPower - thetaPower)/\
+                     ((thetaPower + xPower)**3)
+            if diffParameter1 == 'hillCoefficient':
+                dH = self.sign * ((thetaPower * xPower_minus * (-hill * (thetaPower - xPower) * (log(theta) - log(x)) +
+                                                                thetaPower + xPower)))/((thetaPower + xPower) ** 3)
+
+        elif diffParameter0 == 'theta':
+            if diffParameter1 == 'theta':
+                dH = (self.sign * delta * hill**2 * thetaPower_minusminus * xPower_minus * ((hill + 1) * thetaPower ** 2
+                      - 4 * hill * thetaPower * xPower + (hill - 1) * xPower ** 2))/((thetaPower + xPower) ** 4)
+            if diffParameter1 == 'hillCoefficient':
+                dH = - self.sign * (delta * hill * thetaPower_minus * xPower_minus * (-2 * thetaPower ** 2 +
+                                    hill * thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) *
+                                    (log(theta) - log(x)) + 2 * xPower ** 2)/((thetaPower + xPower)^4)
+
+        elif diffParameter0 == 'hillCoefficient':
+            # then diffParameter1 = 'hillCoefficient'
+            dH = self.sign * (delta * thetaPower * xPower_minus * (log(theta) - log(x)) * (-2 * thetaPower ** 2 + hill *
+                              (thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (log(theta) - log(x)) +
+                                                    2 * xPower ** 2)/((thetaPower + xPower) ** 4))
+
+        return dH
+
+    def dx3(self, x, parameter=np.array([])):
+        """Evaluate the second derivative of a Hill component with respect to x"""
+
+        ell, delta, theta, hillCoefficient = self.curry_parameters(
+            parameter)  # unpack fixed and variable parameter values
+        # compute powers of x and theta only once.
+        hill = hillCoefficient
+        thetaPower = theta ** hillCoefficient
+        xPower_der3 = x ** (hill - 3)
+        xPower_der2 = x * xPower_der3
+        xPower_der = x * xPower_der2  # compute x^{hillCoefficient-1}
+        xPower = xPower_der * x ** 2
+        return self.sign (hill * delta * thetaPower * xPower_der3)/((xPower + thetaPower) ** 4) * \
+               ((-2 * (hill - 1) * xPower + (hill - 2) * thetaPower) * ((hill - 1) * thetaPower - (hill + 1) * xPower) -
+                (hill + 1) * hill * xPower * (xPower + thetaPower))
+
     def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n. """
 
@@ -457,7 +585,8 @@ class HillCoordinate:
         """Return a canonical string representation of a Hill coordinate"""
 
         reprString = 'Hill Coordinate: {0} \n'.format(self.index) + 'Interaction Type: p = ' + (
-                '(' + ')('.join([' + '.join(['z_{0}'.format(idx+1) for idx in summand]) for summand in self.summand]) + ')\n') + (
+                '(' + ')('.join(
+            [' + '.join(['z_{0}'.format(idx + 1) for idx in summand]) for summand in self.summand]) + ')\n') + (
                              'Components: H = (' + ', '.join(
                          map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.components])) + ') \n')
 
