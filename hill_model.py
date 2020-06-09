@@ -892,6 +892,55 @@ class HillCoordinate:
             # all summands which do not contain the k^th component
             return Dxfp
 
+    def dx3(self, x, parameter):
+        """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
+        R^n and p in R^m as a K-by-K matrix"""
+
+        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
+        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
+        #       changed at the same time as it is changed in the dx method.
+
+        gamma, parameterByComponent = self.parse_parameters(parameter)
+        xLocal = x[
+            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+
+        # initialize all tensors for inner terms of chain rule derivatives of f
+        DH = np.zeros(2*[self.nComponent])
+        D2H = np.zeros(3*[self.nComponent])
+        D3H = np.zeros(4*[self.nComponent])
+
+        # get vectors of appropriate partial derivatives of H
+        DHillComponent = np.array(
+            list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal, parameterByComponent)))
+        D2HillComponent = np.array(
+            list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal, parameterByComponent)))
+        D3HillComponent = np.array(
+            list(map(lambda H, x_k, parm: H.dx3(x_k, parm), self.components, xLocal, parameterByComponent)))
+
+        # set diagonal elements of inner derivative tensors to the correct partials
+        np.einsum('ii->i', DH)[:] = DHillComponent
+        np.einsum('iii->i', D2H)[:] = D2HillComponent
+        np.einsum('iiii->i', D3H)[:] = D3HillComponent
+
+        # get tensors for outer terms of chain rule derivatives of f
+        Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
+        D2p = self.diff_interaction(x, parameter, 2) # 2-tensor
+        D3p = self.diff_interaction(x, parameter, 3) # 3-tensor
+
+        # return D3f as a linear combination of tensor contractions via the chain rule
+        D3f = np.einsum('ijl, jk', D3p, DH) + 2*np.einsum('ij, jkl', D2p, D2H) + np.einsum('i,ijkl', Dp, D3H)
+        return D3f
+
+
+    def dx2diff(self):
+        return
+
+    def dxdiff2(self):
+        return
+
+
+
+
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
 
