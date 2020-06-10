@@ -323,7 +323,7 @@ class HillComponent:
 
         if diffParameter == 'delta':
             thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
-            ddH = self.sign * hillCoefficient * thetaPower * xPower_der / (thetaPower + xPower) ** 3
+            ddH = self.sign * hillCoefficient * thetaPower * xPower_der / (thetaPower + xPower) ** 2
 
         elif diffParameter == 'theta':
             thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
