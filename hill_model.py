@@ -467,13 +467,17 @@ class HillComponent:
         # compute powers of x and theta only once.
         hill = hillCoefficient
         thetaPower = theta ** hillCoefficient
+        theta2Power = thetaPower ** 2
         xPower_der3 = x ** (hill - 3)
         xPower_der2 = x * xPower_der3
         xPower_der = x * xPower_der2  # compute x^{hillCoefficient-1}
-        xPower = xPower_der * x ** 2
-        return self.sign(hill * delta * thetaPower * xPower_der3) / ((xPower + thetaPower) ** 4) * \
-               ((-2 * (hill - 1) * xPower + (hill - 2) * thetaPower) * ((hill - 1) * thetaPower - (hill + 1) * xPower) -
-                (hill + 1) * hill * xPower * (xPower + thetaPower))
+        xPower = xPower_der * x
+        x2Power = xPower **2
+        hillsquare = hill ** 2
+
+        return self.sign * (hill * delta * thetaPower * xPower_der3) / ((xPower + thetaPower) ** 4) * \
+               (hillsquare * theta2Power - 4 * hillsquare * thetaPower * xPower + hillsquare * x2Power - \
+                3 * hill * theta2Power + 2 * theta2Power + 4 * thetaPower * xPower + 3 * hill * x2Power + 2 * x2Power)
 
     def dn(self, x, parameter=np.array([])):
         """Returns the derivative of a Hill component with respect to n. """
