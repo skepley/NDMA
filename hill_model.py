@@ -16,7 +16,7 @@ import textwrap
 
 def npA(size):
     """Return a random numpy vector for testing"""
-    return np.random.randint(1,10, 2*[size])
+    return np.random.randint(1, 10, 2 * [size])
 
 
 def is_vector(array):
@@ -189,7 +189,7 @@ class HillComponent:
         reprString += 'Variable Parameters: {' + ', '.join(self.variableParameters) + '}\n'
         return reprString
 
-    def dx(self, x, parameter=np.array([])):
+    def dx(self, x, parameter):
         """Evaluate the derivative of a Hill component with respect to x"""
 
         ell, delta, theta, hillCoefficient = self.curry_parameters(
@@ -200,7 +200,7 @@ class HillComponent:
         xPower = xPowerSmall * x
         return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall / ((thetaPower + xPower) ** 2)
 
-    def dx2(self, x, parameter=np.array([])):
+    def dx2(self, x, parameter):
         """Evaluate the second derivative of a Hill component with respect to x"""
 
         ell, delta, theta, hillCoefficient = self.curry_parameters(
@@ -243,7 +243,7 @@ class HillComponent:
 
         return dH
 
-    def diff2(self, diffIndex, x, parameter=np.array([])):
+    def diff2(self, x, parameter, diffIndex):
         """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
         The parameter must be a variable parameter for the HillComponent."""
 
@@ -306,7 +306,7 @@ class HillComponent:
 
         return dH
 
-    def dxdiff(self, diffIndex, x, parameter=np.array([])):
+    def dxdiff(self, x, parameter, diffIndex):
         """Evaluate the derivative of a Hill component with respect to the state variable and a parameter at the specified
         local index.
         The parameter must be a variable parameter for the HillComponent."""
@@ -336,13 +336,12 @@ class HillComponent:
             thetaPower = theta ** hillCoefficient
             dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(
-                x / theta)
+                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(x / theta)
             ) / (thetaPower + xPower) ** 3
 
         return ddH
 
-    def dx2diff(self, diffIndex, x, parameter=np.array([])):
+    def dx2diff(self, x, parameter, diffIndex):
         """Evaluate the derivative of a Hill component with respect to the state variable and a parameter at the specified
         local index.
         The parameter must be a variable parameter for the HillComponent."""
@@ -391,7 +390,7 @@ class HillComponent:
 
         return d3H
 
-    def dxdiff2(self, diffIndex, x, parameter=np.array([])):
+    def dxdiff2(self, x, parameter, diffIndex):
         """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
         The parameter must be a variable parameter for the HillComponent."""
 
@@ -459,7 +458,7 @@ class HillComponent:
 
         return dH
 
-    def dx3(self, x, parameter=np.array([])):
+    def dx3(self, x, parameter):
         """Evaluate the second derivative of a Hill component with respect to x"""
 
         ell, delta, theta, hillCoefficient = self.curry_parameters(
@@ -795,7 +794,8 @@ class HillCoordinate:
                                                         diffIndex=diffComponent)  # evaluate outer term in chain rule
                 dpH = self.components[diffComponent].diff(xLocal[diffComponent],
                                                           parameterByComponent[
-                                                              diffComponent], diffParameterIndex)  # evaluate inner term in chain rule
+                                                              diffComponent],
+                                                          diffParameterIndex)  # evaluate inner term in chain rule
                 return diffInteraction * dpH
 
     def dx2(self, x, parameter):
@@ -811,7 +811,7 @@ class HillCoordinate:
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         dim = len(list(
             set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
-        D2f = np.zeros(2*[dim])
+        D2f = np.zeros(2 * [dim])
 
         D2HillComponent = np.array(
             list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal, parameterByComponent)))
@@ -887,16 +887,17 @@ class HillCoordinate:
 
             # handle the I(j) != I(k) case
             Dxfp[self.summand[I_k]] = 0  # zero out all components satisfying I(j) = I(k)
-            DpH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
+            DpH = self.components[diffComponent].diff(xLocal[diffComponent],
                                                       parameterByComponent[
-                                                          diffComponent])  # evaluate partial derivative of H_k with respect to differentiation parameter
+                                                          diffComponent],
+                                                      diffParameterIndex)  # evaluate partial derivative of H_k with respect to differentiation parameter
             Dxfp *= DpH / np.array([allSummands[self.summand_index(j)] for j in range(self.nComponent)])
             # scale by derivative of H_k with respect to differentiation parameter divided by p_I(j)
 
             # handle the j = k case
-            DxHp = self.components[diffComponent].dxdiff(diffParameterIndex, xLocal[diffComponent],
+            DxHp = self.components[diffComponent].dxdiff(xLocal[diffComponent],
                                                          parameterByComponent[
-                                                             diffComponent])  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
+                                                             diffComponent], diffParameterIndex)  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
 
             Dxfp[diffComponent] = DxHp * np.prod(
                 [allSummands[self.summand_index(diffComponent)] for m in range(self.nComponent) if

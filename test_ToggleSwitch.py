@@ -19,10 +19,10 @@ from hill_model import *
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
-p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
+parmArg = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]],
+                   dtype=float)  # row j is (ell_j, delta_j, theta_j)
 
-f = ToggleSwitch(decay, [p1, p2])
+f = ToggleSwitch(decay, [parmArg[0], parmArg[1]])
 f0 = f.coordinates[0]
 f1 = f.coordinates[1]
 F0 = HillCoordinate(np.array(4 * [np.nan]), [-1], [1], [0, 1])
@@ -35,15 +35,24 @@ n0 = 4.1
 x0 = np.array([4, 3])
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
-P0 = ezcat(p0[0:4], n0)
-P1 = ezcat(p0[4:], n0)
+p0 = ezcat(p0[0:4], n0)  # (gamma_1, ell_1, delta_1, theta_1, n_1)
+p1 = ezcat(p0[4:], n0)
 # print(f0.dx(x0, P0))
 # print(F0.dx(x0, P0))
 # print(f0.dx2(x0, P0))
 # print(F0.dx2(x0, P0))
-print(f0.dn(x0, P0))
-print(f0.diff(x0, P0, 4))
-print(f1.dn(x0, P1))
-print(F1.diff(x0, P1, 4))
-print(f0.dndx(x0, P0))
-print(F0.dxdiff(x0, P0, 4))
+# print(f0.dn(x0, p0))
+# print(f0.diff(x0, p0, 4))
+# print(f1.dn(x0, p1))
+# print(F1.diff(x0, p1, 4))
+print(f0.dndx(x0, p0))
+print(F0.dxdiff(x0, p0, 4))
+print(H0.diff(x0[1], p0[1:], 3))
+# print(H0.dxdiff(x0[1], p0[1:], 3))
+# print(H1.dxdiff(x0[0], p1[1:], 3))
+
+
+H = HillComponent(-1)
+x = 3
+p = np.array([1, 5, 3, 4.1])
+print(H.dxdiff(x, p, 3))
