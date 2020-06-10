@@ -336,8 +336,9 @@ class HillComponent:
             thetaPower = theta ** hillCoefficient
             dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(x / theta)
-            ) / (thetaPower + xPower) ** 3
+                hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
+                       (thetaPower + xPower) ** 3)
+
 
         return ddH
 
