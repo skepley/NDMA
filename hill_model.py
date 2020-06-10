@@ -14,9 +14,9 @@ from numpy import log
 import textwrap
 
 
-def npA():
+def npA(size):
     """Return a random numpy vector for testing"""
-    return np.random.rand(5, 5)
+    return np.random.randint(1,10, 2*[size])
 
 
 def is_vector(array):
@@ -212,7 +212,7 @@ class HillComponent:
         return self.sign * hillCoefficient * delta * thetaPower * xPowerSmall * (
                 (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
 
-    def diff(self, diffIndex, x, parameter=np.array([])):
+    def diff(self, x, parameter, diffIndex):
         """Evaluate the derivative of a Hill component with respect to a parameter at the specified local index.
         The parameter must be a variable parameter for the HillComponent."""
 
@@ -440,8 +440,8 @@ class HillComponent:
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
                 dH = (self.sign * delta * hill ** 2 * thetaPower_minusminus * xPower_minus * (
-                            (hill + 1) * thetaPower ** 2
-                            - 4 * hill * thetaPower * xPower + (hill - 1) * xPower ** 2)) / ((thetaPower + xPower) ** 4)
+                        (hill + 1) * thetaPower ** 2
+                        - 4 * hill * thetaPower * xPower + (hill - 1) * xPower ** 2)) / ((thetaPower + xPower) ** 4)
             if diffParameter1 == 'hillCoefficient':
                 dH = - self.sign * (delta * hill * thetaPower_minus * xPower_minus * (-2 * thetaPower ** 2 +
                                                                                       hill * thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) *
@@ -451,11 +451,11 @@ class HillComponent:
             # then diffParameter1 = 'hillCoefficient'
             dH = self.sign * (delta * thetaPower * xPower_minus * (log(theta) - log(x)) * (-2 * thetaPower ** 2 + hill *
                                                                                            (
-                                                                                                       thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (
-                                                                                                       log(theta) - log(
-                                                                                                   x)) +
+                                                                                                   thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (
+                                                                                                   log(theta) - log(
+                                                                                               x)) +
                                                                                            2 * xPower ** 2) / (
-                                          (thetaPower + xPower) ** 4))
+                                      (thetaPower + xPower) ** 4))
 
         return dH
 
@@ -515,9 +515,9 @@ class HillComponent:
 
 
 class HillCoordinate:
-    """Define a coordinate of the vector field for a Hill system. This is a scalar equation taking the form
-    x' = -gamma*x + p(H_1, H_2,...,H_k) where each H_i is a Hill function depending on x_i which is a state variable
-    which regulates x"""
+    """Define a coordinate of the vector field for a Hill system as a function, f : R^K ---> R. If x does not have a nonlinear
+     self interaction, then this is a scalar equation taking the form x' = -gamma*x + p(H_1, H_2,...,H_K) where each H_i is a Hill function depending on x_i which is a state variable
+    which regulates x. Otherwise, it takes the form, x' = -gamma*x + p(H_1, H_2,...,H_K) where we write x_K = x. """
 
     def __init__(self, parameter, interactionSign, interactionType, interactionIndex, gamma=np.nan):
         """Hill Coordinate instantiation with the following syntax:
@@ -746,7 +746,9 @@ class HillCoordinate:
 
         if diffIndex is None:
             gamma, parameterByComponent = self.parse_parameters(parameter)
-            dim = len(x)  # dimension of vector field
+            dim = len(x)  # dimension of vector field (Hill Model)
+            # TODO: It is dangerous to allow the input to dictate the dimension. A better approach which allows exception handling is
+            #   to write an intrinsic check of the dimension and ensure the input vector matches.
             Df = np.zeros(dim, dtype=float)
             xLocal = x[
                 self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
@@ -791,9 +793,9 @@ class HillCoordinate:
                     self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
                 diffInteraction = self.diff_interaction(x, parameter, 1,
                                                         diffIndex=diffComponent)  # evaluate outer term in chain rule
-                dpH = self.components[diffComponent].diff(diffParameterIndex, xLocal[diffComponent],
+                dpH = self.components[diffComponent].diff(xLocal[diffComponent],
                                                           parameterByComponent[
-                                                              diffComponent])  # evaluate inner term in chain rule
+                                                              diffComponent], diffParameterIndex)  # evaluate inner term in chain rule
                 return diffInteraction * dpH
 
     def dx2(self, x, parameter):
@@ -807,13 +809,17 @@ class HillCoordinate:
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        dim = len(list(
+            set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
+        D2f = np.zeros(2*[dim])
+
         D2HillComponent = np.array(
             list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal, parameterByComponent)))
         # evaluate vector of second partial derivatives for Hill components
         nSummand = len(self.interactionType)  # number of summands
 
         if nSummand == 1:  # interaction is all sum
-            return np.diag(D2HillComponent)
+            D2Nonlinear = np.diag(D2HillComponent)
         # TODO: Adding more special cases for 2 and even 3 summand interaction types will speed up the computation quite a bit.
         #       This should be done if this method ever becomes a bottleneck.
 
@@ -826,14 +832,14 @@ class HillCoordinate:
 
             # initialize Hessian matrix and set diagonal terms
             DxProductsByComponent = np.array([DxProducts[self.summand_index(k)] for k in range(self.nComponent)])
-            D2f = np.diag(D2HillComponent * DxProductsByComponent)
+            D2Nonlinear = np.diag(D2HillComponent * DxProductsByComponent)
 
             # set off diagonal terms of Hessian by summand membership and exploiting symmetry
             DxxProducts = np.outer(DxProducts,
                                    1.0 / allSummands)  # evaluate all second partials using only nSummand-many additional multiplies.
             # Only the cross-diagonal terms of this matrix are meaningful.
 
-            offDiagonal = np.zeros_like(D2f)  # initialize matrix of mixed partials (off diagonal terms)
+            offDiagonal = np.zeros_like(D2Nonlinear)  # initialize matrix of mixed partials (off diagonal terms)
             for row in range(nSummand):  # compute Hessian of interaction function (outside term of chain rule)
                 for col in range(row + 1, nSummand):
                     offDiagonal[np.ix_(self.summand[row], self.summand[col])] = offDiagonal[
@@ -844,10 +850,11 @@ class HillCoordinate:
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components
             mixedPartials = np.outer(DHillComponent,
                                      DHillComponent)  # mixed partial matrix is outer product of gradients!
-            D2f += offDiagonal * mixedPartials
+            D2Nonlinear += offDiagonal * mixedPartials
             # NOTE: The diagonal terms of offDiagonal are identically zero for any interaction type which makes the
             # diagonal terms of mixedPartials irrelevant
-            return D2f
+        D2f[np.ix_(self.interactionIndex, self.interactionIndex)] = D2Nonlinear
+        return D2f
 
     def dxdiff(self, x, parameter, diffIndex=None):
         """Return the mixed second derivative with respect to x and a scalar parameter evaluated at x in
