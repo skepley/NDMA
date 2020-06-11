@@ -336,7 +336,8 @@ class HillComponent:
             thetaPower = theta ** hillCoefficient
             dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(x / theta)
+                    (1 + hillCoefficient * log(x / theta)) * (xPower + thetaPower) - 2 * hillCoefficient * xPower * log(
+                x / theta)
             ) / (thetaPower + xPower) ** 3
 
         return ddH
@@ -869,6 +870,10 @@ class HillCoordinate:
             return np.row_stack(list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nVariableParameter))))
 
         else:
+            dim = len(list(
+                set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
+            D2f = np.zeros(dim)  # initialize derivative as a vector
+
             gamma, parameterByComponent = self.parse_parameters(parameter)
             xLocal = x[
                 self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
@@ -878,32 +883,53 @@ class HillCoordinate:
             diffParameterIndex = diffIndex - self.variableIndexByComponent[
                 diffComponent]  # get the local parameter index in the HillComponent for the differentiation variable
 
-            allSummands = self.evaluate_summand(x, parameter)
-            I_k = self.summand_index(diffComponent)  # get the summand index containing the k^th Hill component
+            # initialize inner terms of chain rule derivatives of f
+            # DH = np.zeros(2 * [self.nComponent])  # initialize diagonal tensor for DxH as a 2-tensor
+            DHillComponent = np.array(
+                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
+                         parameterByComponent)))  # 1-tensor of partials for DxH
+            # np.einsum('ii->i', DH)[:] = DHillComponent  # build the diagonal tensor for DxH
 
-            Dxfp = self.dx(x,
-                           parameter)  # initialize derivative of DxH with respect to differentiation parameter using the
-            # full gradient vector of partials of H_k with respect to x in R^K
+            D2H = self.components[diffComponent].dxdiff(xLocal[diffComponent],
+                                                        parameterByComponent[diffComponent],
+                                                        diffParameterIndex)  # get the correct mixed partial derivative of H_k
 
-            # handle the I(j) != I(k) case
-            Dxfp[self.summand[I_k]] = 0  # zero out all components satisfying I(j) = I(k)
-            DpH = self.components[diffComponent].diff(xLocal[diffComponent],
-                                                      parameterByComponent[
-                                                          diffComponent],
-                                                      diffParameterIndex)  # evaluate partial derivative of H_k with respect to differentiation parameter
-            Dxfp *= DpH / np.array([allSummands[self.summand_index(j)] for j in range(self.nComponent)])
-            # scale by derivative of H_k with respect to differentiation parameter divided by p_I(j)
+            # initialize outer terms of chain rule derivatives of f
+            Dp = self.diff_interaction(x, parameter, 1)[diffComponent]  # k^th index of Dp(H) is a 0-tensor (scalar)
+            D2p = self.diff_interaction(x, parameter, 2)[diffComponent]  # k^th index of D^2p(H) is a 1-tensor (vector)
 
-            # handle the j = k case
-            DxHp = self.components[diffComponent].dxdiff(xLocal[diffComponent],
-                                                         parameterByComponent[
-                                                             diffComponent], diffParameterIndex)  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
+            D2f[self.interactionIndex] += DHillComponent * D2p  # contribution from D2p(H)*(DxH)
+            D2f[self.interactionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D(DxH)
 
-            Dxfp[diffComponent] = DxHp * np.prod(
-                [allSummands[self.summand_index(diffComponent)] for m in range(self.nComponent) if
-                 m != I_k])  # multiply over
-            # all summands which do not contain the k^th component
-            return Dxfp
+            return D2f
+            # allSummands = self.evaluate_summand(x, parameter)
+            # I_k = self.summand_index(diffComponent)  # get the summand index containing the k^th Hill component
+            #
+            # Dxfp = self.dx(x,
+            #                parameter)  # initialize derivative of DxH with respect to differentiation parameter using the
+            # # full gradient vector of partials of H_k with respect to x in R^K
+            #
+            # # handle the I(j) != I(k) case
+            # Dxfp[self.summand[I_k]] = 0  # zero out all components satisfying I(j) = I(k)
+            # DpH = self.components[diffComponent].diff(xLocal[diffComponent],
+            #                                           parameterByComponent[
+            #                                               diffComponent],
+            #                                           diffParameterIndex)  # evaluate partial derivative of H_k with respect to differentiation parameter
+            # Dxfp *= DpH / np.array([allSummands[self.summand_index(j)] for j in range(self.nComponent)])
+            # # scale by derivative of H_k with respect to differentiation parameter divided by p_I(j)
+            #
+            # # handle the j = k case
+            # DxHp = self.components[diffComponent].dxdiff(xLocal[diffComponent],
+            #                                              parameterByComponent[
+            #                                                  diffComponent], diffParameterIndex)  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
+            #
+            # Dxfp[diffComponent] = DxHp * np.prod(
+            #     [allSummands[self.summand_index(diffComponent)] for m in range(self.nComponent) if
+            #      m != I_k])  # multiply over
+            # # all summands which do not contain the k^th component
+
+            # D2f[self.interactionIndex] = Dxfp
+            # return Dxfp
 
     def dx3(self, x, parameter):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
