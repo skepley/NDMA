@@ -314,8 +314,8 @@ class HillComponent:
         else:
             ell, delta, theta, hillCoefficient = self.curry_parameters(
                 parameter)  # unpack fixed and variable parameters
-            xPower = x ** hillCoefficient
-            xPower_der = hillCoefficient * x ** (hillCoefficient - 1)
+            xPower_der = x ** (hillCoefficient - 1)
+            xPower = x * xPower_der
 
         if diffParameter == 'delta':
             thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
@@ -324,18 +324,14 @@ class HillComponent:
         elif diffParameter == 'theta':
             thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
             thetaPower = theta * thetaPowerSmall
-            dH = self.sign * (-delta * hillCoefficient * xPower * thetaPowerSmall) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * hillCoefficient ** 2 * thetaPowerSmall * xPower_der * \
                   (xPower - thetaPower) / (thetaPower + xPower) ** 3
 
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
-            dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
             ddH = self.sign * delta * thetaPower * xPower_der * (
                 hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
                        (thetaPower + xPower) ** 3)
-
-
         return ddH
 
     def dx2diff(self, x, parameter, diffIndex):
