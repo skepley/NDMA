@@ -288,7 +288,7 @@ class HillComponent:
             if diffParameter1 == 'theta':
                 dH = self.sign * -delta * hillCoefficient * xPower * (thetaPower_minusminus * (hillCoefficient - 1) *
                                                                       (
-                                                                                  thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
+                                                                              thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
                                                                       thetaPower_minus) / ((thetaPower + xPower) ** 3)
             if diffParameter1 == 'hillCoefficient':
                 dH = - self.sign * delta * xPower * thetaPower_minus * \
@@ -331,8 +331,8 @@ class HillComponent:
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
-                       (thetaPower + xPower) ** 3)
+                    hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
+                          (thetaPower + xPower) ** 3)
         return ddH
 
     def dx2diff(self, x, parameter, diffIndex):
@@ -444,11 +444,11 @@ class HillComponent:
             # then diffParameter1 = 'hillCoefficient'
             dH = self.sign * (delta * thetaPower * xPower_minus * (log(theta) - log(x)) * (-2 * thetaPower ** 2 + hill *
                                                                                            (
-                                                                                                       thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (
-                                                                                                       log(theta) - log(
-                                                                                                   x)) +
+                                                                                                   thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (
+                                                                                                   log(theta) - log(
+                                                                                               x)) +
                                                                                            2 * xPower ** 2) / (
-                                          (thetaPower + xPower) ** 4))
+                                      (thetaPower + xPower) ** 4))
 
         return dH
 
@@ -534,6 +534,8 @@ class HillCoordinate:
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
+        self.dim = len(list(
+            set(interactionIndex)))  # dimension of state vector input to HillCoordinate
         self.parameterValues = parameter  # initialize array of fixed parameter values
         self.nComponent = len(interactionSign)  # number of interaction nodes
         self.components = self.set_components(parameter, interactionSign)
@@ -740,20 +742,16 @@ class HillCoordinate:
 
         if diffIndex is None:
             gamma, parameterByComponent = self.parse_parameters(parameter)
-            dim = len(x)  # dimension of vector field (Hill Model)
-            # TODO: It is dangerous to allow the input to dictate the dimension. A better approach which allows exception handling is
-            #   to write an intrinsic check of the dimension and ensure the input vector matches.
-            Df = np.zeros(dim, dtype=float)
+            Df = np.zeros(self.dim, dtype=float)
             xLocal = x[
-                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
             diffInteraction = self.diff_interaction(x,
                                                     parameter,
                                                     1)  # evaluate derivative of interaction function (outer term in chain rule)
             DHillComponent = np.array(
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
-            Df[
-                self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+            Df[self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
             Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
             return Df
 
@@ -763,10 +761,6 @@ class HillCoordinate:
     def diff(self, x, parameter, diffIndex=None):
         """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
            The parameter must be a variable parameter for one or more HillComponents."""
-
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
 
         if diffIndex is None:  # return the full gradient with respect to parameters as a vector in R^m
             return np.array([self.diff(x, parameter, diffIndex=k) for k in range(self.nVariableParameter)])
@@ -796,10 +790,6 @@ class HillCoordinate:
     def dx2(self, x, parameter):
         """Return the second derivative (Hessian matrix) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
-
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
 
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
@@ -856,17 +846,17 @@ class HillCoordinate:
         R^n and p in R^m as a gradient vector in R^K. If no parameter index is specified this returns the
         full second derivative as the m-by-K Hessian matrix of mixed partials"""
 
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
-
         if diffIndex is None:
             return np.row_stack(list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nVariableParameter))))
 
         else:
+
             dim = len(list(
                 set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
             D2f = np.zeros(dim)  # initialize derivative as a vector
+
+            if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
+                return D2f
 
             gamma, parameterByComponent = self.parse_parameters(parameter)
             xLocal = x[
@@ -883,7 +873,8 @@ class HillCoordinate:
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # 1-tensor of partials for DxH
             # np.einsum('ii->i', DH)[:] = DHillComponent  # build the diagonal tensor for DxH
-            DpH = self.components[diffComponent].diff(xLocal[diffComponent], parameterByComponent[diffComponent], diffParameterIndex)
+            DpH = self.components[diffComponent].diff(xLocal[diffComponent], parameterByComponent[diffComponent],
+                                                      diffParameterIndex)
 
             D2H = self.components[diffComponent].dxdiff(xLocal[diffComponent],
                                                         parameterByComponent[diffComponent],
@@ -901,10 +892,7 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
-        # TODO: 1. This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
-        #       2. The diagonal product is already implemented in numpy natively as the pointwise product using *. So
+        # TODO: 1. The diagonal product is already implemented in numpy natively as the pointwise product using *. So
         #       A * b is equivalent to A @ diag(b) but much faster.
 
         gamma, parameterByComponent = self.parse_parameters(parameter)
@@ -942,10 +930,6 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector (twice) and then the parameter
         (once) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
-
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
@@ -955,10 +939,6 @@ class HillCoordinate:
     def dxdiff2(self, x, parameter):
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
         evaluated at x in R^n and p in R^m as a K-by-K matrix"""
-
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
-        #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
-        #       changed at the same time as it is changed in the dx method.
 
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
@@ -1167,7 +1147,7 @@ class ToggleSwitch(HillModel):
         interactionTypes = [[1], [1]]
         interactionIndex = [[1], [0]]
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
-                         interactionIndex)  # define HillModel for toggle switch
+                         interactionIndex)  # define HillModel for toggle switch by inheritance
         self.hillIndexByCoordinate = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
 
         # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
