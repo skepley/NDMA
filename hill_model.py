@@ -751,7 +751,8 @@ class HillCoordinate:
             DHillComponent = np.array(
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
-            Df[self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+            Df[
+                self.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
             Df[self.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
             return Df
 
@@ -794,9 +795,7 @@ class HillCoordinate:
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        dim = len(list(
-            set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
-        D2f = np.zeros(2 * [dim])
+        D2f = np.zeros(2 * [self.dim], dtype=float)
 
         D2HillComponent = np.array(
             list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal, parameterByComponent)))
@@ -850,10 +849,7 @@ class HillCoordinate:
             return np.row_stack(list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nVariableParameter))))
 
         else:
-
-            dim = len(list(
-                set(self.interactionIndex + [self.index])))  # dimension of state vector input to HillCoordinate
-            D2f = np.zeros(dim)  # initialize derivative as a vector
+            D2f = np.zeros(self.dim, dtype=float)  # initialize derivative as a vector
 
             if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
                 return D2f
@@ -898,6 +894,7 @@ class HillCoordinate:
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[
             self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        D2f = np.zeros(2 * [self.dim], dtype=float)
 
         # initialize all tensors for inner terms of chain rule derivatives of f
         DH = np.zeros(2 * [self.nComponent])
