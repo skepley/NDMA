@@ -14,9 +14,9 @@ from numpy import log
 import textwrap
 
 
-def npA(size):
-    """Return a random numpy vector for testing"""
-    return np.random.randint(1, 10, 2 * [size])
+def npA(size, dim=2):
+    """Return a random numpy array for testing"""
+    return np.random.randint(1, 10, dim * [size])
 
 
 def is_vector(array):
@@ -287,8 +287,9 @@ class HillComponent:
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
                 dH = self.sign * -delta * hillCoefficient * xPower * (thetaPower_minusminus * (hillCoefficient - 1) *
-                                                 (thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
-                                                  thetaPower_minus) / ((thetaPower + xPower) ** 3)
+                                                                      (
+                                                                                  thetaPower + xPower) - thetaPower_minus * 2 * hillCoefficient *
+                                                                      thetaPower_minus) / ((thetaPower + xPower) ** 3)
             if diffParameter1 == 'hillCoefficient':
                 dH = - self.sign * delta * xPower * thetaPower_minus * \
                      (hillCoefficient * (thetaPower - xPower) * (log(theta) - log(x)) - thetaPower - xPower) \
@@ -297,7 +298,7 @@ class HillComponent:
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
-            dH = self.sign * delta (thetaPower * xPower * (thetaPower - xPower) * log(theta / x) ** 2)/\
+            dH = self.sign * delta(thetaPower * xPower * (thetaPower - xPower) * log(theta / x) ** 2) / \
                  (thetaPower + xPower) ** 3
 
         return dH
@@ -436,14 +437,18 @@ class HillComponent:
                         - 4 * hill * thetaPower * xPower + (hill - 1) * xPower ** 2)) / ((thetaPower + xPower) ** 4)
             if diffParameter1 == 'hillCoefficient':
                 dH = self.sign * (delta * hill * thetaPower_minus * xPower_minus * (-2 * thetaPower ** 2 +
-                                                                                      hill * thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) *
-                                    (log(theta) - log(x)) + 2 * xPower ** 2) / ((thetaPower + xPower) ^ 4)
+                                                                                    hill * thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) *
+                                  (log(theta) - log(x)) + 2 * xPower ** 2) / ((thetaPower + xPower) ^ 4)
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
             dH = self.sign * (delta * thetaPower * xPower_minus * (log(theta) - log(x)) * (-2 * thetaPower ** 2 + hill *
-                            (thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (log(theta) - log(x)) +
-                                    2 * xPower ** 2) / ((thetaPower + xPower) ** 4))
+                                                                                           (
+                                                                                                       thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) * (
+                                                                                                       log(theta) - log(
+                                                                                                   x)) +
+                                                                                           2 * xPower ** 2) / (
+                                          (thetaPower + xPower) ** 4))
 
         return dH
 
@@ -460,7 +465,7 @@ class HillComponent:
         xPower_der2 = x * xPower_der3
         xPower_der = x * xPower_der2  # compute x^{hillCoefficient-1}
         xPower = xPower_der * x
-        x2Power = xPower **2
+        x2Power = xPower ** 2
         hillsquare = hill ** 2
 
         return self.sign * (hill * delta * thetaPower * xPower_der3) / ((xPower + thetaPower) ** 4) * \
@@ -653,9 +658,6 @@ class HillCoordinate:
         """Return the partial derivative of the specified order for interaction function in the coordinate specified by
         diffIndex. If diffIndex is not specified, it returns the full derivative as a vector with all K partials of
         order diffOrder."""
-
-        # TODO: Fix the input to this function. It should accept the composition values as input, not evaluate them. This way it can be
-        #       utilized for higher order derivatives as well by composing with the correct partial derivatives.
 
         def nonzero_index(order):
             """Return the indices for which the given order derivative of an interaction function is nonzero. This happens
@@ -881,6 +883,7 @@ class HillCoordinate:
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # 1-tensor of partials for DxH
             # np.einsum('ii->i', DH)[:] = DHillComponent  # build the diagonal tensor for DxH
+            DpH = self.components[diffComponent].diff(xLocal[diffComponent], parameterByComponent[diffComponent], diffParameterIndex)
 
             D2H = self.components[diffComponent].dxdiff(xLocal[diffComponent],
                                                         parameterByComponent[diffComponent],
@@ -890,46 +893,19 @@ class HillCoordinate:
             Dp = self.diff_interaction(x, parameter, 1)[diffComponent]  # k^th index of Dp(H) is a 0-tensor (scalar)
             D2p = self.diff_interaction(x, parameter, 2)[diffComponent]  # k^th index of D^2p(H) is a 1-tensor (vector)
 
-            D2f[self.interactionIndex] += DHillComponent * D2p  # contribution from D2p(H)*(DxH)
-            D2f[self.interactionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D(DxH)
-
+            D2f[self.interactionIndex] += DpH * DHillComponent * D2p  # contribution from D2(p(H))*D_parm(H)*DxH
+            D2f[self.interactionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D_parm(DxH)
             return D2f
-            # allSummands = self.evaluate_summand(x, parameter)
-            # I_k = self.summand_index(diffComponent)  # get the summand index containing the k^th Hill component
-            #
-            # Dxfp = self.dx(x,
-            #                parameter)  # initialize derivative of DxH with respect to differentiation parameter using the
-            # # full gradient vector of partials of H_k with respect to x in R^K
-            #
-            # # handle the I(j) != I(k) case
-            # Dxfp[self.summand[I_k]] = 0  # zero out all components satisfying I(j) = I(k)
-            # DpH = self.components[diffComponent].diff(xLocal[diffComponent],
-            #                                           parameterByComponent[
-            #                                               diffComponent],
-            #                                           diffParameterIndex)  # evaluate partial derivative of H_k with respect to differentiation parameter
-            # Dxfp *= DpH / np.array([allSummands[self.summand_index(j)] for j in range(self.nComponent)])
-            # # scale by derivative of H_k with respect to differentiation parameter divided by p_I(j)
-            #
-            # # handle the j = k case
-            # DxHp = self.components[diffComponent].dxdiff(xLocal[diffComponent],
-            #                                              parameterByComponent[
-            #                                                  diffComponent], diffParameterIndex)  # evaluate derivative of DxH_k with respect to differentiation parameter. This is a mixed second partial derivative.
-            #
-            # Dxfp[diffComponent] = DxHp * np.prod(
-            #     [allSummands[self.summand_index(diffComponent)] for m in range(self.nComponent) if
-            #      m != I_k])  # multiply over
-            # # all summands which do not contain the k^th component
-
-            # D2f[self.interactionIndex] = Dxfp
-            # return Dxfp
 
     def dx3(self, x, parameter):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
-        # TODO: This function does not behave like dx. The phase space dimension embedding is not handled here. However,
+        # TODO: 1. This function does not behave like dx. The phase space dimension embedding is not handled here. However,
         #       it still handles the projection. This job should be pushed to the HillModel class.  This should be
         #       changed at the same time as it is changed in the dx method.
+        #       2. The diagonal product is already implemented in numpy natively as the pointwise product using *. So
+        #       A * b is equivalent to A @ diag(b) but much faster.
 
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xLocal = x[

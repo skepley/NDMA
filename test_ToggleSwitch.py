@@ -52,17 +52,9 @@ print(H0.diff(x0[1], p0[1:], 3))
 print(H1.dxdiff(x0[0], p1[1:], 3))
 print(H0.dndx(x0[1], p0[1:]))
 
-dim = 2
-DH = np.zeros(dim)
-parm = p1[1:]
-xLocal = x0[1]
-# get vectors of appropriate partial derivatives of H
-DHillComponent = np.array([H1.dxdiff(xLocal, parm, 3)])
 
-# set diagonal elements of inner derivative tensors to the correct partials
-DH[f1.interactionIndex] = DHillComponent
-
-# get tensors for outer terms of chain rule derivatives of f
-Dp = f1.diff_interaction(xLocal, parm, 1)  # 1-tensor
-
-
+H = HillComponent(-1)
+x = 3
+p = np.array([1, 5, 3, 4.1])
+print(H.dxdiff(x, p, 3))
+print(H.dndx(x, p))
