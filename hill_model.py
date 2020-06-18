@@ -750,7 +750,7 @@ class HillCoordinate:
             else:
                 raise KeyboardInterrupt
 
-    def diff_component(self, x, parameter, diffOrder, *diffIndex):
+    def diff_component(self, x, parameter, diffOrder, *diffIndex, fullTensor=True):
         """Compute derivative of component vector, H = (H_1,...,H_K) with respect to state variables or parameters. This is
         the inner term in the chain rule derivative for the higher order derivatives of f. diffOrder has the form
          [xOrder, parameterOrder] which specifies the number of derivatives with respect to state variables and parameter
@@ -766,17 +766,25 @@ class HillCoordinate:
             # on this vector
 
             if xOrder == 1:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                              parameterByComponent)))  # evaluate vector of first order state variable partial derivatives for Hill components
             elif xOrder == 2:
-                return np.array(
+                DH_nonzero =  np.array(
                     list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal,
                              parameterByComponent)))  # evaluate vector of second order state variable partial derivatives for Hill components
             elif xOrder == 3:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda H, x_k, parm: H.dx3(x_k, parm), self.components, xLocal,
                              parameterByComponent)))  # evaluate vector of third order state variable partial derivatives for Hill components
+
+            if fullTensor:
+                DH = np.zeros((1 + xOrder) * [self.nComponent])
+                np.einsum(''.join((1 + xOrder)*'i') + '->i', DH)[:] = DH_nonzero
+                return DH
+            else:
+                return DH_nonzero
+
         elif parameterOrder == 1:  # return partials w.r.t parameters specified by diffIndex as a vector of nonzero components.
 
             if not diffIndex:  # no optional argument means return all component parameter derivatives (i.e. all parameters except gamma)
@@ -785,21 +793,31 @@ class HillCoordinate:
                                        diffIndex]  # a list of ordered pairs for differentiation parameter indices
 
             if xOrder == 0:  # Compute D_lambda(H)
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].diff(xLocal[idx[0]], parameterByComponent[idx[0]],
                                                                       diffIndex=idx[1]),
                              parameterComponentIndex)))  # evaluate vector of first order partial derivatives for Hill components
 
             elif xOrder == 1:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dxdiff(xLocal[idx[0]], parameterByComponent[idx[0]],
                                                                         diffIndex=idx[1]),
                              parameterComponentIndex)))  # evaluate vector of second order mixed partial derivatives for Hill components
             elif xOrder == 2:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dx2diff(xLocal[idx[0]], parameterByComponent[idx[0]],
                                                                          diffIndex=idx[1]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill components
+
+            if fullTensor:
+                tensorDims = (1 + xOrder) * [self.nComponent] + [self.nVariableParameter - self.gammaIsVariable]
+                DH = np.zeros(tensorDims)
+                nonzeroIdxLambda = list(zip(parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
+                nonzeroIdx = xOrder * [nonzeroIdxLambda[0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                DH[nonzeroIdx] = DH_nonzero
+                return DH
+            else:
+                return DH_nonzero
 
         elif parameterOrder == 2:  # 2 partial derivatives w.r.t. parameters.
 
@@ -816,16 +834,26 @@ class HillCoordinate:
             # a list of triples stored as numpy arrays of the form (i,j,k) where lambda_j, lambda_k are both parameters for H_i
 
             if xOrder == 0:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].diff2(xLocal[idx[0]], parameterByComponent[idx[0]],
                                                                        diffIndex=idx[1:2]),
                              parameterComponentIndex)))  # evaluate vector of second order pure partial derivatives for Hill components
 
             elif xOrder == 1:
-                return np.array(
+                DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dxdiff2(xLocal[idx[0]], parameterByComponent[idx[0]],
                                                                          diffIndex=idx[1:2]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill components
+
+            if fullTensor:
+                tensorDims = (1 + xOrder) * [self.nComponent] + 2 * [self.nVariableParameter - self.gammaIsVariable]
+                DH = np.zeros(tensorDims)
+                nonzeroIdxLambda = list(zip(parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
+                nonzeroIdx = xOrder * [nonzeroIdxLambda[0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                DH[nonzeroIdx] = DH_nonzero
+                return DH
+            else:
+                return DH_nonzero
 
     def dx(self, x, parameter, diffIndex=None):
         """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
@@ -978,25 +1006,18 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
-        # TODO: 1. The diagonal product is already implemented in numpy natively as the pointwise product using *. So
-        #       A * b is equivalent to A @ diag(b) but much faster.
-
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
-        DH = self.diff_component(x, parameter, 1)
-        D2H = self.diff_component(x, parameter, 2)
-        D3H = self.diff_component(x, parameter, 3)
+        DxH = self.diff_component(x, parameter, [1, 0])
+        DxxH = self.diff_component(x, parameter, [2, 0])
+        DxxxH = self.diff_component(x, parameter, [3, 0])
 
-        # get tensors for outer terms of chain rule derivatives of f
+        # get tensors for derivatives of p o H(x) (outer terms of chain rule)
         Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
         D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
         D3p = self.diff_interaction(x, parameter, 3)  # 3-tensor
 
         # return D3f as a linear combination of tensor contractions via the chain rule
-        return D3p * DH * DH + 2 * D2p * DH * D2H + D2p * D2H + Dp * D3H
+        return D3p * DxH * DxH * DxH + 3 * D2p * DxH * DxxH + Dp * DxxxH
 
         # D3f = np.zeros(3 * [self.dim], dtype=float)  # initialize third derivative as a 3-tensor
         # D3f[np.ix_(self.interactionIndex, self.interactionIndex, self.interactionIndex)] += np.einsum('ijl, jk', D3p, DH
@@ -1008,19 +1029,66 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector (twice) and then the parameter
         (once) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
+        DxH = self.diff_component(x, parameter, [1, 0])
+        DxxH = self.diff_component(x, parameter, [2, 0])
+        DlambdaH = self.diff_component(x, parameter, [0, 1])  # m-vector representative of a pseudo-diagonal Km 2-tensor
+        Dlambda_xH = self.diff_component(x, parameter,
+                                         [1, 1])  # m-vector representative of a pseudo-diagonal KKm 3-tensor
+        Dlambda_xxH = self.diff_component(x, parameter,
+                                          [2, 1])  # m-vector representative of a pseudo-diagonal KKKm 4-tensor
 
-        return
+        parameterComponentIndex = [self.parameter_to_component_index(linearIdx) for linearIdx in
+                                   range(self.gammaIsVariable,
+                                         self.nVariableParameter)]  # a list of ordered pairs for differentiation parameter indices. These
+        # are the nonzero indices of all Dlambda terms
+        nonzeroIdx = list(zip(parameterComponentIndex))  # zip into a pair of tuples for numpy indexing
+
+        def pseudo_diagonal_contraction(kTensor, mVector, idxVector):
+            """Performs the diagonal contraction operation on a tensor and a vector representative of a pseudo-diagonal
+            tensor omitting the multiplications by zero"""
+
+            A = kTensor.copy()  # deep copy of numpy array
+            A[idxVector] *= mVector
+            return A
+
+        # get tensors for derivatives of p o H(x) (outer terms of chain rule)
+        Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
+        D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
+        D3p = self.diff_interaction(x, parameter, 3)  # 3-tensor
+
+        # return D3f as a linear combination of tensor contractions via the chain rule
+        return pseudo_diagonal_contraction(D3p * DxH * DxH + D2p * DxxH, DlambdaH,
+                                           nonzeroIdx) + 2 * pseudo_diagonal_contraction(D2p * DxH, Dlambda_xH,
+                                                                                         nonzeroIdx
+                                                                                         ) + pseudo_diagonal_contraction(
+            Dp, Dlambda_xxH, nonzeroIdx)
 
     def dxdiff2(self, x, parameter):
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
         evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+        # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
+        DxH = self.diff_component(x, parameter, [1, 0])
+        DlambdaH = self.diff_component(x, parameter, [0, 1])  # m-vector representative of a pseudo-diagonal Km 2-tensor
+        Dlambda_xH = self.diff_component(x, parameter,
+                                         [1, 1])  # m-vector representative of a pseudo-diagonal KKm 3-tensor
+        D2lambda_xH = self.diff_component(x, parameter,
+                                          [1, 2])  # 2-tensor representative of a pseudo-diagonal KKmm 4-tensor
+
+        parameterComponentIndex = [self.parameter_to_component_index(linearIdx) for linearIdx in
+                                   range(self.gammaIsVariable,
+                                         self.nVariableParameter)]  # a list of ordered pairs for differentiation parameter indices. These
+        # are the nonzero indices of all Dlambda terms
+        nonzeroIdx = list(zip(parameterComponentIndex))  # zip into a pair of tuples for numpy indexing
+
+        def pseudo_diagonal_contraction(kTensor, mVector, idxVector):
+            """Performs the diagonal contraction operation on a tensor and a vector representative of a pseudo-diagonal
+            tensor omitting the multiplications by zero"""
+
+            A = kTensor.copy()  # deep copy of numpy array
+            A[idxVector] *= mVector
+            return A
 
         return
 
