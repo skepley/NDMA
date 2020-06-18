@@ -609,17 +609,17 @@ class HillCoordinate:
                          map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.components])) + ') \n')
 
         # initialize index strings
-        stateIndexString = 'State Variables: x = (x_{0}; '.format(self.index)
+        stateIndexString = 'State Variables: x = (x_{0}; '.format(self.index + 1)
         variableIndexString = 'Variable Parameters: lambda = ('
         if self.gammaIsVariable:
             variableIndexString += 'gamma, '
 
         for k in range(self.nComponent):
             idx = self.interactionIndex[k]
-            stateIndexString += 'x_{0}, '.format(idx)
+            stateIndexString += 'x_{0}, '.format(idx + 1)
             if self.components[k].variableParameters:
                 variableIndexString += ', '.join(
-                    [var + '_{0}'.format(idx) for var in self.components[k].variableParameters])
+                    [var + '_{0}'.format(idx + 1) for var in self.components[k].variableParameters])
                 variableIndexString += ', '
 
         # remove trailing commas and close brackets
@@ -770,7 +770,7 @@ class HillCoordinate:
                     list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                              parameterByComponent)))  # evaluate vector of first order state variable partial derivatives for Hill components
             elif xOrder == 2:
-                DH_nonzero =  np.array(
+                DH_nonzero = np.array(
                     list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.components, xLocal,
                              parameterByComponent)))  # evaluate vector of second order state variable partial derivatives for Hill components
             elif xOrder == 3:
@@ -780,7 +780,7 @@ class HillCoordinate:
 
             if fullTensor:
                 DH = np.zeros((1 + xOrder) * [self.nComponent])
-                np.einsum(''.join((1 + xOrder)*'i') + '->i', DH)[:] = DH_nonzero
+                np.einsum(''.join((1 + xOrder) * 'i') + '->i', DH)[:] = DH_nonzero
                 return DH
             else:
                 return DH_nonzero
@@ -812,8 +812,10 @@ class HillCoordinate:
             if fullTensor:
                 tensorDims = (1 + xOrder) * [self.nComponent] + [self.nVariableParameter - self.gammaIsVariable]
                 DH = np.zeros(tensorDims)
-                nonzeroIdxLambda = list(zip(parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
-                nonzeroIdx = xOrder * [nonzeroIdxLambda[0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                nonzeroIdxLambda = list(
+                    zip(*parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
+                nonzeroIdx = xOrder * [nonzeroIdxLambda[
+                                           0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
                 DH[nonzeroIdx] = DH_nonzero
                 return DH
             else:
@@ -848,8 +850,10 @@ class HillCoordinate:
             if fullTensor:
                 tensorDims = (1 + xOrder) * [self.nComponent] + 2 * [self.nVariableParameter - self.gammaIsVariable]
                 DH = np.zeros(tensorDims)
-                nonzeroIdxLambda = list(zip(parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
-                nonzeroIdx = xOrder * [nonzeroIdxLambda[0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                nonzeroIdxLambda = list(
+                    zip(*parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
+                nonzeroIdx = xOrder * [nonzeroIdxLambda[
+                                           0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
                 DH[nonzeroIdx] = DH_nonzero
                 return DH
             else:
@@ -1002,94 +1006,90 @@ class HillCoordinate:
             D2f[self.interactionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D_parm(DxH)
             return D2f
 
-    def dx3(self, x, parameter):
+    def dx3(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
-        DxH = self.diff_component(x, parameter, [1, 0])
-        DxxH = self.diff_component(x, parameter, [2, 0])
-        DxxxH = self.diff_component(x, parameter, [3, 0])
+        DxH = self.diff_component(x, parameter, [1, 0], fullTensor=fullTensor)
+        DxxH = self.diff_component(x, parameter, [2, 0], fullTensor=fullTensor)
+        DxxxH = self.diff_component(x, parameter, [3, 0], fullTensor=fullTensor)
 
         # get tensors for derivatives of p o H(x) (outer terms of chain rule)
         Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
         D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
         D3p = self.diff_interaction(x, parameter, 3)  # 3-tensor
 
-        # return D3f as a linear combination of tensor contractions via the chain rule
-        return D3p * DxH * DxH * DxH + 3 * D2p * DxH * DxxH + Dp * DxxxH
+        if fullTensor:  # slow version to be used as a ground truth for testing
+            term1 = np.einsum('ikq,qr,kl,ij', D3p, DxH, DxH, DxH)
+            term2 = 3 * np.einsum('ik,kl,ijq', D2p, DxH, DxxH)
+            term3 = np.einsum('i, ijkl', Dp, DxxxH)
+            return term1 + term2 + term3
+        else:  # this code is the faster version but it is not quite correct. The .multiply method needs to be combined appropriately with
+            # tensor reshaping.
 
-        # D3f = np.zeros(3 * [self.dim], dtype=float)  # initialize third derivative as a 3-tensor
-        # D3f[np.ix_(self.interactionIndex, self.interactionIndex, self.interactionIndex)] += np.einsum('ijl, jk', D3p, DH
-        #                                                                                               ) + 2 * np.einsum(
-        #     'ij, jkl', D2p, D2H) + np.einsum('i,ijkl', Dp, D3H)
-        # return D3f
+            return D3p * DxH * DxH * DxH + 3 * D2p * DxH * DxxH + Dp * DxxxH
 
-    def dx2diff(self, x, parameter):
+    def dx2diff(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector (twice) and then the parameter
         (once) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
-        DxH = self.diff_component(x, parameter, [1, 0])
-        DxxH = self.diff_component(x, parameter, [2, 0])
-        DlambdaH = self.diff_component(x, parameter, [0, 1])  # m-vector representative of a pseudo-diagonal Km 2-tensor
+        DxH = self.diff_component(x, parameter, [1, 0], fullTensor=fullTensor)
+        DxxH = self.diff_component(x, parameter, [2, 0], fullTensor=fullTensor)
+        DlambdaH = self.diff_component(x, parameter, [0, 1],
+                                       fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal Km 2-tensor
         Dlambda_xH = self.diff_component(x, parameter,
-                                         [1, 1])  # m-vector representative of a pseudo-diagonal KKm 3-tensor
+                                         [1, 1],
+                                         fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKm 3-tensor
         Dlambda_xxH = self.diff_component(x, parameter,
-                                          [2, 1])  # m-vector representative of a pseudo-diagonal KKKm 4-tensor
-
-        parameterComponentIndex = [self.parameter_to_component_index(linearIdx) for linearIdx in
-                                   range(self.gammaIsVariable,
-                                         self.nVariableParameter)]  # a list of ordered pairs for differentiation parameter indices. These
-        # are the nonzero indices of all Dlambda terms
-        nonzeroIdx = list(zip(parameterComponentIndex))  # zip into a pair of tuples for numpy indexing
-
-        def pseudo_diagonal_contraction(kTensor, mVector, idxVector):
-            """Performs the diagonal contraction operation on a tensor and a vector representative of a pseudo-diagonal
-            tensor omitting the multiplications by zero"""
-
-            A = kTensor.copy()  # deep copy of numpy array
-            A[idxVector] *= mVector
-            return A
+                                          [2, 1],
+                                          fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKKm 4-tensor
 
         # get tensors for derivatives of p o H(x) (outer terms of chain rule)
         Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
         D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
         D3p = self.diff_interaction(x, parameter, 3)  # 3-tensor
 
-        # return D3f as a linear combination of tensor contractions via the chain rule
-        return pseudo_diagonal_contraction(D3p * DxH * DxH + D2p * DxxH, DlambdaH,
-                                           nonzeroIdx) + 2 * pseudo_diagonal_contraction(D2p * DxH, Dlambda_xH,
-                                                                                         nonzeroIdx
-                                                                                         ) + pseudo_diagonal_contraction(
-            Dp, Dlambda_xxH, nonzeroIdx)
+        if fullTensor:  # slow version to be used as a ground truth for testing
+            term1 = np.einsum('ikq,qr,kl,ij', D3p, DlambdaH, DxH, DxH)
+            term2 = 2 * np.einsum('ik,kl,ijq', D2p, DxH, Dlambda_xH)
+            term3 = np.einsum('il,lq,ijk', D2p, DlambdaH, DxxH)
+            term4 = np.einsum('i, ijkl', Dp, Dlambda_xxH)
+            return term1 + term2 + term3 + term4
 
-    def dxdiff2(self, x, parameter):
+        else:
+            raise KeyboardInterrupt
+
+    def dxdiff2(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
         evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
-        DxH = self.diff_component(x, parameter, [1, 0])
-        DlambdaH = self.diff_component(x, parameter, [0, 1])  # m-vector representative of a pseudo-diagonal Km 2-tensor
+        DxH = self.diff_component(x, parameter, [1, 0], fullTensor=fullTensor)
+        DlambdaH = self.diff_component(x, parameter, [0, 1],
+                                       fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal Km 2-tensor
         Dlambda_xH = self.diff_component(x, parameter,
-                                         [1, 1])  # m-vector representative of a pseudo-diagonal KKm 3-tensor
+                                         [1, 1],
+                                         fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKm 3-tensor
         D2lambda_xH = self.diff_component(x, parameter,
-                                          [1, 2])  # 2-tensor representative of a pseudo-diagonal KKmm 4-tensor
+                                          [1, 2],
+                                          fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKKm 4-tensor
 
-        parameterComponentIndex = [self.parameter_to_component_index(linearIdx) for linearIdx in
-                                   range(self.gammaIsVariable,
-                                         self.nVariableParameter)]  # a list of ordered pairs for differentiation parameter indices. These
-        # are the nonzero indices of all Dlambda terms
-        nonzeroIdx = list(zip(parameterComponentIndex))  # zip into a pair of tuples for numpy indexing
+        # get tensors for derivatives of p o H(x) (outer terms of chain rule)
+        Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
+        D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
+        D3p = self.diff_interaction(x, parameter, 3)  # 3-tensor
 
-        def pseudo_diagonal_contraction(kTensor, mVector, idxVector):
-            """Performs the diagonal contraction operation on a tensor and a vector representative of a pseudo-diagonal
-            tensor omitting the multiplications by zero"""
+        if fullTensor:  # slow version to be used as a ground truth for testing
+            term1 = np.einsum('ikq,qr,kl,ij', D3p, DlambdaH, DlambdaH, DxH)
+            term2 = 2 * np.einsum('ik,kl,ijq', D2p, DlambdaH, Dlambda_xH)
+            term3 = np.einsum('ik,klq,ij', D2p, Dlambda_xH, DxH)
+            term4 = np.einsum('i, ijkl', Dp, D2lambda_xH)
+            return term1 + term2 + term3 + term4
 
-            A = kTensor.copy()  # deep copy of numpy array
-            A[idxVector] *= mVector
-            return A
-
+        else:
+            raise KeyboardInterrupt
         return
 
     def set_components(self, parameter, interactionSign):

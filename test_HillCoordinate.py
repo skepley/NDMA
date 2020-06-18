@@ -11,23 +11,26 @@ Function and design testing for the HillComponent class
 
 import numpy as np
 from hill_model import *
+from itertools import product
 
 gamma = 1.2
-interactionSign = [1, -1]
-interactionType = [2]
-fullParm = np.array([[1.1, 3, 5, 4.1],
-                     [1, 2.2, 6, 3.3]], dtype=float)
-x = np.array([3., 2, 2, 1, 2, 3])  # assume these HillCoordinates are coordinates in a vector field on R^6
+interactionSign = [1, -1, 1, -1]
+interactionType = [2, 1, 1]
+fullParm = np.array([[1.1, 2.4, 1, 2],
+                     [1.2, 2.3, 2, 3],
+                     [1.3, 2.2, 3, 2],
+                     [1.4, 2.1, 4, 3]], dtype=float)
+x = np.array([3., 2, 4, 1], dtype=float)
 
 parameter1 = np.copy(fullParm)
-p1Vars = [[0, 0], [1, 1], [1, -1]]  # set ell_1, delta_2, and n_2 as variable parameters
-parameter1[0, 0] = parameter1[1, 1] = parameter1[1, -1] = np.nan
-p1 = np.array([fullParm[0, 0], fullParm[1, 1], fullParm[1, -1]], dtype=float)
-f1 = HillCoordinate(parameter1, interactionSign, interactionType, [0, 1, 2], gamma=gamma)
-print(f1(x, p1))
-print(f1.dx(x, p1))  # derivative is embedded back as a vector in R^6
+pVars = tuple(zip(*product(range(4), range(4))))  # set all parameters as variable
+parameter1[pVars] = np.nan
+p = fullParm[pVars]  # get floating points for all variable parameters
+f = HillCoordinate(parameter1, interactionSign, interactionType, [1, 0, 1, 2, 3])
+print(f(x, p))
+print(f.dx(x, p))  # derivative is embedded back as a vector in R^6
 
-
+stopHere
 parameter2 = np.copy(fullParm)
 p2Vars = [[0, -1], [1, 0]]  # set n_1, and ell_2 as variable parameters
 parameter2[0, -1] = parameter1[1, 0] = np.nan
