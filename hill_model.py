@@ -723,6 +723,7 @@ class HillCoordinate:
                             Irow = self.summand[row]
                             Icolumn = self.summand[col]
                             DpH[np.ix_(Irow, Icolumn)] = DpH[np.ix_(Icolumn, Irow)] = DxxProducts[row, col]
+                    return DpH
 
             elif diffOrder == 3:  # compute third derivative of interaction function composed with Hill Components as a 3-tensor
                 if nSummand <= 2:  # the all sum or 2-summand special cases
@@ -1005,6 +1006,24 @@ class HillCoordinate:
             D2f[self.interactionIndex] += DpH * DHillComponent * D2p  # contribution from D2(p(H))*D_parm(H)*DxH
             D2f[self.interactionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D_parm(DxH)
             return D2f
+
+    def diff2(self, x, parameter, *diffIndex, fullTensor=True):
+        """Return the second derivative with respect to parameters specified evaluated at x in
+        R^n and p in R^m as a Hessian matrix. If no parameter index is specified this returns the
+        full second derivative as the m-by-m Hessian matrix"""
+
+        # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
+        DlambdaH = self.diff_component(x, parameter, [0, 1], fullTensor=fullTensor)
+        D2lambdaH = self.diff_component(x, parameter, [0, 2], fullTensor=fullTensor)
+
+        # get tensors for derivatives of p o H(x) (outer terms of chain rule)
+        Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
+        D2p = self.diff_interaction(x, parameter, 2)  # 2-tensor
+
+        if fullTensor:  # slow version to be used as a ground truth for testing
+            term1 = np.einsum('ik,kl,ij', D2p, DlambdaH, DlambdaH)
+            term2 = np.einsum('i,ijk', Dp, D2lambdaH)
+            return term1 + term2
 
     def dx3(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
