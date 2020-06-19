@@ -298,7 +298,7 @@ class HillComponent:
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
-            dH = self.sign * delta(thetaPower * xPower * (thetaPower - xPower) * log(theta / x) ** 2) / \
+            dH = self.sign * delta * (thetaPower * xPower * (thetaPower - xPower) * log(theta / x) ** 2) / \
                  (thetaPower + xPower) ** 3
 
         return dH
@@ -438,7 +438,7 @@ class HillComponent:
             if diffParameter1 == 'hillCoefficient':
                 dH = self.sign * (delta * hill * thetaPower_minus * xPower_minus * (-2 * thetaPower ** 2 +
                                                                                     hill * thetaPower ** 2 - 4 * thetaPower * xPower + xPower ** 2) *
-                                  (log(theta) - log(x)) + 2 * xPower ** 2) / ((thetaPower + xPower) ^ 4)
+                                  (log(theta) - log(x)) + 2 * xPower ** 2) / ((thetaPower + xPower) ** 4)
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
@@ -796,18 +796,18 @@ class HillCoordinate:
             if xOrder == 0:  # Compute D_lambda(H)
                 DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].diff(xLocal[idx[0]], parameterByComponent[idx[0]],
-                                                                      diffIndex=idx[1]),
+                                                                      idx[1]),
                              parameterComponentIndex)))  # evaluate vector of first order partial derivatives for Hill components
 
             elif xOrder == 1:
                 DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dxdiff(xLocal[idx[0]], parameterByComponent[idx[0]],
-                                                                        diffIndex=idx[1]),
+                                                                        idx[1]),
                              parameterComponentIndex)))  # evaluate vector of second order mixed partial derivatives for Hill components
             elif xOrder == 2:
                 DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dx2diff(xLocal[idx[0]], parameterByComponent[idx[0]],
-                                                                         diffIndex=idx[1]),
+                                                                         idx[1]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill components
 
             if fullTensor:
@@ -839,13 +839,13 @@ class HillCoordinate:
             if xOrder == 0:
                 DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].diff2(xLocal[idx[0]], parameterByComponent[idx[0]],
-                                                                       diffIndex=idx[1:2]),
+                                                                       idx[1:]),
                              parameterComponentIndex)))  # evaluate vector of second order pure partial derivatives for Hill components
 
             elif xOrder == 1:
                 DH_nonzero = np.array(
                     list(map(lambda idx: self.components[idx[0]].dxdiff2(xLocal[idx[0]], parameterByComponent[idx[0]],
-                                                                         diffIndex=idx[1:2]),
+                                                                         idx[1:]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill components
 
             if fullTensor:
@@ -1024,6 +1024,8 @@ class HillCoordinate:
             term1 = np.einsum('ik,kl,ij', D2p, DlambdaH, DlambdaH)
             term2 = np.einsum('i,ijk', Dp, D2lambdaH)
             return term1 + term2
+        else:
+            raise ValueError
 
     def dx3(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
