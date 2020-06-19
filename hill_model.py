@@ -1089,13 +1089,10 @@ class HillCoordinate:
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DlambdaH = self.diff_component(x, parameter, [0, 1],
-                                       fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal Km 2-tensor
-        Dlambda_xH = self.diff_component(x, parameter,
-                                         [1, 1],
-                                         fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKm 3-tensor
-        D2lambda_xH = self.diff_component(x, parameter,
-                                          [1, 2],
-                                          fullTensor=fullTensor)  # m-vector representative of a pseudo-diagonal KKKm 4-tensor
+                                       fullTensor=fullTensor)  # Km 2-tensor
+        Dlambda_xH = self.diff_component(x, parameter, [1, 1], fullTensor=fullTensor)  # KKm 3-tensor
+        D2lambdaH = self.diff_component(x, parameter, [0, 2], fullTensor=fullTensor)
+        D2lambda_xH = self.diff_component(x, parameter, [1, 2], fullTensor=fullTensor)  # KKKm 4-tensor
 
         # get tensors for derivatives of p o H(x) (outer terms of chain rule)
         Dp = self.diff_interaction(x, parameter, 1)  # 1-tensor
@@ -1105,7 +1102,7 @@ class HillCoordinate:
         if fullTensor:  # slow version to be used as a ground truth for testing
             term1 = np.einsum('ikq,qr,kl,ij', D3p, DlambdaH, DlambdaH, DxH)
             term2 = 2 * np.einsum('ik,kl,ijq', D2p, DlambdaH, Dlambda_xH)
-            term3 = np.einsum('ik,klq,ij', D2p, Dlambda_xH, DxH)
+            term3 = np.einsum('ik,klq,ij', D2p, D2lambdaH, DxH)
             term4 = np.einsum('i, ijkl', Dp, D2lambda_xH)
             return term1 + term2 + term3 + term4
 
