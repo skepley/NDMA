@@ -351,10 +351,11 @@ class HillComponent:
         hill = hillCoefficient
 
         if diffParameter == 'delta':
+            xPower_der_der = x ** (hillCoefficient - 2)
             xPower_der = x ** (hillCoefficient - 1)
             xPower = x * xPower_der
             thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
-            d3H = self.sign * hillCoefficient * thetaPower * xPower_der * (
+            d3H = self.sign * hillCoefficient * thetaPower * xPower_der_der * (
                     (hillCoefficient - 1) * thetaPower - (hillCoefficient + 1) * xPower) / ((thetaPower + xPower) ** 3)
 
         elif diffParameter == 'theta':
@@ -377,10 +378,10 @@ class HillComponent:
             thetaPower = theta ** hillCoefficient
             theta2Power = thetaPower * thetaPower
 
-            d3H = self.sign * delta * (thetaPower * xPower_derder *
-                                       ((thetaPower + xPower) * ((2 * hill - 1) * thetaPower - (2 * hill + 1) * xPower)
-                                        - hill * ((hill - 1) * theta2Power - 4 * hill * thetaPower * xPower + (hill + 1)
-                                                  * x2Power) * (log(theta) - log(x)))) / ((thetaPower + xPower) ** 4)
+            d3H = self.sign * delta * thetaPower * xPower_derder * \
+                  ((thetaPower + xPower) * ((2 * hill - 1) * thetaPower - (2 * hill + 1) * xPower)
+                   - hill * ((hill - 1) * theta2Power - 4 * hill * thetaPower * xPower + (hill + 1)
+                             * x2Power) * (log(theta) - log(x))) / ((thetaPower + xPower) ** 4)
 
         return d3H
 
