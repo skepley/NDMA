@@ -1069,9 +1069,11 @@ class HillCoordinate:
 
         if fullTensor:  # slow version to be used as a ground truth for testing
             term1 = np.einsum('ikq,qr,kl,ij', D3p, DxH, DxH, DxH)
-            term2 = 3 * np.einsum('ik,kl,ijq', D2p, DxH, DxxH)
-            term3 = np.einsum('i, ijkl', Dp, DxxxH)
-            return term1 + term2 + term3
+            term2 = np.einsum('ik,kl,ijq', D2p, DxH, DxxH)
+            term3 = np.einsum('ik,ij,klq', D2p, DxH, DxxH)
+            term4 = np.einsum('il,lq,ijk', D2p, DxH, DxxH)
+            term5 = np.einsum('i, ijkl', Dp, DxxxH)
+            return term1 + term2 + term3 + term4 + term5
         else:  # this code is the faster version but it is not quite correct. The .multiply method needs to be combined appropriately with
             # tensor reshaping.
 
@@ -1100,10 +1102,11 @@ class HillCoordinate:
 
         if fullTensor:  # slow version to be used as a ground truth for testing
             term1 = np.einsum('ikq,qr,kl,ij', D3p, DlambdaH, DxH, DxH)
-            term2 = 2 * np.einsum('ik,kl,ijq', D2p, DxH, Dlambda_xH)
-            term3 = np.einsum('il,lq,ijk', D2p, DlambdaH, DxxH)
-            term4 = np.einsum('i, ijkl', Dp, Dlambda_xxH)
-            DpoH = term1 + term2 + term3 + term4
+            term2 = np.einsum('ik,kl,ijq', D2p, DxH, Dlambda_xH)
+            term3 = np.einsum('ik,ij,klq', D2p, DxH, Dlambda_xH)
+            term4 = np.einsum('il,lq,ijk', D2p, DlambdaH, DxxH)
+            term5 = np.einsum('i, ijkl', Dp, Dlambda_xxH)
+            DpoH = term1 + term2 + term3 + term4 + term5
         else:
             raise ValueError
 
@@ -1133,10 +1136,11 @@ class HillCoordinate:
 
         if fullTensor:  # slow version to be used as a ground truth for testing
             term1 = np.einsum('ikq,qr,kl,ij', D3p, DlambdaH, DlambdaH, DxH)
-            term2 = 2 * np.einsum('ik,kl,ijq', D2p, DlambdaH, Dlambda_xH)
-            term3 = np.einsum('ik,klq,ij', D2p, D2lambdaH, DxH)
-            term4 = np.einsum('i, ijkl', Dp, D2lambda_xH)
-            DpoH = term1 + term2 + term3 + term4
+            term2 = np.einsum('ik,kl,ijq', D2p, DlambdaH, Dlambda_xH)
+            term3 = np.einsum('ik,ij,klq', D2p, DxH, D2lambdaH)
+            term4 = np.einsum('il,lq,ijk', D2p, DlambdaH, Dlambda_xH)
+            term5 = np.einsum('i, ijkl', Dp, D2lambda_xH)
+            DpoH = term1 + term2 + term3 + term4 + term5
         else:
             raise ValueError
 
@@ -1275,12 +1279,12 @@ class HillModel:
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxf = np.zeros(2 * [self.dimension])   # initialize Derivative as 2-tensor (Jacobian matrix)
+        Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor (Jacobian matrix)
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         for iCoordinate in range(self.dimension):
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
             Dxf[np.ix_([iCoordinate], f_i.interactionIndex)] = f_i.dx(x, parameterByCoordinate[
-                iCoordinate])   # insert derivative of this coordinate
+                iCoordinate])  # insert derivative of this coordinate
 
         return Dxf
         # return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
@@ -1294,7 +1298,8 @@ class HillModel:
 
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize Derivative as 2-tensor (Jacobian matrix)
+            Dpf = np.zeros(
+                [self.dimension, self.nVariableParameter])  # initialize Derivative as 2-tensor (Jacobian matrix)
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
@@ -1302,7 +1307,7 @@ class HillModel:
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 Dpf[np.ix_([iCoordinate], parameterSlice)] = f_i.diff(x, parameterByCoordinate[
-                    iCoordinate])   # insert derivative of this coordinate
+                    iCoordinate])  # insert derivative of this coordinate
 
             return Dpf
         else:
@@ -1317,7 +1322,7 @@ class HillModel:
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
             xSlice = np.array(f_i.interactionIndex)
             Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
-                iCoordinate])   # insert derivative of this coordinate
+                iCoordinate])  # insert derivative of this coordinate
         return Dxf
 
     def dxdiff(self, x, *parameter, diffIndex=None):
@@ -1351,7 +1356,7 @@ class HillModel:
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 Dppf[np.ix_([iCoordinate], parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
-                    iCoordinate])   # insert derivative of this coordinate
+                    iCoordinate])  # insert derivative of this coordinate
             return Dppf
         else:
             raise ValueError  # this isn't implemented yet
@@ -1368,7 +1373,6 @@ class HillModel:
                 iCoordinate])  # insert derivative of this coordinate
         return Dxxxf
 
-
     def dxdiff2(self, x, *parameter, diffIndex=None):
         """Evaluate the third order derivative of f w.r.t. parameters (twice) and state variable vector (once)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
@@ -1381,8 +1385,9 @@ class HillModel:
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.interactionIndex)
-                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
-                    iCoordinate])   # insert derivative of this coordinate
+                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.diff2(x,
+                                                                                                 parameterByCoordinate[
+                                                                                                     iCoordinate])  # insert derivative of this coordinate
             return Dppxf
         else:
             raise ValueError  # this isn't implemented yet

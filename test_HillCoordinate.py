@@ -24,6 +24,10 @@ def check_symmetric(tensor):
         perms = ['ikj', 'jik', 'jki', 'kji', 'kij']
         return [np.max(tensor - np.einsum('ijk->' + permString, tensor)) for permString in perms]
 
+def check_equal(tensor1, tensor2):
+    """check if two tensors are equal up to rounding errors"""
+    return np.max(np.abs(tensor1 - tensor2))
+
 
 gamma = 1.2
 interactionSign = [1, -1, 1, -1]
@@ -53,27 +57,44 @@ yp = f.diff(x, p)  # correct (probably)
 ypx = f.dxdiff(x, p)  # correct (probably)
 
 # ============= check derivatives defined by tensor contraction operations =============
-Dp = f.diff_interaction(x, p, 1)  # 1-tensor
-D2p = f.diff_interaction(x, p, 2)  # 2-tensor
-D3p = f.diff_interaction(x, p, 3)  # 3-tensor
+DP = f.diff_interaction(x, p, 1)  # 1-tensor
+D2P = f.diff_interaction(x, p, 2)  # 2-tensor
+D3P = f.diff_interaction(x, p, 3)  # 3-tensor
 DxH = f.diff_component(x, p, [1, 0])  # 2-tensor
+DpH = f.diff_component(x, p, [0, 1])  # 2-tensor
 DxxH = f.diff_component(x, p, [2, 0])  # 3-tensor
-DlambdaH = f.diff_component(x, p, [0, 1])  # 2-tensor
-D2lambdaH = f.diff_component(x, p, [0, 2])  # 3-tensor
+DpxH = f.diff_component(x, p, [1, 1])  # 3-tensor
+DppH = f.diff_component(x, p, [0, 2])  # 3-tensor
+DppxH = f.diff_component(x, p, [1, 2])  # 4-tensor
+DpxxH = f.diff_component(x, p, [2, 1])  # 4-tensor
+DxxxH = f.diff_component(x, p, [3, 0])  # 4-tensor
 
-yx2 = np.einsum('i,ij', Dp, DxH)
-yx2[f.index] -= gamma  # equal to yx. So Dp and DxH are correct
-yp2 = ezcat(-x[f.index], np.einsum('i,ij', Dp, DlambdaH))  # equal to yp. So lambdaH is correct
-yxx2 = np.einsum('ik,kl,ij', D2p, DxH, DxH) + np.einsum('i,ijk', Dp, DxxH)  # equal to yxx. So D2p, DxxH are correct.
 
-# currently testing
+
+# ============= build all derivatives via tensor contraction operations =============
+yx2 = np.einsum('i,ij', DP, DxH)
+yx2[f.index] -= gamma  # equal to yx. So DP and DxH are correct
+yp2 = ezcat(-x[f.index], np.einsum('i,ij', DP, DpH))  # equal to yp. So DpH is correct
+yxx2 = np.einsum('ik,kl,ij', D2P, DxH, DxH) + np.einsum('i,ijk', DP, DxxH)  # equal to yxx. So D2P, DxxH are correct.
+
+
+# ============= I think these are correct =============
 ypp = f.diff2(x, p)
-
-
-# THESE ARE NOT CORRECT OR NOT TESTED
 yxxx = f.dx3(x, p)
 ypxx = f.dx2diff(x, p)
 yppx = f.dxdiff2(x, p)
+
+# ============= I still don't think these are correct =============
+
+# checking Dxxxf
+yppx2 = np.zeros([4, 17, 17])
+term1 = np.einsum('ikq,qr,kl,ij', D3P, DpH, DpH, DxH)
+term2 = np.einsum('ik,kl,ijq', D2P, DpH, DpxH)
+term3 = np.einsum('ik,ij,klq', D2P, DxH, DppH)
+term4 = np.einsum('il,lq,ijk', D2P, DpH, DpxH)
+term5 = np.einsum('i, ijkl', DP, DppxH)
+yppx2[np.ix_(np.arange(4), np.arange(1,17), np.arange(1,17))] = term1 + term2 + term3 + term4 + term5
+print(check_equal(yppx, yppx2))
 
 stopHere
 
