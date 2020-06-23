@@ -13,6 +13,18 @@ import numpy as np
 from hill_model import *
 from itertools import product
 
+
+def check_symmetric(tensor):
+    """Check if the tensor is symmetric or not"""
+
+    if tensor.ndim == 2:
+        return np.max(tensor - tensor.T)
+
+    elif tensor.ndim == 3:
+        perms = ['ikj', 'jik', 'jki', 'kji', 'kij']
+        return [np.max(tensor - np.einsum('ijk->' + permString, tensor)) for permString in perms]
+
+
 gamma = 1.2
 interactionSign = [1, -1, 1, -1]
 interactionType = [2, 1, 1]
@@ -27,19 +39,43 @@ pVars = tuple(zip(*product(range(4), range(4))))  # set all parameters as variab
 parameter1[pVars] = np.nan
 p = ezcat(gamma, componentParm[pVars])  # get floating points for all variable parameters
 f = HillCoordinate(parameter1, interactionSign, interactionType, [1, 0, 1, 2, 3])
-y = (x, p)
-yx = f.dx(x, p)
-yxx = f.dx2(x, p)
-yxxx = f.dx3(x, p)
-yp = f.diff(x, p)
-ypx = f.dxdiff(x, p)
-ypxx = f.dx2diff(x, p)
+H1 = f.components[0]
+H2 = f.components[1]
+H3 = f.components[2]
+H4 = f.components[3]
+pComp = [p[1:5], p[5:9], p[9:13], p[13:]]
+
+# ============= correct derivatives =============
+y = f(x, p)  # correct (probably)
+yx = f.dx(x, p)  # correct (probably)
+yxx = f.dx2(x, p)  # correct (probably)
+yp = f.diff(x, p)  # correct (probably)
+ypx = f.dxdiff(x, p)  # correct (probably)
+
+# ============= check derivatives defined by tensor contraction operations =============
+Dp = f.diff_interaction(x, p, 1)  # 1-tensor
+D2p = f.diff_interaction(x, p, 2)  # 2-tensor
+D3p = f.diff_interaction(x, p, 3)  # 3-tensor
+DxH = f.diff_component(x, p, [1, 0])  # 2-tensor
+DxxH = f.diff_component(x, p, [2, 0])  # 3-tensor
+DlambdaH = f.diff_component(x, p, [0, 1])  # 2-tensor
+D2lambdaH = f.diff_component(x, p, [0, 2])  # 3-tensor
+
+yx2 = np.einsum('i,ij', Dp, DxH)
+yx2[f.index] -= gamma  # equal to yx. So Dp and DxH are correct
+yp2 = ezcat(-x[f.index], np.einsum('i,ij', Dp, DlambdaH))  # equal to yp. So lambdaH is correct
+yxx2 = np.einsum('ik,kl,ij', D2p, DxH, DxH) + np.einsum('i,ijk', Dp, DxxH)  # equal to yxx. So D2p, DxxH are correct.
+
+# currently testing
 ypp = f.diff2(x, p)
+
+
+# THESE ARE NOT CORRECT OR NOT TESTED
+yxxx = f.dx3(x, p)
+ypxx = f.dx2diff(x, p)
 yppx = f.dxdiff2(x, p)
 
-
-
-
+stopHere
 
 # # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
 # DxH = f.diff_component(x, p, [1, 0], fullTensor=True)
@@ -52,9 +88,6 @@ yppx = f.dxdiff2(x, p)
 # D3p = f.diff_interaction(x, p, 3)  # 3-tensor
 
 
-
-
-stopHere
 parameter2 = np.copy(componentParm)
 p2Vars = [[0, -1], [1, 0]]  # set n_1, and ell_2 as variable parameters
 parameter2[0, -1] = parameter1[1, 0] = np.nan

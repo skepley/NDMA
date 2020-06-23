@@ -9,7 +9,7 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 from itertools import product, permutations
-from scipy import optimize
+from scipy import optimize, linalg
 from numpy import log
 import textwrap
 
@@ -228,9 +228,9 @@ class HillComponent:
         if diffParameter == 'delta':
             thetaPower = theta ** hillCoefficient  # compute theta^hillCoefficient only once
             if self.sign == 1:
-                dH = xPower / (thetaPower + xPower) ** 2
+                dH = xPower / (thetaPower + xPower)
             else:
-                dH = thetaPower / (thetaPower + xPower) ** 2
+                dH = thetaPower / (thetaPower + xPower)
 
         elif diffParameter == 'theta':
             thetaPowerSmall = theta ** (hillCoefficient - 1)  # compute power of theta only once
@@ -581,7 +581,12 @@ class HillCoordinate:
             componentIndex]  # get the local parameter index in the HillComponent for the variable parameter
         return componentIndex, parameterIndex
 
-    def __call__(self, x, parameter=np.array([])):
+    def component_to_parameter_index(self, componentIdx, localIdx):
+        """Given an input (i,j), return a linear index for the j^th local parameter of the i^th Hill component"""
+
+        return self.variableIndexByComponent[componentIdx] + localIdx
+
+    def __call__(self, x, parameter):
         """Evaluate the Hill coordinate on a vector of (global) state variables and (local) parameter variables. This is a
         map of the form  g: R^n x R^m ---> R where n is the number of state variables of the Hill model and m is the number
         of variable parameters for this Hill coordinate"""
@@ -745,7 +750,7 @@ class HillCoordinate:
                     allSummands = self.evaluate_summand(x, parameter)
                     I_k = self.summand_index(diffIndex)  # get the summand index containing the k^th Hill component
                     return np.prod(
-                        [allSummands[self.summand_index(diffIndex)] for m in range(self.nComponent) if
+                        [allSummands[m] for m in range(len(self.interactionType)) if
                          m != I_k])  # multiply over
                 # all summands which do not contain the k^th component
             else:
@@ -789,7 +794,7 @@ class HillCoordinate:
         elif parameterOrder == 1:  # return partials w.r.t parameters specified by diffIndex as a vector of nonzero components.
 
             if not diffIndex:  # no optional argument means return all component parameter derivatives (i.e. all parameters except gamma)
-                diffIndex = list(range(self.gammaIsVariable, self.nVariableParameter))
+                diffIndex = list(range(int(self.gammaIsVariable), self.nVariableParameter))
             parameterComponentIndex = [self.parameter_to_component_index(linearIdx) for linearIdx in
                                        diffIndex]  # a list of ordered pairs for differentiation parameter indices
 
@@ -813,10 +818,10 @@ class HillCoordinate:
             if fullTensor:
                 tensorDims = (1 + xOrder) * [self.nComponent] + [self.nVariableParameter - self.gammaIsVariable]
                 DH = np.zeros(tensorDims)
-                nonzeroIdxLambda = list(
-                    zip(*parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
-                nonzeroIdx = xOrder * [nonzeroIdxLambda[
-                                           0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                nonzeroComponentIdx = list(zip(*parameterComponentIndex))[
+                    0]  # zip into a pair of tuples for last two einsum indices
+                nonzeroIdx = tuple((1 + xOrder) * [nonzeroComponentIdx] + [
+                    tuple(range(tensorDims[-1]))])  # prepend copies of the Hill component index for xOrder derivatives
                 DH[nonzeroIdx] = DH_nonzero
                 return DH
             else:
@@ -851,12 +856,22 @@ class HillCoordinate:
             if fullTensor:
                 tensorDims = (1 + xOrder) * [self.nComponent] + 2 * [self.nVariableParameter - self.gammaIsVariable]
                 DH = np.zeros(tensorDims)
-                nonzeroIdxLambda = list(
-                    zip(*parameterComponentIndex))  # zip into a pair of tuples for last two einsum indices
-                nonzeroIdx = xOrder * [nonzeroIdxLambda[
-                                           0]] + nonzeroIdxLambda  # prepend copies of the Hill component index for xOrder derivatives
+                nonzeroTripleIdx = list(zip(*parameterComponentIndex))
+                nonzeroComponentIdx = nonzeroTripleIdx[0]
+                nonzeroLambdaIdx = [tuple(
+                    self.component_to_parameter_index(nonzeroComponentIdx[j], nonzeroTripleIdx[1][j]) - int(
+                        self.gammaIsVariable) for j in
+                    range(len(nonzeroComponentIdx))),
+                    tuple(self.component_to_parameter_index(nonzeroComponentIdx[j],
+                                                            nonzeroTripleIdx[2][j]) - int(self.gammaIsVariable) for j in
+                          range(len(nonzeroTripleIdx[0])))
+                ]
+
+                nonzeroIdx = tuple((1 + xOrder) * [
+                    nonzeroComponentIdx] + nonzeroLambdaIdx)  # prepend copies of the Hill component index for xOrder derivatives
                 DH[nonzeroIdx] = DH_nonzero
                 return DH
+                # return DH, DH_nonzero, nonzeroIdx
             else:
                 return DH_nonzero
 
@@ -871,6 +886,7 @@ class HillCoordinate:
             diffInteraction = self.diff_interaction(x,
                                                     parameter,
                                                     1)  # evaluate derivative of interaction function (outer term in chain rule)
+            print(diffInteraction)
             DHillComponent = np.array(
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
@@ -891,7 +907,7 @@ class HillCoordinate:
 
         else:  # return a single partial derivative as a scalar
             if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
-                return -1
+                return -x[self.index]
             else:  # First obtain a local index in the HillComponent for the differentiation variable
                 diffComponent = np.searchsorted(self.variableIndexByComponent,
                                                 diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
@@ -969,12 +985,14 @@ class HillCoordinate:
         full second derivative as the m-by-K Hessian matrix of mixed partials"""
 
         if diffIndex is None:
-            return np.row_stack(list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nVariableParameter))))
+            return np.column_stack(
+                list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nVariableParameter))))
 
         else:
             D2f = np.zeros(self.dim, dtype=float)  # initialize derivative as a vector
 
             if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
+                D2f[self.index] = -1
                 return D2f
 
             gamma, parameterByComponent = self.parse_parameters(parameter)
@@ -1023,9 +1041,16 @@ class HillCoordinate:
         if fullTensor:  # slow version to be used as a ground truth for testing
             term1 = np.einsum('ik,kl,ij', D2p, DlambdaH, DlambdaH)
             term2 = np.einsum('i,ijk', Dp, D2lambdaH)
-            return term1 + term2
+            DpoH = term1 + term2
         else:
             raise ValueError
+
+        if self.gammaIsVariable:
+            D2lambda = np.zeros(2 * [self.nVariableParameter])
+            D2lambda[1:, 1:] = DpoH
+            return D2lambda
+        else:
+            return DpoH
 
     def dx3(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
@@ -1077,10 +1102,16 @@ class HillCoordinate:
             term2 = 2 * np.einsum('ik,kl,ijq', D2p, DxH, Dlambda_xH)
             term3 = np.einsum('il,lq,ijk', D2p, DlambdaH, DxxH)
             term4 = np.einsum('i, ijkl', Dp, Dlambda_xxH)
-            return term1 + term2 + term3 + term4
-
+            DpoH = term1 + term2 + term3 + term4
         else:
-            raise KeyboardInterrupt
+            raise ValueError
+
+        if self.gammaIsVariable:
+            Dlambda_xx = np.zeros(2 * [self.dim] + [self.nVariableParameter])
+            Dlambda_xx[:, :, 1:] = DpoH
+            return Dlambda_xx
+        else:
+            return DpoH
 
     def dxdiff2(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
@@ -1104,11 +1135,16 @@ class HillCoordinate:
             term2 = 2 * np.einsum('ik,kl,ijq', D2p, DlambdaH, Dlambda_xH)
             term3 = np.einsum('ik,klq,ij', D2p, D2lambdaH, DxH)
             term4 = np.einsum('i, ijkl', Dp, D2lambda_xH)
-            return term1 + term2 + term3 + term4
-
+            DpoH = term1 + term2 + term3 + term4
         else:
-            raise KeyboardInterrupt
-        return
+            raise ValueError
+
+        if self.gammaIsVariable:
+            D2lambda_x = np.zeros([self.dim] + 2 * [self.nVariableParameter])
+            D2lambda_x[:, 1:, 1:] = DpoH
+            return D2lambda_x
+        else:
+            return DpoH
 
     def set_components(self, parameter, interactionSign):
         """Return a list of Hill components for this Hill coordinate"""
@@ -1238,20 +1274,117 @@ class HillModel:
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+        Dxf = np.zeros(2 * [self.dimension])   # initialize Derivative as 2-tensor (Jacobian matrix)
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
-                                  parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
+        for iCoordinate in range(self.dimension):
+            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+            Dxf[np.ix_([iCoordinate], f_i.interactionIndex)] = f_i.dx(x, parameterByCoordinate[
+                iCoordinate])   # insert derivative of this coordinate
 
-    def dn(self, x, *parameter):
+        return Dxf
+        # return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
+        #                           parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
+
+    def diff(self, x, *parameter, diffIndex=None):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
         of Hill Coefficients. If n is uniform across all HillComponents, then the derivative is a gradient vector obtained
         by summing this Jacobian along rows.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+            Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize Derivative as 2-tensor (Jacobian matrix)
+            parameterByCoordinate = self.unpack_variable_parameters(
+                parameter)  # unpack variable parameters by component
+            for iCoordinate in range(self.dimension):
+                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                Dpf[np.ix_([iCoordinate], parameterSlice)] = f_i.diff(x, parameterByCoordinate[
+                    iCoordinate])   # insert derivative of this coordinate
+
+            return Dpf
+        else:
+            raise ValueError  # this isn't implemented yet
+
+    def dx2(self, x, *parameter):
+        """Evaluate the second derivative of f w.r.t. state variable vector (twice)"""
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+        Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        return np.vstack(list(map(lambda f_i, parm: f_i.dn(x, parm), self.coordinates,
-                                  parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
+        for iCoordinate in range(self.dimension):
+            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+            xSlice = np.array(f_i.interactionIndex)
+            Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
+                iCoordinate])   # insert derivative of this coordinate
+        return Dxf
+
+    def dxdiff(self, x, *parameter, diffIndex=None):
+        """Evaluate the second order mixed derivative of f w.r.t. state variables and parameters (once each)"""
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+            Dpxf = np.zeros(2 * [self.dimension] + [self.nVariableParameter])  # initialize Derivative as 3-tensor
+            parameterByCoordinate = self.unpack_variable_parameters(
+                parameter)  # unpack variable parameters by component
+            for iCoordinate in range(self.dimension):
+                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                xSlice = np.array(f_i.interactionIndex)
+
+                Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
+                    iCoordinate])  # insert derivative of this coordinate
+            return Dpxf
+        else:
+            raise ValueError  # this isn't implemented yet
+
+    def diff2(self, x, *parameter, diffIndex=None):
+        """Evaluate the second order derivative of f w.r.t. parameters (twice)"""
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+            Dppf = np.zeros([self.dimension] + 2 * [self.nVariableParameter])  # initialize Derivative as 3-tensor
+            parameterByCoordinate = self.unpack_variable_parameters(
+                parameter)  # unpack variable parameters by component
+            for iCoordinate in range(self.dimension):
+                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                Dppf[np.ix_([iCoordinate], parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
+                    iCoordinate])   # insert derivative of this coordinate
+            return Dppf
+        else:
+            raise ValueError  # this isn't implemented yet
+
+    def dx3(self, x, *parameter):
+        """Evaluate the third derivative of f w.r.t. state variable vector (three times)"""
+        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+        Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor
+        parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
+        for iCoordinate in range(self.dimension):
+            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+            xSlice = np.array(f_i.interactionIndex)
+            Dxxxf[np.ix_([iCoordinate], xSlice, xSlice, xSlice)] = f_i.dx3(x, parameterByCoordinate[
+                iCoordinate])  # insert derivative of this coordinate
+        return Dxxxf
+
+
+    def dxdiff2(self, x, *parameter, diffIndex=None):
+        """Evaluate the third order derivative of f w.r.t. parameters (twice) and state variable vector (once)"""
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+            Dppxf = np.zeros(2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize Derivative as 4-tensor
+            parameterByCoordinate = self.unpack_variable_parameters(
+                parameter)  # unpack variable parameters by component
+            for iCoordinate in range(self.dimension):
+                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                xSlice = np.array(f_i.interactionIndex)
+                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
+                    iCoordinate])   # insert derivative of this coordinate
+            return Dppxf
+        else:
+            raise ValueError  # this isn't implemented yet
 
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=7):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
