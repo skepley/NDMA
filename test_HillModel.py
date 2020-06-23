@@ -34,6 +34,8 @@ f2 = f.coordinates[1]
 
 x = np.array([4, 3], dtype=float)
 p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this only works when all parameters are variable
+p1 = p[:5]
+p2 = p[5:]
 
 # H1 = f.components[0]
 # H2 = f.components[1]
@@ -44,30 +46,29 @@ p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this onl
 
 
 y = f(x, p)
-f1.dx(x,p)
-# yx = f.dx(x,p)
-# yp = f.diff(x,p)
-# yxx = f.dx2(x,p)
+yx = f.dx(x,p)
+yp = f.diff(x,p)
+yxx = f.dx2(x,p)
 
 
 
 
 # test Hill model equilibrium finding
-# eq = f.find_equilibria(10, p)
-# print(eq)
+eq = f.find_equilibria(10, p)
+print(eq)
 # added vectorized evaluation of Hill Models - DONE
 
 
 # plot nullclines and equilibria
-# plt.close('all')
-# Xp = np.linspace(0, 10, 100)
-# Yp = np.linspace(0, 10, 100)
-# Z = np.zeros_like(Xp)
-#
-# N1 = ts.coordinates[0](np.row_stack([Z, Yp])) / gamma[0]  # f1 = 0 nullcline
-# N2 = ts.coordinates[1](np.row_stack([Xp, Z])) / gamma[1]  # f2 = 0 nullcline
-#
-# plt.figure()
-# plt.scatter(eq[0, :], eq[1, :])
-# plt.plot(Xp, N2)
-# plt.plot(N1, Yp)
+plt.close('all')
+Xp = np.linspace(0, 10, 100)
+Yp = np.linspace(0, 10, 100)
+Z = np.zeros_like(Xp)
+
+N1 = f1(np.row_stack([Z, Yp]), p1) / gamma[0]  # f1 = 0 nullcline
+N2 = f2(np.row_stack([Xp, Z]), p2) / gamma[1]  # f2 = 0 nullcline
+
+plt.figure()
+plt.scatter(eq[0, :], eq[1, :])
+plt.plot(Xp, N2)
+plt.plot(N1, Yp)

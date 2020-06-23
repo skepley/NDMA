@@ -81,10 +81,8 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
                 x -= np.linalg.solve(Dy, y)  # update x
 
             y = f(x)  # update f(x)
-            print(y)
             Dy = Df(x)  # update Df(x)
             iDefect = np.linalg.norm(y)  # initialize defect
-            print(iDefect)
             iIterate += 1
 
         if iDefect < maxDefect:
@@ -887,7 +885,6 @@ class HillCoordinate:
             diffInteraction = self.diff_interaction(x,
                                                     parameter,
                                                     1)  # evaluate derivative of interaction function (outer term in chain rule)
-            print(diffInteraction)
             DHillComponent = np.array(
                 list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.components, xLocal,
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
@@ -1283,12 +1280,8 @@ class HillModel:
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         for iCoordinate in range(self.dimension):
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            Dxf[np.ix_([iCoordinate], f_i.interactionIndex)] = f_i.dx(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
-
+            Dxf[np.ix_([iCoordinate], f_i.globalStateIndex)] = f_i.dx(x, parameterByCoordinate[iCoordinate])  # insert derivative of this coordinate
         return Dxf
-        # return np.vstack(list(map(lambda f_i, parm: f_i.dx(x, parm), self.coordinates,
-        #                           parameterByCoordinate)))  # return a vertical stack of gradient (row) vectors
 
     def diff(self, x, *parameter, diffIndex=None):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
@@ -1308,7 +1301,6 @@ class HillModel:
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 Dpf[np.ix_([iCoordinate], parameterSlice)] = f_i.diff(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
-
             return Dpf
         else:
             raise ValueError  # this isn't implemented yet
@@ -1320,7 +1312,7 @@ class HillModel:
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         for iCoordinate in range(self.dimension):
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.interactionIndex)
+            xSlice = np.array(f_i.globalStateIndex)
             Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
                 iCoordinate])  # insert derivative of this coordinate
         return Dxf
@@ -1336,8 +1328,7 @@ class HillModel:
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.interactionIndex)
-
+                xSlice = np.array(f_i.globalStateIndex)
                 Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
             return Dpxf
@@ -1368,7 +1359,7 @@ class HillModel:
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         for iCoordinate in range(self.dimension):
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.interactionIndex)
+            xSlice = np.array(f_i.globalStateIndex)
             Dxxxf[np.ix_([iCoordinate], xSlice, xSlice, xSlice)] = f_i.dx3(x, parameterByCoordinate[
                 iCoordinate])  # insert derivative of this coordinate
         return Dxxxf
@@ -1384,7 +1375,7 @@ class HillModel:
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.interactionIndex)
+                xSlice = np.array(f_i.globalStateIndex)
                 Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.diff2(x,
                                                                                                  parameterByCoordinate[
                                                                                                      iCoordinate])  # insert derivative of this coordinate
