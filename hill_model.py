@@ -3,7 +3,7 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
 
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 2/29/20; Last revision: 3/4/20
+    Date: 2/29/20; Last revision: 6/23/20
 """
 import numpy as np
 import warnings
@@ -535,13 +535,13 @@ class HillCoordinate:
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
-        self.dim = len(list(
-            set(interactionIndex)))  # dimension of state vector input to HillCoordinate
+        self.globalStateIndex = sorted(list(set(interactionIndex)))  # global index for state variables which this coordinate depends on
+        self.dim = len(self.globalStateIndex)  # dimension of state vector input to HillCoordinate
+        self.index = interactionIndex[0]  # Define this coordinate's global index
+        self.interactionIndex = interactionIndex[1:]  # Vector of global interaction variable indices
         self.parameterValues = parameter  # initialize array of fixed parameter values
         self.nComponent = len(interactionSign)  # number of interaction nodes
         self.components = self.set_components(parameter, interactionSign)
-        self.index = interactionIndex[0]  # Define this coordinate's global index
-        self.interactionIndex = interactionIndex[1:]  # Vector of global interaction variable indices
         self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()
         if self.nComponent == 1:  # Coordinate has a single HillComponent
@@ -555,7 +555,7 @@ class HillCoordinate:
         # endpoints for concatenated parameter vector by coordinate. This is a
         # vector of length K+1. The kth component parameters are the slice variableIndexByComponent[k:k+1] for k = 0...K-1
         self.nVariableParameter = sum(
-            self.nVarByComponent) + self.gammaIsVariable  # number of variable parameters for this coordinate.
+            self.nVarByComponent) + int(self.gammaIsVariable)  # number of variable parameters for this coordinate.
 
     def parse_parameters(self, parameter):
         """Returns the value of gamma and slices of the parameter vector divided by component"""
@@ -1250,7 +1250,7 @@ class HillModel:
         return a single numpy vector as output."""
 
         if parameter:
-            return np.concatenate(parameter)
+            return ezcat(*parameter)
         else:
             return np.array([])
 

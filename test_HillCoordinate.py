@@ -6,7 +6,7 @@ Function and design testing for the HillComponent class
 
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 4/3/20; Last revision: 4/3/20
+    Date: 4/3/20; Last revision: 6/23/20
 """
 
 import numpy as np
@@ -28,10 +28,12 @@ def check_equal(tensor1, tensor2):
     """check if two tensors are equal up to rounding errors"""
     return np.max(np.abs(tensor1 - tensor2))
 
+# ============= set up an example to test on =============
 
 gamma = 1.2
 interactionSign = [1, -1, 1, -1]
 interactionType = [2, 1, 1]
+interactionIndex = [1, 0, 1, 2, 3]
 componentParm = np.array([[1.1, 2.4, 1, 2],
                           [1.2, 2.3, 2, 3],
                           [1.3, 2.2, 3, 2],
@@ -42,7 +44,7 @@ parameter1 = np.copy(componentParm)
 pVars = tuple(zip(*product(range(4), range(4))))  # set all parameters as variable
 parameter1[pVars] = np.nan
 p = ezcat(gamma, componentParm[pVars])  # get floating points for all variable parameters
-f = HillCoordinate(parameter1, interactionSign, interactionType, [1, 0, 1, 2, 3])
+f = HillCoordinate(parameter1, interactionSign, interactionType, interactionIndex)
 H1 = f.components[0]
 H2 = f.components[1]
 H3 = f.components[2]
@@ -50,11 +52,21 @@ H4 = f.components[3]
 pComp = [p[1:5], p[5:9], p[9:13], p[13:]]
 
 # ============= correct derivatives =============
-y = f(x, p)  # correct (probably)
-yx = f.dx(x, p)  # correct (probably)
-yxx = f.dx2(x, p)  # correct (probably)
-yp = f.diff(x, p)  # correct (probably)
-ypx = f.dxdiff(x, p)  # correct (probably)
+y = f(x, p)  # correct
+yx = f.dx(x, p)  # correct
+yxx = f.dx2(x, p)  # correct
+yp = f.diff(x, p)  # correct
+ypx = f.dxdiff(x, p)  # correct
+
+# ============= I think these are correct =============
+ypp = f.diff2(x, p)
+yxxx = f.dx3(x, p)
+ypxx = f.dx2diff(x, p)
+yppx = f.dxdiff2(x, p)
+
+
+
+stopHere
 
 # ============= check derivatives defined by tensor contraction operations =============
 DP = f.diff_interaction(x, p, 1)  # 1-tensor
@@ -69,8 +81,6 @@ DppxH = f.diff_component(x, p, [1, 2])  # 4-tensor
 DpxxH = f.diff_component(x, p, [2, 1])  # 4-tensor
 DxxxH = f.diff_component(x, p, [3, 0])  # 4-tensor
 
-
-
 # ============= build all derivatives via tensor contraction operations =============
 yx2 = np.einsum('i,ij', DP, DxH)
 yx2[f.index] -= gamma  # equal to yx. So DP and DxH are correct
@@ -78,25 +88,19 @@ yp2 = ezcat(-x[f.index], np.einsum('i,ij', DP, DpH))  # equal to yp. So DpH is c
 yxx2 = np.einsum('ik,kl,ij', D2P, DxH, DxH) + np.einsum('i,ijk', DP, DxxH)  # equal to yxx. So D2P, DxxH are correct.
 
 
-# ============= I think these are correct =============
-ypp = f.diff2(x, p)
-yxxx = f.dx3(x, p)
-ypxx = f.dx2diff(x, p)
-yppx = f.dxdiff2(x, p)
+
 
 # ============= I still don't think these are correct =============
 
-# checking Dxxxf
-yppx2 = np.zeros([4, 17, 17])
-term1 = np.einsum('ikq,qr,kl,ij', D3P, DpH, DpH, DxH)
-term2 = np.einsum('ik,kl,ijq', D2P, DpH, DpxH)
-term3 = np.einsum('ik,ij,klq', D2P, DxH, DppH)
-term4 = np.einsum('il,lq,ijk', D2P, DpH, DpxH)
-term5 = np.einsum('i, ijkl', DP, DppxH)
-yppx2[np.ix_(np.arange(4), np.arange(1,17), np.arange(1,17))] = term1 + term2 + term3 + term4 + term5
-print(check_equal(yppx, yppx2))
+# yppx2 = np.zeros([4, 17, 17])
+# term1 = np.einsum('ikq,qr,kl,ij', D3P, DpH, DpH, DxH)
+# term2 = np.einsum('ik,kl,ijq', D2P, DpH, DpxH)
+# term3 = np.einsum('ik,ij,klq', D2P, DxH, DppH)
+# term4 = np.einsum('il,lq,ijk', D2P, DpH, DpxH)
+# term5 = np.einsum('i, ijkl', DP, DppxH)
+# yppx2[np.ix_(np.arange(4), np.arange(1,17), np.arange(1,17))] = term1 + term2 + term3 + term4 + term5
+# print(check_equal(yppx, yppx2))
 
-stopHere
 
 # # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
 # DxH = f.diff_component(x, p, [1, 0], fullTensor=True)
