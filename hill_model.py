@@ -92,21 +92,6 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
             return np.nan
 
 
-def compose_interaction(interactionType, values):
-    """Evaluate an interaction function of given type at the specified values.
-
-    Input:
-    interactionType: A partition of the integers {1,...,K} specified as an ordered list of integers which sum
-        to exactly K. Example: [1,2,3] specifies the partition of {1,...,6} given by {1}, {2,3}, {4,5,6}
-    values: A vector in R^K.
-    Output:
-    A vector of summands corresponding to the lists in the interactionType."""
-
-    sumEndpoints = np.insert(np.cumsum(interactionType), 0,
-                             0)  # summand endpoint indices including initial zero
-    integerList = list(range(len(values)))  # list of integers [1,...,K]
-    indicesBySummand = [integerList[sumEndpoints[idx]:sumEndpoints[idx + 1]] for idx in range(len(interactionType))]
-    return np.array(list(map(lambda summandIndex: np.sum(values[summandIndex]), indicesBySummand)))
 
 
 PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
@@ -159,7 +144,7 @@ class HillComponent:
         parameterEvaluation[self.parameterCallIndex] = parameter  # slice passed parameter vector into callable slots
         return parameterEvaluation
 
-    def __call__(self, x, parameter=np.array([])):
+    def __call__(self, x, *parameter):
         """Evaluation method for a Hill component function instance"""
 
         # TODO: Handle the case that negative x values are passed into this function.
@@ -471,30 +456,7 @@ class HillComponent:
                (hillsquare * theta2Power - 4 * hillsquare * thetaPower * xPower + hillsquare * x2Power - \
                 3 * hill * theta2Power + 2 * theta2Power + 4 * thetaPower * xPower + 3 * hill * x2Power + 2 * x2Power)
 
-    def dn(self, x, parameter=np.array([])):
-        """Returns the derivative of a Hill component with respect to n. """
-
-        ell, delta, theta, hillCoefficient = self.curry_parameters(
-            parameter)  # unpack fixed and variable parameter values
-        # compute powers of x and theta only once.
-        xPower = x ** hillCoefficient
-        thetaPower = theta ** hillCoefficient
-        return self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
-
-    def dndx(self, x, parameter=np.array([])):
-        """Returns the mixed partials of a Hill component with respect to n and x"""
-
-        ell, delta, theta, hillCoefficient = self.curry_parameters(
-            parameter)  # unpack fixed and variable parameter values
-        # compute powers of x and theta only once.
-        thetaPower = theta ** hillCoefficient
-        xPowerSmall = x ** (hillCoefficient - 1)  # compute x^{hillCoefficient-1}
-        xPower = xPowerSmall * x
-        return self.sign * delta * thetaPower * xPowerSmall * (
-                hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
-                       (thetaPower + xPower) ** 3)
-
-    def image(self, parameter=None):
+    def image(self, *parameter):
         """Return the range of this HillComponent given by (ell, ell+delta)"""
 
         if 'ell' in self.variableParameters:
@@ -1172,42 +1134,23 @@ class HillCoordinate:
         localIndex = list(range(self.nComponent))
         return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactionType))]
 
-    def eq_interval(self, parameter=None):
+    def eq_interval(self, *parameter):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
-        if parameter is None:  # all parameters are fixed
-            # TODO: This should only require all ell, delta, and gamma variables to be fixed.
-            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
-            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
-
-        else:  # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
+        if parameter:  # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
             gamma, parameterByComponent = self.parse_parameters(parameter)
             rectangle = np.row_stack(list(map(lambda H, parm: H.image(parm), self.components, parameterByComponent)))
             minInteraction = self.interaction_function(rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
             maxInteraction = self.interaction_function(
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
+
+        else:
+            # all parameters are fixed
+            # TODO: This should only require all ell, delta, and gamma variables to be fixed.
+            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
+            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+
         return [minInteraction, maxInteraction]
-
-    def dn(self, x, parameter=np.array([])):
-        """Evaluate the derivative of a HillCoordinate with respect to the vector of Hill coefficients as a row vector.
-        Evaluation requires specifying x in R^n and p in R^m. This method does not assume that all HillCoordinates have
-        a uniform Hill coefficient. If this is the case then the scalar derivative with respect to the Hill coefficient
-        should be the sum of the gradient vector returned"""
-
-        warnings.warn(
-            "The .dn method for HillComponents and HillCoordinates is deprecated. Use the .diff method instead.")
-        gamma, parameterByComponent = self.parse_parameters(parameter)
-        dim = len(x)  # dimension of vector field
-        df_dn = np.zeros(dim, dtype=float)
-        xLocal = x[
-            self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
-        diffInteraction = self.diff_interaction(x, parameter, 1)  # evaluate outer term in chain rule
-        dHillComponent_dn = np.array(
-            list(map(lambda H, x, parm: H.dn(x, parm), self.components, xLocal,
-                     parameterByComponent)))  # evaluate inner term in chain rule
-        df_dn[
-            self.interactionIndex] = diffInteraction * dHillComponent_dn  # evaluate gradient of nonlinear part via chain rule
-        return df_dn
 
 
 class HillModel:
@@ -1426,15 +1369,6 @@ class HillModel:
 
 
 
-
-# def unit_phase_condition(v):
-#     """Evaluate defect for unit vector zero map of the form: U(v) = ||v|| - 1"""
-#     return np.linalg.norm(v) - 1
-#
-#
-# def diff_unit_phase_condition(v):
-#     """Evaluate the derivative of the unit phase condition function"""
-#     return v / np.linalg.norm(v)
 
 
 # ## toggle switch plus

@@ -9,6 +9,7 @@ A separate file to store important HillModel subclasses for analysis or testing
 """
 from hill_model import *
 
+
 class ToggleSwitch(HillModel):
     """Two-dimensional toggle switch construction inherited as a HillModel where each node has free (but identical)
     Hill coefficients and possibly some other parameters free."""
@@ -28,23 +29,23 @@ class ToggleSwitch(HillModel):
                          interactionIndex)  # define HillModel for toggle switch by inheritance
         self.hillIndexByCoordinate = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
 
-        # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
-        # class is implemented.
-        setattr(self.coordinates[0], 'dx2',
-                lambda x, parm: np.array(
-                    [[0, 0],
-                     [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].parse_parameters(parm)[1])]]))
-        setattr(self.coordinates[1], 'dx2',
-                lambda x, parm: np.array(
-                    [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0],
-                     [0, 0]]))
-
-        setattr(self.coordinates[0], 'dndx',
-                lambda x, parm: np.array(
-                    [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].parse_parameters(parm)[1])]))
-        setattr(self.coordinates[1], 'dndx',
-                lambda x, parm: np.array(
-                    [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0]))
+        # # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
+        # # class is implemented.
+        # setattr(self.coordinates[0], 'dx2',
+        #         lambda x, parm: np.array(
+        #             [[0, 0],
+        #              [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].parse_parameters(parm)[1])]]))
+        # setattr(self.coordinates[1], 'dx2',
+        #         lambda x, parm: np.array(
+        #             [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0],
+        #              [0, 0]]))
+        #
+        # setattr(self.coordinates[0], 'dndx',
+        #         lambda x, parm: np.array(
+        #             [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].parse_parameters(parm)[1])]))
+        # setattr(self.coordinates[1], 'dndx',
+        #         lambda x, parm: np.array(
+        #             [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0]))
 
     def parse_parameter(self, N, parameter):
         """Overload the parameter parsing for HillModels to identify all HillCoefficients as a single parameter, N. The
