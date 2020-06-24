@@ -1187,7 +1187,11 @@ class HillModel:
         input parameters are provided in order and concatenates into a single vector. This function is included in
         function calls so that subclasses can redefine function calls with customized parameters and overload this
         function as needed. Overloaded versions should take a variable number of numpy arrays as input and must always
-        return a single numpy vector as output."""
+        return a single numpy vector as output.
+
+        OUTPUT: A single vector of the form:
+            lambda = (gamma_1, ell_1, delta_1, theta_1, hill_1, gamma_2, ..., hill_2, ..., gamma_n, ..., hill_n).
+        Any of these paramters which are not a variable for the model are simply omitted in this concatenated vector."""
 
         if parameter:
             return ezcat(*parameter)
@@ -1235,7 +1239,7 @@ class HillModel:
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
             Dpf = np.zeros(
-                [self.dimension, self.nVariableParameter])  # initialize Derivative as 2-tensor (Jacobian matrix)
+                [self.dimension, len(parameter)])  # initialize Derivative as 2-tensor (Jacobian matrix)
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
@@ -1264,7 +1268,7 @@ class HillModel:
         """Evaluate the second order mixed derivative of f w.r.t. state variables and parameters (once each)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dpxf = np.zeros(2 * [self.dimension] + [self.nVariableParameter])  # initialize Derivative as 3-tensor
+            Dpxf = np.zeros(2 * [self.dimension] + [len(parameter)])  # initialize Derivative as 3-tensor
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
@@ -1282,7 +1286,7 @@ class HillModel:
         """Evaluate the second order derivative of f w.r.t. parameters (twice)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dppf = np.zeros([self.dimension] + 2 * [self.nVariableParameter])  # initialize Derivative as 3-tensor
+            Dppf = np.zeros([self.dimension] + 2 * [len(parameter)])  # initialize Derivative as 3-tensor
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
@@ -1311,7 +1315,7 @@ class HillModel:
         """Evaluate the third order derivative of f w.r.t. parameters (twice) and state variable vector (once)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dppxf = np.zeros(2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize Derivative as 4-tensor
+            Dppxf = np.zeros(2 * [self.dimension] + 2 * [len(parameter)])  # initialize Derivative as 4-tensor
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):

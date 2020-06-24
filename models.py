@@ -12,13 +12,15 @@ from hill_model import *
 
 class ToggleSwitch(HillModel):
     """Two-dimensional toggle switch construction inherited as a HillModel where each node has free (but identical)
-    Hill coefficients and possibly some other parameters free."""
+    Hill coefficients, hill_1 = hill_2 = rho, and possibly some other parameters free. This is the simplest test case
+    for analysis and also a canonical example of how to implement a HillModel in which some parameters are constrained
+    by others."""
 
     def __init__(self, gamma, parameter):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^n of linear decay rates
-            parameter - A length n list of K_i-by-3 parameter arrays with rows of the form (ell, delta, theta)"""
+            parameter - A length-2 list of length-3 parameter vectors of the form (ell, delta, theta)"""
 
         parameter = [np.insert(parmList, 3, np.nan) for parmList in
                      parameter]  # append hillCoefficient as free parameter
@@ -27,54 +29,67 @@ class ToggleSwitch(HillModel):
         interactionIndex = [[1], [0]]
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel for toggle switch by inheritance
-        self.hillIndexByCoordinate = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
+        self.hillInsertionIndex = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
+        # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
+        self.hillIndex = np.array(
+            self.variableIndexByCoordinate[1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
+        self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
+                                      idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
+        self.nVariableParameter -= 1  # adjust variable parameter count by 1 to account for the identified Hill coefficients.
 
-        # # Define Hessian functions for HillCoordinates. This is temporary until the general formulas for the HillCoordinate
-        # # class is implemented.
-        # setattr(self.coordinates[0], 'dx2',
-        #         lambda x, parm: np.array(
-        #             [[0, 0],
-        #              [0, self.coordinates[0].components[0].dx2(x[1], self.coordinates[0].parse_parameters(parm)[1])]]))
-        # setattr(self.coordinates[1], 'dx2',
-        #         lambda x, parm: np.array(
-        #             [[self.coordinates[1].components[0].dx2(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0],
-        #              [0, 0]]))
-        #
-        # setattr(self.coordinates[0], 'dndx',
-        #         lambda x, parm: np.array(
-        #             [0, self.coordinates[0].components[0].dndx(x[1], self.coordinates[0].parse_parameters(parm)[1])]))
-        # setattr(self.coordinates[1], 'dndx',
-        #         lambda x, parm: np.array(
-        #             [self.coordinates[1].components[0].dndx(x[0], self.coordinates[1].parse_parameters(parm)[1]), 0]))
+    def parse_parameter(self, *parameter):
+        """Overload the generic parameter parsing for HillModels to identify all HillCoefficients as a single parameter, rho. The
+        parser Inserts copies of rho into the appropriate Hill coefficient indices in the parameter vector.
 
-    def parse_parameter(self, N, parameter):
-        """Overload the parameter parsing for HillModels to identify all HillCoefficients as a single parameter, N. The
-        parser Inserts copies of N into the appropriate Hill coefficient indices in the parameter vector."""
+        INPUT: parameter is an arbitrary number of inputs which must concatenate to the ordered parameter vector with rho as first component.
+            Example: parameter = (rho, p) with p in R^{m-2}
+        OUTPUT: A vector of the form:
+            lambda = (gamma_1, ell_1, delta_1, theta_1, rho, gamma_2, ell_2, delta_2, theta_2, rho),
+        where any fixed parameters are omitted."""
+        parameterVector = ezcat(*parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
+        rho = parameterVector[0]
+        p = parameterVector[1]
+        return np.insert(p, self.hillInsertionIndex, rho)
 
-        return np.insert(parameter, self.hillIndexByCoordinate, N)
+    def diff(self, x, *parameter, diffIndex=None):
+        """Overload the diff function to identify the Hill parameters"""
 
-    def dn(self, x, N, parameter):
-        """Overload the toggle switch derivative to identify the Hill coefficients which means summing over each
-        gradient. This is a hacky fix and hopefully temporary. A correct implementation would just include a means to
-        including the chain rule derivative of the hillCoefficient vector as a function of the form:
-        Nvector = (N, N,...,N) in R^M."""
+        fullDf = super().diff(x, *parameter)
+        Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf[:, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
+        Dpf[:, 0] = np.einsum('ij->i', fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
 
-        Df_dHill = super().dn(x, N, parameter)  # Return Jacobian with respect to N = (N1, N2)  # OLD VERSION
-        return np.sum(Df_dHill, 1)  # N1 = N2 = N so the derivative is tbe gradient vector of f with respect to N
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
+        else:
+            return Dpf[:, np.array([diffIndex])]  # return only columns for the specified subset of partials
 
-    def plot_nullcline(self, n, parameter=np.array([]), nNodes=100, domainBounds=(10, 10)):
+    def dxdiff(self, x, *parameter, diffIndex=None):
+        """Overload the dxdiff function to identify the Hill parameters"""
+
+        fullDf = super().dxdiff(x, *parameter)
+        Dpf = np.zeros(2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf[:, :, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :, self.hillIndex])  # insert sum of derivatives for identified hill parameters
+
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
+        else:
+            return Dpf[:, :, np.array([diffIndex])]  # return only columns for the specified subset of partials
+
+    def plot_nullcline(self, *parameter, nNodes=100, domainBounds=(10, 10)):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
-        equilibria = self.find_equilibria(25, n, parameter)
+        equilibria = self.find_equilibria(25, rho, parameter)
         Xp = np.linspace(0, domainBounds[0], nNodes)
         Yp = np.linspace(0, domainBounds[1], nNodes)
         Z = np.zeros_like(Xp)
 
         # unpack decay parameters separately
         gamma = np.array(list(map(lambda f_i, parm: f_i.parse_parameters(parm)[0], self.coordinates,
-                                  self.unpack_variable_parameters(self.parse_parameter(n, parameter)))))
-        N1 = (self(np.row_stack([Z, Yp]), n, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
-        N2 = (self(np.row_stack([Xp, Z]), n, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
+                                  self.unpack_variable_parameters(self.parse_parameter(rho, parameter)))))
+        N1 = (self(np.row_stack([Z, Yp]), rho, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
+        N2 = (self(np.row_stack([Xp, Z]), rho, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
 
         if equilibria.ndim == 0:
             pass
@@ -85,3 +100,26 @@ class ToggleSwitch(HillModel):
 
         plt.plot(Xp, N2)
         plt.plot(N1, Yp)
+
+
+# TESTING FOR TOGGLE SWITCH
+# ============= set up the toggle switch example to test on =============
+nCoordinate = 2
+gamma = np.array([1, 1], dtype=float)
+rho = 4.1
+componentParmValues = [np.array([1, 5, 3], dtype=float), np.array([1, 6, 3], dtype=float)]
+parameter1 = [np.copy(cPValue) for cPValue in componentParmValues]
+compVars = [[j for j in range(3)] for i in range(nCoordinate)]  # set all parameters as variable
+for i in range(nCoordinate):
+    parameter1[i][compVars[i]] = np.nan
+gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
+f = ToggleSwitch(gammaVar, parameter1)
+f1 = f.coordinates[0]
+f2 = f.coordinates[1]
+
+x = np.array([4, 3], dtype=float)
+p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this only works when all parameters are variable
+print(f(x,rho,p))
+print(f.diff(x,rho,p, diffIndex=0))
+# p1 = p[:5]
+# p2 = p[5:]
