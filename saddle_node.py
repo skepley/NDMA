@@ -29,10 +29,10 @@ class SaddleNode:
         equilibria = self.model.find_equilibria(10, *parameter)
         initial_eigenvector = np.array([1, -.7])
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
-        fixedParameter = fullParameter[[fullParameter[idx] for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
+        fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
         freeParameter = fullParameter[freeParameterIndex]
         saddleNodeZeros = list(filter(lambda root: root.success,
-                                      [self.root(fixedParameter,
+                                      [self.root(fixedParameter, freeParameterIndex,
                                                  ezcat(equilibria[:, j], initial_eigenvector, freeParameter))
                                        for j in
                                        range(equilibria.shape[1])]))  # return equilibria which converged
@@ -83,11 +83,11 @@ class SaddleNode:
         # BLOCK ROW 1
         Dg[0:n, 0:n] = Dxf  # block - (1,1)
         # block - (1, 2) is an n-by-n zero block
-        Dg[0:n, -1] = self.model.diff(stateVector, fullParameter, freeParameterIndex)  # block - (1,3)
+        Dg[0:n, -1] = self.model.diff(stateVector, fullParameter, diffIndex=freeParameterIndex)  # block - (1,3)
         # BLOCK ROW 2
-        Dg[n:2 * n, 0:n] = np.einsum('ijk,j', self.model.dx(stateVector, fullParameter), tangentVector)  # block - (2,1)
+        Dg[n:2 * n, 0:n] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter), tangentVector)  # block - (2,1)
         Dg[n:2 * n, n:2 * n] = Dxf  # block - (2,2)
-        Dg[n:2 * n, -1] = np.einsum('ij, j', self.model.dxdiff(stateVector, fullParameter, freeParameterIndex), tangentVector) # block - (2,3)
+        Dg[n:2 * n, -1] = np.einsum('ij, j', self.model.dxdiff(stateVector, fullParameter, diffIndex=freeParameterIndex), tangentVector) # block - (2,3)
         # BLOCK ROW 3
         # block - (3, 1) is a 1-by-n zero block
         Dg[-1, n:2 * n] = self.diffPhaseCondition(tangentVector)  # block - (3,2)

@@ -1,65 +1,43 @@
 """
-One line description of what the script performs (H1 line)
-  
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
+Testing and analysis of the ToggleSwitch model
 
-    Output: output
-    Other files required: none
-    See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
-   
+    Other files required: models, hill_model
+
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 6/9/20; Last revision: 6/9/20
+    Date: 6/9/20; Last revision: 6/24/20
 """
 
 import numpy as np
 from hill_model import *
+from models import ToggleSwitch
 
-# set some parameters to test using MATLAB toggle switch for ground truth
-decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-parmArg = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]],
-                   dtype=float)  # row j is (ell_j, delta_j, theta_j)
-
-f = ToggleSwitch(decay, [parmArg[0], parmArg[1]])
-f0 = f.coordinates[0]
-f1 = f.coordinates[1]
-F0 = HillCoordinate(np.array(4 * [np.nan]), [-1], [1], [0, 1])
-F1 = HillCoordinate(np.array(4 * [np.nan]), [-1], [1], [1, 0])
-
-H0 = f0.components[0]
+# TESTING FOR TOGGLE SWITCH
+# ============= set up the toggle switch example to test on =============
+nCoordinate = 2
+gamma = np.array([1, 1], dtype=float)
+rho = 4.1
+componentParmValues = [np.array([1, 5, 3], dtype=float), np.array([1, 6, 3], dtype=float)]
+parameter1 = [np.copy(cPValue) for cPValue in componentParmValues]
+compVars = [[j for j in range(3)] for i in range(nCoordinate)]  # set all parameters as variable
+for i in range(nCoordinate):
+    parameter1[i][compVars[i]] = np.nan
+gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
+f = ToggleSwitch(gammaVar, parameter1)
+f1 = f.coordinates[0]
+f2 = f.coordinates[1]
 H1 = f1.components[0]
-n0 = 4.1
+H2 = f2.components[0]
 
-x0 = np.array([4, 3])
-p = np.array([1, 1, 5, 3, 1, 1, 6, 3],
-              dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
-p0 = ezcat(p[0:4], n0)  # (gamma_1, ell_1, delta_1, theta_1, n_1)
-p1 = ezcat(p[4:], n0)
-# print(f0.dx(x0, P0))
-# print(F0.dx(x0, P0))
-# print(f0.dx2(x0, P0))
-# print(F0.dx2(x0, P0))
-# print(f0.dn(x0, p0))
-# print(f0.diff(x0, p0, 4))
-# print(f1.dn(x0, p1))
-# print(F1.diff(x0, p1, 4))
-print(f0.dndx(x0, p0))
-print(F0.dxdiff(x0, p0, 4))
-print(f1.dndx(x0, p1))
-print(F1.dxdiff(x0, p1, 4))
-print(f.dn(x0, n0, p))
-print(F1.dxdiff(x0, p1))
-print(F1.dx2(x0, p1))
-print(F1.dx3(x0,p1))
-# print(H0.diff(x0[1], p0[1:], 3))
-# print(H1.dxdiff(x0[0], p1[1:], 3))
-# print(H0.dndx(x0[1], p0[1:]))
-
-
-# H = HillComponent(-1)
-# # x = 3
-# # p = np.array([1, 5, 3, 4.1])
-# # print(H.dxdiff(x, p, 3))
-# # print(H.dndx(x, p))
+# set some data to check evaluations with
+x = np.array([4, 3], dtype=float)
+x1 = x[0]
+x2 = x[1]
+p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this only works when all parameters are variable
+f1p = ezcat(p[:4], rho)  # parameters for f1 and f2 function calls
+f2p = ezcat(p[4:], rho)
+H1p = f1p[1:]  # parameters for H1 and H2 function calls
+H2p = f2p[1:]
+print(f(x, rho, p))
+print(f.diff(x, rho, p, diffIndex=0))
+eq = f.find_equilibria(10, rho, p)

@@ -456,7 +456,7 @@ class HillComponent:
                (hillsquare * theta2Power - 4 * hillsquare * thetaPower * xPower + hillsquare * x2Power - \
                 3 * hill * theta2Power + 2 * theta2Power + 4 * thetaPower * xPower + 3 * hill * x2Power + 2 * x2Power)
 
-    def image(self, *parameter):
+    def image(self, parameter=None):
         """Return the range of this HillComponent given by (ell, ell+delta)"""
 
         if 'ell' in self.variableParameters:
@@ -1134,21 +1134,22 @@ class HillCoordinate:
         localIndex = list(range(self.nComponent))
         return [localIndex[sumEndpoints[i]:sumEndpoints[i + 1]] for i in range(len(self.interactionType))]
 
-    def eq_interval(self, *parameter):
+    def eq_interval(self, parameter=None):
         """Return a closed interval which must contain the projection of any equilibrium onto this coordinate"""
 
-        if parameter:  # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
+        if parameter is None:
+            # all parameters are fixed
+            # TODO: This should only require all ell, delta, and gamma variables to be fixed.
+            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
+            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
+
+        else:
+            # some variable parameters are passed in a vector containing all parameters for this Hill Coordinate
             gamma, parameterByComponent = self.parse_parameters(parameter)
             rectangle = np.row_stack(list(map(lambda H, parm: H.image(parm), self.components, parameterByComponent)))
             minInteraction = self.interaction_function(rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
             maxInteraction = self.interaction_function(
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
-
-        else:
-            # all parameters are fixed
-            # TODO: This should only require all ell, delta, and gamma variables to be fixed.
-            minInteraction = self.interaction_function([H.ell for H in self.components]) / self.gamma
-            maxInteraction = self.interaction_function([H.ell + H.delta for H in self.components]) / self.gamma
 
         return [minInteraction, maxInteraction]
 

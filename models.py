@@ -47,8 +47,7 @@ class ToggleSwitch(HillModel):
             lambda = (gamma_1, ell_1, delta_1, theta_1, rho, gamma_2, ell_2, delta_2, theta_2, rho),
         where any fixed parameters are omitted."""
         parameterVector = ezcat(*parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
-        rho = parameterVector[0]
-        p = parameterVector[1]
+        rho, p = parameterVector[0], parameterVector[1:]
         return np.insert(p, self.hillInsertionIndex, rho)
 
     def diff(self, x, *parameter, diffIndex=None):
@@ -62,34 +61,34 @@ class ToggleSwitch(HillModel):
         if diffIndex is None:
             return Dpf  # return the full vector of partials
         else:
-            return Dpf[:, np.array([diffIndex])]  # return only columns for the specified subset of partials
+            return np.squeeze(Dpf[:, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
     def dxdiff(self, x, *parameter, diffIndex=None):
         """Overload the dxdiff function to identify the Hill parameters"""
 
         fullDf = super().dxdiff(x, *parameter)
         Dpf = np.zeros(2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
-        Dpf[:, :, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 1:] = fullDf[:, :, self.nonhillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :, self.hillIndex])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex is None:
             return Dpf  # return the full vector of partials
         else:
-            return Dpf[:, :, np.array([diffIndex])]  # return only columns for the specified subset of partials
+            return np.squeeze(Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=(10, 10)):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
-        equilibria = self.find_equilibria(25, rho, parameter)
+        equilibria = self.find_equilibria(10, *parameter)
         Xp = np.linspace(0, domainBounds[0], nNodes)
         Yp = np.linspace(0, domainBounds[1], nNodes)
         Z = np.zeros_like(Xp)
 
         # unpack decay parameters separately
         gamma = np.array(list(map(lambda f_i, parm: f_i.parse_parameters(parm)[0], self.coordinates,
-                                  self.unpack_variable_parameters(self.parse_parameter(rho, parameter)))))
-        N1 = (self(np.row_stack([Z, Yp]), rho, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
-        N2 = (self(np.row_stack([Xp, Z]), rho, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
+                                  self.unpack_variable_parameters(self.parse_parameter(*parameter)))))
+        N1 = (self(np.row_stack([Z, Yp]), *parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
+        N2 = (self(np.row_stack([Xp, Z]), *parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
 
         if equilibria.ndim == 0:
             pass
@@ -102,24 +101,3 @@ class ToggleSwitch(HillModel):
         plt.plot(N1, Yp)
 
 
-# TESTING FOR TOGGLE SWITCH
-# ============= set up the toggle switch example to test on =============
-nCoordinate = 2
-gamma = np.array([1, 1], dtype=float)
-rho = 4.1
-componentParmValues = [np.array([1, 5, 3], dtype=float), np.array([1, 6, 3], dtype=float)]
-parameter1 = [np.copy(cPValue) for cPValue in componentParmValues]
-compVars = [[j for j in range(3)] for i in range(nCoordinate)]  # set all parameters as variable
-for i in range(nCoordinate):
-    parameter1[i][compVars[i]] = np.nan
-gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
-f = ToggleSwitch(gammaVar, parameter1)
-f1 = f.coordinates[0]
-f2 = f.coordinates[1]
-
-x = np.array([4, 3], dtype=float)
-p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this only works when all parameters are variable
-print(f(x,rho,p))
-print(f.diff(x,rho,p, diffIndex=0))
-# p1 = p[:5]
-# p2 = p[5:]
