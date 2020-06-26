@@ -1,30 +1,20 @@
 """
-One line description of what the script performs (H1 line)
-  
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
-Optional file header info (to give more details about the function than in the H1 line)
+Testing and analysis for SaddleNode and ToggleSwitch classes
 
-    Output: output
-    Other files required: none
-    See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
-   
+    Other files required: hill_model, saddle_node, models
+
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 4/24/20; Last revision: 4/24/20
+    Date: 4/24/20; Last revision: 6/24/20
 """
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from hill_model import ToggleSwitch, SaddleNode, find_root
+import matplotlib.pyplot as plts
+# import matplotlib.animation as animation
+from hill_model import *
+from saddle_node import SaddleNode
+from models import ToggleSwitch
 
-
-def SN_call_temp(SNinstance, parameter, u0):
-    """Temporary SaddleNode call outside the main class definition"""
-
-    return find_root(lambda u: SNinstance.zero_map(u, parameter), lambda u: SNinstance.diff_zero_map(u, parameter), u0,
-                     diagnose=True)
-
+np.set_printoptions(precision=2, floatmode='maxprec_equal')
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 decay = np.array([np.nan, np.nan], dtype=float)  # gamma
@@ -36,49 +26,50 @@ f1 = f.coordinates[0]
 f2 = f.coordinates[1]
 H1 = f1.components[0]
 H2 = f2.components[0]
-n0 = 4.1
 
-x0 = np.array([4, 3])
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
-# print(f(x0, n0, p0))
 SN = SaddleNode(f)
 
-# ==== plot saddle node minimizer
-
-
-pMin = np.array([1, 6.41557146e-01, 6.25129310e+00, 2.42626928e+00, 1, 1.18938253e-04,
-               1.11137886e+01, 1.78761333e+00], dtype=float)
-f.plot_nullcline(1.700015274083754, pMin)
-
-stopHere
 # ==== find saddle node for a parameter choice
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
-v0 = np.array([1, -.7])
-eq0 = f.find_equilibria(10, n0, p0)
-x0 = eq0[:, -1]
-u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
-u0Sol = SN_call_temp(SN, p0, u0)
-# print(u0Sol)
-x0Sol, v0Sol, n0Sol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
-# # compare to u0Sol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
-#
+rho = 4.1
+p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
+
+
+# x0Sol, v0Sol, rhoSol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
+# # compare to rhoSol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
+
 # plot nullclines and equilibria
 plt.close('all')
 plt.figure()
-f.plot_nullcline(n0, p0)
-plt.title('p = {0}; n = {1}'.format(p0, u0[-1]))
-plt.figure()
-f.plot_nullcline(n0Sol, p0)
-plt.title('p = {0}; n = {1}'.format(p0, n0Sol[0]))
+f.plot_nullcline(rho, p)
+plt.title('Initial parameters: \n' + np.array2string(ezcat(rho, p)))
+
+fig = plt.figure(tight_layout=True, figsize=(15., 9.))
+allSol = []
+fullParameter = ezcat(rho, p)
+
+for j in range(9):
+    fig.add_subplot(3, 3, j + 1)
+    jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
+    print(jSearchNodes)
+    jSols = SN.find_saddle_node(j, rho, p, freeParameterValues=jSearchNodes)
+    print(j, jSols)
+    allSol.append(jSols)
+    for sol in jSols:
+        pSol = fullParameter.copy()
+        pSol[j] = sol
+        f.plot_nullcline(pSol)
+    plt.title('parameter: {0}'.format(j))
+
+stopHere
 
 plt.close('all')
 plt.figure()
 for hillC in np.linspace(1, 3, 5):
     plt.figure()
-    f.plot_nullcline(hillC, p0)
+    f.plot_nullcline(hillC, p)
 
-stopHere
 # ==== This one finds a pitchfork bifurcation instead
 p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
 
