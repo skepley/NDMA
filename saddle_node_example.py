@@ -34,10 +34,7 @@ SN = SaddleNode(f)
 # ==== find saddle node for a parameter choice
 rho = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
-# v0 = np.array([1, -.7])
-# eq0 = f.find_equilibria(10, rho, p)
-# x0 = eq0[:, -1]
-rhoSol = np.min(SN.find_saddle_node(0, rho, p))
+
 
 # x0Sol, v0Sol, rhoSol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 # # compare to rhoSol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
@@ -49,17 +46,17 @@ f.plot_nullcline(rho, p)
 plt.title('Initial parameters: \n' + np.array2string(ezcat(rho, p)))
 
 fig = plt.figure(tight_layout=True, figsize=(15., 9.))
-fig.add_subplot(3, 3, 1)
 allSol = []
 fullParameter = ezcat(rho, p)
 
 for j in range(9):
     fig.add_subplot(3, 3, j + 1)
-    jSol = SN.find_saddle_node(j, rho, p)
-    print(j, jSol)
-    uniqueSols = np.unique(np.round(jSol, 7))  # remove duplicates
-    allSol.append(uniqueSols)
-    for sol in uniqueSols:
+    jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
+    print(jSearchNodes)
+    jSols = SN.find_saddle_node(j, rho, p, freeParameterValues=jSearchNodes)
+    print(j, jSols)
+    allSol.append(jSols)
+    for sol in jSols:
         pSol = fullParameter.copy()
         pSol[j] = sol
         f.plot_nullcline(pSol)

@@ -37,7 +37,7 @@ class SaddleNode:
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return ezcat(g1, g2, g3)
 
-    def find_saddle_node(self, freeParameterIndex, *parameter):
+    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at eqch
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
@@ -46,18 +46,22 @@ class SaddleNode:
         equilibria = self.model.find_equilibria(10, *parameter)
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
-        freeParameter = fullParameter[freeParameterIndex]
-        saddleNodePoints = None  # initialize function return value
+        if freeParameterValues is None:
+            freeParameter = fullParameter[freeParameterIndex]
+        else:
+            freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
 
         def curry_parameters(u):
             x, v, p0 = self.unpack_components(u)  # layout components in (R^n, R^n, R)
-            return ezcat(x, v, np.insert(fixedParameter, freeParameterIndex, p0))  # embed into (R^n, R^n, R^m) by currying fixed Parameters
+            return ezcat(x, v, np.insert(fixedParameter, freeParameterIndex,
+                                         p0))  # embed into (R^n, R^n, R^m) by currying fixed Parameters
 
-        def init_eigenvector(equilibrium):
+        def init_eigenvector(equilibrium, rho):
             """Choose an initial eigenvector for the saddle-node root finding problem"""
-            # TODO: Implement the tangent vector w.r.t. the free parameter along the equilibrium branch
-            # just returns [1;1] as a placeholder
-            return np.array([1, -0.7])
+            p = np.insert(fixedParameter, freeParameterIndex, rho)
+            tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p),
+                                             self.model.diff(equilibrium, p, diffIndex=freeParameterIndex))
+            return tangentVector / np.linalg.norm(tangentVector)
 
         def root(u0):
             """Attempts to return a single root of the SaddleNode rootfinding problem"""
@@ -67,14 +71,19 @@ class SaddleNode:
                              u0,
                              diagnose=True)
 
-        saddleNodeZeros = list(filter(lambda soln: soln.success,
-                                      [root(ezcat(equilibria[:, j], init_eigenvector(equilibria[:,j]), freeParameter))
-                                       for j in
-                                       range(equilibria.shape[1])]))  # return equilibria which converged
-        if saddleNodeZeros:
-            saddleNodePoints = ezcat(([sol.x[-1] for sol in saddleNodeZeros]))
+        saddleNodePoints = []
+        for parmValue in freeParameter:
+            saddleNodeZeros = list(filter(lambda soln: soln.success,
+                                          [root(ezcat(equilibria[:, j], init_eigenvector(equilibria[:, j], parmValue),
+                                                      parmValue))
+                                           for j in
+                                           range(equilibria.shape[1])]))  # return equilibria which converged
+            if saddleNodeZeros:
+                addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
+                print(addSols)
+                saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
 
-        return saddleNodePoints
+        return np.unique(np.round(saddleNodePoints, uniqueDigits))  # remove duplicates and return values
 
     def unpack_components(self, u):
         """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, p) where:
@@ -132,8 +141,6 @@ class SaddleNode:
         # return minHill
         print('This function needs to be updated before being called')
         return
-
-
 
     def find_minimizer(self, parameter):
         """Find a minimizer of a given loss function with respect to remaining parameters via gradient descent"""

@@ -97,7 +97,7 @@ class ToggleSwitch(HillModel):
         else:
             plt.scatter(equilibria[0, :], equilibria[1, :])
 
-        plt.plot(Xp, N2)
-        plt.plot(N1, Yp)
+        plt.plot(Xp, N2, 'g')
+        plt.plot(N1, Yp, 'r')
 
 
