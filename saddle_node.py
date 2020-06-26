@@ -126,6 +126,50 @@ class SaddleNode:
         # block - (3, 1) is a 1-by-1 zero block
         return Dg
 
+    def diff2(self, u, diffIndex=None):
+        """Evaluate the second derivative of the zero finding map. This is a function of the form
+        D^2g: R^{2n+1} ---> M_{2n+1}(R).
+        INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
+
+        # unpack input vector and set dimensions for Jacobian blocks
+        n = self.model.dimension
+        parameterDim = self.model.nVariableParameters if diffIndex is None else len(ezcat(diffIndex))
+        mapDimension = 2 * n + parameterDim
+
+        stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
+        Dg = np.zeros([mapDimension, mapDimension, mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
+        Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
+        Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
+        Dxxxf = self.model.dx3(stateVector, fullParameter)
+        Dxxpf = self.model.dx2diff(stateVector, fullParameter, diffIndex=diffIndex)
+        Dxppf = self.model.dxdiff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
+        Dppf = self.model.diff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
+
+        index1 = np.range(n)
+        index2 = index1 + 2
+        index3 = 2*n
+
+        # ROW 1
+        Dg[index1, index1, index1] = Dxxf  # block - (1,1,1)
+        Dg[index1, index1, index3] = Dxpf
+        Dg[index1, index3, index1] = Dxpf
+        Dg[index1, index3, index3] = Dppf
+
+        # BLOCK ROW 2 - derivatives of Dxf*v
+        Dg[index2, index1, index1] = np.einsum('ijkl,j', Dxxxf, tangentVector)
+        Dg[index2, index1, index2] = Dxxf
+        Dg[index2, index1, index3] = np.einsum('ijk,j', Dxxpf, tangentVector)
+        Dg[index2, index2, index1] = Dxxf
+        Dg[index2, index2, index3] = Dxpf
+        Dg[index2, index3, index1] = np.einsum('ijk,j', Dxxpf, tangentVector)
+        Dg[index2, index3, index2] = Dxpf
+        Dg[index2, index3, index3] = Dxppf
+
+        # BLOCK ROW 3
+        # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
+
+        return Dg
+
     def call_grid(self, parameter, gridBounds=(2, 4), nIter=10):
         # # to avoid getting to negative parameter values, we just return infinity if the parameters are biologically not good
         # if np.any(parameter < 0):
