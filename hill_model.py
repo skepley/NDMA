@@ -1254,7 +1254,7 @@ class HillModel:
             raise ValueError  # this isn't implemented yet
 
     def dx2(self, x, *parameter):
-        """Evaluate the second derivative of f w.r.t. state variable vector (twice)"""
+        """Evaluate the second derivative of f w.r.t. state variable vector (twice), returns a 3D tensr"""
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
