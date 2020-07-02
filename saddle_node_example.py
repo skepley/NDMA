@@ -8,8 +8,7 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Date: 4/24/20; Last revision: 6/24/20
 """
 import numpy as np
-import matplotlib.pyplot as plts
-# import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 from hill_model import *
 from saddle_node import SaddleNode
 from models import ToggleSwitch

@@ -44,6 +44,9 @@ class SaddleNode:
         None if it fails to find any"""
 
         equilibria = self.model.find_equilibria(10, *parameter)
+        if equilibria is None:
+            print('No equilibria found for parameter: {0} \n'.format(parameter))
+            return []
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
         if freeParameterValues is None:
@@ -80,7 +83,6 @@ class SaddleNode:
                                            range(equilibria.shape[1])]))  # return equilibria which converged
             if saddleNodeZeros:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
-                print(addSols)
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
 
         return np.unique(np.round(saddleNodePoints, uniqueDigits))  # remove duplicates and return values

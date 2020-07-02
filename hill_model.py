@@ -1367,10 +1367,12 @@ class HillModel:
                                                                           for j in
                                                                           range(X.shape[
                                                                                     1])]))  # return equilibria which converged
-        equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-        equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
-        return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
-                                range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
+
+        if solns:
+            equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
+            equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
+            return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
+                                    range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
 
 
 
