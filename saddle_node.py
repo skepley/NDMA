@@ -39,7 +39,7 @@ class SaddleNode:
 
     def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
-        freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at eqch
+        freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
         None if it fails to find any"""
 
