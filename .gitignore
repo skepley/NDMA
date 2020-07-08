@@ -1,8 +1,5 @@
 
-<<<<<<< HEAD
 *.iml
-=======
+*.npz
 __pycache__/
-
 .idea/
->>>>>>> master
