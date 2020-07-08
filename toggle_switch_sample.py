@@ -70,7 +70,6 @@ def dsgrn_region(parameter):
 
     return 1 + 3 * factor_slice(*parameter[[0, 1, 2, 7]]) + factor_slice(*parameter[[4, 5, 6, 3]])
 
-
 npData = np.load('tsData.npz')
 rhoInitData = npData['arr_0.npy']
 rho = 5

@@ -21,60 +21,70 @@ p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2
 f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
-# ==== find saddle node for a parameter choice
-rhoInitData = np.linspace(2, 10, 5)
-rho = 5
-t0 = time.time()
+# # =========== NON-DIMENSIONALIZED UNIFORM:  23.36 percent, 5,545 max Hill, 3.393 mean Hill
+# saveFile = 'tsDataCenter'
+# rhoInitData = np.linspace(2, 20, 10)
+# rho = 3
+#
+#
+# def sample_center():
+#     """Return a sample point in the DSGRN central region"""
+#     theta_1 = theta_2 = gamma_1 = 1.  # set fixed parameters for from non-dimensionalization
+#     ell_1 = np.random.random_sample()  # sample in (0, 1)
+#     u_1 = 1. + np.random.random_sample()  # sample ell_1 + delta_1 in (1,2)
+#     delta_1 = u_1 - ell_1
+#
+#     gamma_2 = 0.1 + 9.9 * np.random.random_sample()  # set gamma_2 in (0.1, 10)
+#     ell_2 = gamma_2 * np.random.random_sample()  # sample ell_1 in (0, gamma_2)
+#     u_2 = gamma_2 + gamma_2 * np.random.random_sample()  # sample ell_2 + delta_2 in (gamma_2, 2*gamma_2)
+#     delta_2 = u_2 - ell_2
+#     return ezcat(gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
+
+
+# # =========== NON-DIMENSIONALIZED AWAY FROM BOUNDARY:  31.21 percent, 5.719 max Hill, 0.917 mean Hill
+# saveFile = 'tsDataCenterMid'
+# rhoInitData = np.linspace(2, 20, 10)
+# rho = 3
+# def sample_center():
+#     """Return a sample point in the DSGRN central region"""
+#     theta_1 = theta_2 = gamma_1 = 1.  # set fixed parameters for from non-dimensionalization
+#     ell_1 = 0.5 * np.random.random_sample()  # sample in (0, 0.5)
+#     u_1 = 1.5 + 0.5 * np.random.random_sample()  # sample ell_1 + delta_1 in (1.5, 2)
+#     delta_1 = u_1 - ell_1
+#
+#     gamma_2 = 0.1 + 9.9 * np.random.random_sample()  # set gamma_2 in (0.1, 10)
+#     ell_2 = 0.5 * gamma_2 * np.random.random_sample()  # sample ell_1 in (0, 0.5*gamma_2)
+#     u_2 = 1.5 * gamma_2 + 0.5 * gamma_2 * np.random.random_sample()  # sample ell_2 + delta_2 in (1.5*gamma_2, 2*gamma_2)
+#     delta_2 = u_2 - ell_2
+#     return ezcat(gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
+
+# =========== NON-DIMENSIONALIZED AWAY FROM BOUNDARY, ORDERED LINEAR DECAY (g2 < g1): 29.82 percent, 5.346 max Hill,  0.875 mean Hill
+saveFile = 'tsDataCenterMidGammaOrdered'
+rhoInitData = np.linspace(2, 20, 10)
+rho = 3
+
+
+def sample_center():
+    """Return a sample point in the DSGRN central region"""
+    theta_1 = theta_2 = gamma_1 = 1.  # set fixed parameters for from non-dimensionalization
+    ell_1 = 0.5 * np.random.random_sample()  # sample in (0, 0.5)
+    u_1 = 1.5 + 0.5 * np.random.random_sample()  # sample ell_1 + delta_1 in (1.5, 2)
+    delta_1 = u_1 - ell_1
+    # node 2 parameters
+    gamma_2 = 0.1 + 0.9 * np.random.random_sample()  # set gamma_2 in (0.1, 1)
+    ell_2 = 0.5 * gamma_2 * np.random.random_sample()  # sample ell_1 in (0, 0.5*gamma_2)
+    u_2 = 1.5 * gamma_2 + 0.5 * gamma_2 * np.random.random_sample()  # sample ell_2 + delta_2 in (1.5*gamma_2, 2*gamma_2)
+    delta_2 = u_2 - ell_2
+    return ezcat(gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
+
+
+# compute saddle nodes on samples
 nSample = 10 ** 4
-parameterData = np.zeros([nSample, 8])  # initialize parameter samples
-
-# =========== set theta_i in (ell_i, ell_i + delta_i) /gamma_i  --- 1.41 percent
-# parameterData[:, [0, 1, 2, 4, 5, 6]] = np.random.random_sample([nSample, 6])  # set random values for each gamma, ell, delta
-# parameterData[:, 3] = parameterData[:, 1] / parameterData[:, 0] + np.random.random_sample(nSample
-#                                                                                           ) * parameterData[:, 2] / parameterData[:, 0]
-# parameterData[:, 7] = parameterData[:, 5] / parameterData[:, 4] + np.random.random_sample(nSample
-#                                                                                           ) * parameterData[:, 6] / parameterData[:, 4]
-
-
-# # =========== set theta_i as the midpoint of (ell_i, ell_i + delta_i) /gamma_i  --- 1.61 percent
-# parameterData[:, [0, 1, 2, 4, 5, 6]] = np.random.random_sample([nSample, 6])  # set random values for each gamma, ell, delta in [0,1]
-# parameterData[:, 3] = (parameterData[:, 1] + parameterData[:, 2]) / (2 * parameterData[:, 0])
-# parameterData[:, 7] = (parameterData[:, 5] + parameterData[:, 6]) / (2 * parameterData[:, 4])
-
-
-# # =========== set theta_i as the midpoint of (ell_i, ell_i + delta_i) /gamma_i  --- 2.65 percent
-# parameterData[:, [1, 2, 5, 6]] = 10 * np.random.random_sample([nSample, 4])  # set random values for each ell, delta in [0,10], gamma = 1
-# parameterData[:, 0] = 1  # set gamma_1
-# parameterData[:, 4] = 1  # set gamma_2
-# parameterData[:, 3] = (parameterData[:, 1] + parameterData[:, 2]) / 2  # set theta_1
-# parameterData[:, 7] = (parameterData[:, 5] + parameterData[:, 6]) / 2  # set theta_2
-
-
-# # =========== set theta_i as the midpoint of (ell_i, ell_i + delta_i) /gamma_i  --- 2.88 percent
-# parameterData[:, [1, 2, 5, 6]] = 25 * np.random.random_sample(
-#     [nSample, 4])  # set random values for each ell, delta in [0,10], gamma = 1
-# parameterData[:, 0] = 1  # set gamma_1
-# parameterData[:, 4] = 1  # set gamma_2
-# parameterData[:, 3] = (parameterData[:, 1] + parameterData[:, 2]) / 2  # set theta_1
-# parameterData[:, 7] = (parameterData[:, 5] + parameterData[:, 6]) / 2  # set theta_2
-
-
-# # =========== NON-DIMENSIONALIZED COMPUTATION: set theta_i = gamma_1 = 1, \ell_i < 1 < \ell_i + \delta_i, gamma_2 in (0,2]  --- 21.26 percent
-# parameterData[:, [1, 5]] = np.random.random_sample([nSample, 2])  # set random values for ell_i in [0,1]
-# parameterData[:, [2, 6]] = 1 + np.random.random_sample([nSample, 2])  # set random values for delta_i in [1,2]
-# parameterData[:, 4] = 2 * np.random.random_sample(nSample)  # set random values for gamma_2 in [0,2]
-# parameterData[:, [0, 3, 7]] = 1  # set gamma_1, theta_1, theta_2 = 1
-
-
-# =========== NON-DIMENSIONALIZED COMPUTATION: set theta_i = gamma_1 = 1, \ell_i < 0.5, 1.5 < \ell_i + \delta_i, gamma_2 in (0,2]  --- 54.44  percent
-parameterData[:, [1, 5]] = 0.5 * np.random.random_sample([nSample, 2])  # set random values for ell_i in [0, 0.5]
-parameterData[:, [2, 6]] = 1.5 + np.random.random_sample([nSample, 2])  # set random values for delta_i in [1.5, 2.5]
-parameterData[:, 4] = 2 * np.random.random_sample(nSample)  # set random values for gamma_2 in [0,2]
-parameterData[:, [0, 3, 7]] = 1  # set gamma_1, theta_1, theta_2 = 1
-
+parameterData = np.array([sample_center() for j in range(nSample)])
+t0 = time.time()
 allSols = np.zeros(nSample)
 for j in range(nSample):
-    p = parameterData[j, :]
+    p = parameterData[j]
     jSols = SN.find_saddle_node(0, rho, p, freeParameterValues=rhoInitData)
     if len(jSols) > 0:
         allSols[j] = np.min(jSols)
@@ -82,20 +92,16 @@ for j in range(nSample):
         print(j)
 
 tf = time.time() - t0
-print(tf)
+print('Finished in {0} minutes \n'.format(round(tf / 60)))
+np.savez(saveFile, rhoInitData, np.array([rho]), allSols, parameterData)
 
-# np.savez('tsDataCenter', rhoInitData, np.array([rho]), allSols, parameterData)
-# np.savez('tsDataCenterMidpoint', rhoInitData, np.array([rho]), allSols, parameterData)
-# np.savez('tsDataCenterMidpoint10', rhoInitData, np.array([rho]), allSols, parameterData)
-# np.savez('tsDataCenterMidpoint25', rhoInitData, np.array([rho]), allSols, parameterData)
-np.savez('tsDataNonDimMidpoint', rhoInitData, np.array([rho]), allSols, parameterData)
-
-
-
-
-# npData = np.load('tsData.npz')
-# allSols = npData['arr_2.npy']
-# parameterData = npData['arr_3.npy']
+npData = np.load(saveFile + '.npz')
+rhoInitData = npData['arr_0.npy']
+rho = npData['arr_1.npy']
+allSols = npData['arr_2.npy']
+parameterData = npData['arr_3.npy']
 # dsgrnData = np.array([dsgrn_region(parameterData[j]) for j in range(np.shape(parameterData)[0])])
 nnzSols = np.array([parameterData[j] for j in range(np.shape(parameterData)[0]) if allSols[j] > 0])
-print(len(nnzSols))
+print('{0} percent \n'.format(len(nnzSols) / 10 ** 2))
+print('Max Hill: {0} \n'.format(np.max(allSols)))
+print('Mean Hill: {0} \n'.format(np.mean(allSols)))

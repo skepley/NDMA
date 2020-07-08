@@ -13,6 +13,9 @@ from scipy import optimize, linalg
 from numpy import log
 import textwrap
 
+# ignore overflow and division by zero warnings:
+np.seterr(over='ignore', invalid='ignore')
+
 
 def npA(size, dim=2):
     """Return a random numpy array for testing"""

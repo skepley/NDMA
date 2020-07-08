@@ -32,7 +32,8 @@ class ToggleSwitch(HillModel):
         self.hillInsertionIndex = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + self.dimension))
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.hillIndex = np.array(
-            self.variableIndexByCoordinate[1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
+            self.variableIndexByCoordinate[
+            1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
         self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
         self.nVariableParameter -= 1  # adjust variable parameter count by 1 to account for the identified Hill coefficients.
@@ -46,7 +47,8 @@ class ToggleSwitch(HillModel):
         OUTPUT: A vector of the form:
             lambda = (gamma_1, ell_1, delta_1, theta_1, rho, gamma_2, ell_2, delta_2, theta_2, rho),
         where any fixed parameters are omitted."""
-        parameterVector = ezcat(*parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
+        parameterVector = ezcat(
+            *parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
         rho, p = parameterVector[0], parameterVector[1:]
         return np.insert(p, self.hillInsertionIndex, rho)
 
@@ -56,7 +58,8 @@ class ToggleSwitch(HillModel):
         fullDf = super().diff(x, *parameter)
         Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
-        Dpf[:, 0] = np.einsum('ij->i', fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
+        Dpf[:, 0] = np.einsum('ij->i',
+                              fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex is None:
             return Dpf  # return the full vector of partials
@@ -67,21 +70,24 @@ class ToggleSwitch(HillModel):
         """Overload the dxdiff function to identify the Hill parameters"""
 
         fullDf = super().dxdiff(x, *parameter)
-        Dpf = np.zeros(2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf = np.zeros(
+            2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:] = fullDf[:, :, self.nonhillIndex]  # insert derivatives of non-hill parameters
-        Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :, self.hillIndex])  # insert sum of derivatives for identified hill parameters
+        Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
+                                            self.hillIndex])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex is None:
             return Dpf  # return the full vector of partials
         else:
-            return np.squeeze(Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
+            return np.squeeze(
+                Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
-    def plot_nullcline(self, *parameter, nNodes=100, domainBounds=(10, 10)):
+    def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
         equilibria = self.find_equilibria(10, *parameter)
-        Xp = np.linspace(0, domainBounds[0], nNodes)
-        Yp = np.linspace(0, domainBounds[1], nNodes)
+        Xp = np.linspace(*domainBouds[0], nNodes)
+        Yp = np.linspace(*domainBounds[1], nNodes)
         Z = np.zeros_like(Xp)
 
         # unpack decay parameters separately
@@ -99,5 +105,3 @@ class ToggleSwitch(HillModel):
 
         plt.plot(Xp, N2, 'g')
         plt.plot(N1, Yp, 'r')
-
-
