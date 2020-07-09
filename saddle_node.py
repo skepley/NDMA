@@ -37,11 +37,12 @@ class SaddleNode:
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return ezcat(g1, g2, g3)
 
-    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5):
+    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5, flag_return=0):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
-        None if it fails to find any"""
+        None if it fails to find any
+        flag_return asks for complete info on the parameters and solutions at the saddle node"""
 
         equilibria = self.model.find_equilibria(10, *parameter)
         if equilibria is None:
@@ -81,11 +82,16 @@ class SaddleNode:
                                                       parmValue))
                                            for j in
                                            range(equilibria.shape[1])]))  # return equilibria which converged
-            if saddleNodeZeros:
+            if saddleNodeZeros and flag_return is 0:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
+            elif saddleNodeZeros:
+                addSols = np.array([sol.x for sol in saddleNodeZeros])
+                saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
 
-        return np.unique(np.round(saddleNodePoints, uniqueDigits))  # remove duplicates and return values
+        if flag_return is 0:
+            return np.unique(np.round(saddleNodePoints, uniqueDigits))
+        return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=2)# remove duplicates and return values
 
     def unpack_components(self, u):
         """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, p) where:
@@ -171,6 +177,17 @@ class SaddleNode:
         # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
 
         return Dg
+
+    def global_jac(self, par, u):
+        """Evaluation of the Jacobian of the saddle node problem with respect to all variables. This is a map of the
+        form
+        g: R^{2n + m} ---> M_{2n + m} (R)
+        INPUTS:
+        u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector,
+        par in R^m """
+        mapDimension = 1
+        J = np.zeros([mapDimension, mapDimension])
+        return J
 
     def call_grid(self, parameter, gridBounds=(2, 4), nIter=10):
         # # to avoid getting to negative parameter values, we just return infinity if the parameters are biologically not good
