@@ -30,7 +30,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1):
     # create minimizing function
     min_function = negative_distance(parameterIndex)
 
-    results = minimize(min_function, starting_values, 'SLSQP', jac='True', constraints=constraint_hysteresis)
+    results = minimize(min_function, starting_values, method='SLSQP', jac='True', constraints=constraint_hysteresis)
     return results
 
 
