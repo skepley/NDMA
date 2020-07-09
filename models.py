@@ -85,23 +85,22 @@ class ToggleSwitch(HillModel):
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
-        equilibria = self.find_equilibria(10, *parameter)
-        Xp = np.linspace(*domainBouds[0], nNodes)
-        Yp = np.linspace(*domainBounds[1], nNodes)
-        Z = np.zeros_like(Xp)
+        X1, X2 = np.meshgrid(np.linspace(*domainBounds[0], nNodes), np.linspace(*domainBounds[1], nNodes))
+        flattenNodes = np.array([np.ravel(X1), np.ravel(X2)])
+        p1, p2 = self.unpack_variable_parameters(self.parse_parameter(*parameter))
+        Z1 = np.reshape(self.coordinates[0](flattenNodes, p1), 2 * [nNodes])
+        Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
+        plt.contour(X1, X2, Z1, [0], colors='g')
+        plt.contour(X1, X2, Z2, [0], colors='r')
 
-        # unpack decay parameters separately
-        gamma = np.array(list(map(lambda f_i, parm: f_i.parse_parameters(parm)[0], self.coordinates,
-                                  self.unpack_variable_parameters(self.parse_parameter(*parameter)))))
-        N1 = (self(np.row_stack([Z, Yp]), *parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
-        N2 = (self(np.row_stack([Xp, Z]), *parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
+    def plot_equilibria(self, *parameter, nInitData=10):
+        """Find equilibria at given parameter and add to current plot"""
 
+        equilibria = self.find_equilibria(nInitData, *parameter)
         if equilibria.ndim == 0:
-            pass
+            warnings.warn('No equilibria found')
+            return
         elif equilibria.ndim == 1:
             plt.scatter(equilibria[0], equilibria[1])
         else:
             plt.scatter(equilibria[0, :], equilibria[1, :])
-
-        plt.plot(Xp, N2, 'g')
-        plt.plot(N1, Yp, 'r')
