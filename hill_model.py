@@ -19,7 +19,8 @@ np.seterr(over='ignore', invalid='ignore')
 
 def npA(size, dim=2):
     """Return a random numpy array for testing"""
-    return np.random.randint(1, 10, dim * [size])
+    A = np.random.randint(1, 10, dim * [size])
+    return np.asarray(A, dtype=float)
 
 
 def is_vector(array):
@@ -93,8 +94,6 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
         else:
             print('Newton failed to converge')
             return np.nan
-
-
 
 
 PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
@@ -498,12 +497,15 @@ class HillCoordinate:
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
-        self.globalStateIndex = sorted(list(set(interactionIndex)))  # global index for state variables which this coordinate depends on
+        self.globalStateIndex = sorted(
+            list(set(interactionIndex)))  # global index for state variables which this coordinate depends on
         self.dim = len(self.globalStateIndex)  # dimension of state vector input to HillCoordinate
         self.index = interactionIndex[0]  # Define this coordinate's global index
         self.interactionIndex = interactionIndex[1:]  # Vector of global interaction variable indices
         self.parameterValues = parameter  # initialize array of fixed parameter values
         self.nComponent = len(interactionSign)  # number of interaction nodes
+        print(parameter)
+        print(interactionSign)
         self.components = self.set_components(parameter, interactionSign)
         self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()
@@ -1175,7 +1177,7 @@ class HillModel:
         # TODO: Class constructor should not do work!
         # TODO? check if the interaction elements make sense together (i.e. they have the same dimensionality)
 
-        self.dimension = len(gamma)  # Dimension of vector field i.e. n
+        self.dimension = len(gamma)  # Dimension of vector field
         self.coordinates = [HillCoordinate(parameter[j], interactionSign[j],
                                            interactionType[j], [j] + interactionIndex[j], gamma=gamma[j]) for j in
                             range(self.dimension)]
@@ -1231,7 +1233,8 @@ class HillModel:
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
         for iCoordinate in range(self.dimension):
             f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            Dxf[np.ix_([iCoordinate], f_i.globalStateIndex)] = f_i.dx(x, parameterByCoordinate[iCoordinate])  # insert derivative of this coordinate
+            Dxf[np.ix_([iCoordinate], f_i.globalStateIndex)] = f_i.dx(x, parameterByCoordinate[
+                iCoordinate])  # insert derivative of this coordinate
         return Dxf
 
     def diff(self, x, *parameter, diffIndex=None):
@@ -1376,10 +1379,6 @@ class HillModel:
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
             return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
                                     range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
-
-
-
-
 
 # ## toggle switch plus
 # # set some parameters to test
