@@ -37,11 +37,12 @@ class SaddleNode:
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return ezcat(g1, g2, g3)
 
-    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5):
+    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5, flag_return=0):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
-        None if it fails to find any"""
+        None if it fails to find any
+        flag_return asks for complete info on the parameters and solutions at the saddle node"""
 
         equilibria = self.model.find_equilibria(10, *parameter)
         if equilibria is None:
@@ -50,7 +51,7 @@ class SaddleNode:
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
         if freeParameterValues is None:
-            freeParameter = fullParameter[freeParameterIndex]
+            freeParameter = [fullParameter[freeParameterIndex]]
         else:
             freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
 
@@ -64,6 +65,10 @@ class SaddleNode:
             p = np.insert(fixedParameter, freeParameterIndex, rho)
             tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p),
                                              self.model.diff(equilibrium, p, diffIndex=freeParameterIndex))
+            # in R, we still have one choice of orientation once we fix the norm - this is done by checking the sign of
+            # the first element of the eigenvector. If we extend to C, more work will be needed
+            if tangentVector[0] < 0:
+                tangentVector = - tangentVector
             return tangentVector / np.linalg.norm(tangentVector)
 
         def root(u0):
@@ -74,18 +79,27 @@ class SaddleNode:
                              u0,
                              diagnose=True)
 
-        saddleNodePoints = []
+        if flag_return is 0:
+            saddleNodePoints = []
+        else:
+            saddleNodePoints = np.empty((0, self.mapDimension))
+
         for parmValue in freeParameter:
             saddleNodeZeros = list(filter(lambda soln: soln.success,
                                           [root(ezcat(equilibria[:, j], init_eigenvector(equilibria[:, j], parmValue),
                                                       parmValue))
                                            for j in
                                            range(equilibria.shape[1])]))  # return equilibria which converged
-            if saddleNodeZeros:
+            if saddleNodeZeros and flag_return is 0:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
+            elif saddleNodeZeros:
+                addSols = np.array([sol.x for sol in saddleNodeZeros if all(sol.x) > 0])
+                saddleNodePoints = np.append(saddleNodePoints, addSols, axis=0)
 
-        return np.unique(np.round(saddleNodePoints, uniqueDigits))  # remove duplicates and return values
+        if flag_return is 0:
+            return np.unique(np.round(saddleNodePoints, uniqueDigits))
+        return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=0)  # remove duplicates and return values
 
     def unpack_components(self, u):
         """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, p) where:
@@ -104,7 +118,7 @@ class SaddleNode:
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
-        parameterDim = self.model.nVariableParameters if diffIndex is None else len(ezcat(diffIndex))
+        parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
         mapDimension = 2 * n + parameterDim
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
@@ -149,7 +163,7 @@ class SaddleNode:
 
         index1 = np.range(n)
         index2 = index1 + 2
-        index3 = 2*n
+        index3 = 2 * n
 
         # ROW 1
         Dg[index1, index1, index1] = Dxxf  # block - (1,1,1)
@@ -171,6 +185,17 @@ class SaddleNode:
         # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
 
         return Dg
+
+    def global_jac(self, par, u):
+        """Evaluation of the Jacobian of the saddle node problem with respect to all variables. This is a map of the
+        form
+        g: R^{2n + m} ---> M_{2n + m} (R)
+        INPUTS:
+        u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector,
+        par in R^m """
+        mapDimension = 1
+        J = np.zeros([mapDimension, mapDimension])
+        return J
 
     def call_grid(self, parameter, gridBounds=(2, 4), nIter=10):
         # # to avoid getting to negative parameter values, we just return infinity if the parameters are biologically not good
