@@ -12,25 +12,45 @@ from models import ToggleSwitch
 from scipy.optimize import minimize
 
 
-def wrapper_minimization(HM, starting_pars, parameterIndex=1):
+def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresis', list_of_constraints=None):
     # this function takes as input a Hill Model, initial parameter values and the index of the parameter and maximises
     # the hysteresis parameters
+    # INPUTS
+    # HM        Hill model
+    # starting_pars     starting parameters for minimization
+    # parameterIndex=1  which parameter is the spacial one in the problem
+    # problem='hysteresis'  what problem is to solve
+    # list_of_constraints   are there any special constraints? Default = 'hysteresis' and 'norm_param'
 
+    if list_of_constraints is None:
+        list_of_constraints = ['hysteresis', 'norm_param']
     SN = SaddleNode(HM)
 
     # find starting point
-    starting_values = SN.find_saddle_node(starting_pars, parameterIndex)
+    starting_values = SN.find_saddle_node(parameterIndex, starting_pars, flag_return=1)
 
     # restructuring starting values in the right format
     # the right format: [lambda1, x1, v1, lambda2, x2, v2, other_pars]
+    if starting_values.shape[0] > 2:
+        raise Exception("We found more than 2 saddle nodes " + str(starting_values.shape[0]))
+    elif starting_values.shape[0] < 2:
+        raise Exception("We couldn't find 2 saddle nodes, we only found " + str(starting_values.shape[0]))
+    all_starting_values = ezcat(starting_values[0, :], starting_values[1, :], starting_pars)
 
-    # create contraints
-    constraint_hysteresis = default_constraints(SN, parameterIndex)
+    # create constraints
+    all_constraints = list()
+    if 'hysteresis' in list_of_constraints + [problem]:
+        all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
+    if 'norm_param' in list_of_constraints:
+        all_constraints = all_constraints + parameter_norm_constraint()
 
     # create minimizing function
-    min_function = negative_distance(parameterIndex)
+    if problem is 'hysteresis':
+        min_function = negative_distance(parameterIndex)
+    else:
+        raise Exception("Not coded yet = only hysteresis considered")
 
-    results = minimize(min_function, starting_values, method='SLSQP', jac='True', constraints=constraint_hysteresis)
+    results = minimize(min_function, all_starting_values, method='SLSQP', jac='True', constraints=all_constraints)
     return results
 
 
@@ -47,19 +67,27 @@ def negative_distance(parameterIndex):
     return compute_distance
 
 
-def one_saddlenode_problem(SN, first_or_second, paramIndex):
+def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
     def saddle_node_problem(variables):
         fixed_pars = variables[-8:]
         u_and_v_index0 = 1 + (first_or_second - 1)*5
-        u_and_v = variables[u_and_v_index0:u_and_v_index0+5]
+        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 4]
         gamma = variables[u_and_v_index0-1]
-        all_vars = [u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:]]
+        all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:])
+        return SN_loc(all_vars)
+
+    def saddle_node_jac(variables):
+        fixed_pars = variables[-8:]
+        u_and_v_index0 = 1 + (first_or_second - 1)*5
+        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 4]
+        gamma = variables[u_and_v_index0-1]
+        all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:])
         # warning: not sure if diff does the trick here
-        return SN(all_vars), SN.diff(all_vars)
-    return saddle_node_problem
+        return SN_loc.diff(all_vars)
+    return saddle_node_problem, saddle_node_jac
 
 
-def default_constraints(SN, paramIndex=1):
+def hysteresis_constraints(SN, paramIndex=1):
 
     def wrap_in_constraint(first_or_second):
         function_loc, function_jac = one_saddlenode_problem(SN, first_or_second, paramIndex)
@@ -68,8 +96,29 @@ def default_constraints(SN, paramIndex=1):
                 "jac": function_jac}
         return dic
 
-    list_of_dics = [wrap_in_constraint(1), wrap_in_constraint(2)]
+    list_of_dics =list()
+    list_of_dics.append(wrap_in_constraint(1))
+    list_of_dics.append(wrap_in_constraint(2))
     return list_of_dics
+
+
+def parameter_norm():
+    def norm_par(parameter):
+        return np.sum(parameter)
+
+    def jac_norm_par(parameters):
+        jac = np.ones_like(parameters)
+        return jac
+    return norm_par, jac_norm_par
+
+
+def parameter_norm_constraint():
+    function_loc, function_jac = parameter_norm()
+    dic = { "type": "eq",
+            "fun": function_loc,
+            "jac": function_jac}
+    list_of_dic = [dic]
+    return list_of_dic
 
 
 def hysteresis(p_loc, SN_loc, rho_loc):
@@ -101,22 +150,30 @@ H2 = f2.components[0]
 
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
-SN_main = SaddleNode(f)
+SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
 rho = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3.5], dtype=float)
 
 
-def distance_func(p_loc, SN_loc=SN_main, rho_loc=rho):
+
+
+def distance_func(p_loc, SN_loc=SN, rho_loc=rho):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
     return -dist
 
 
 distance = distance_func(p)
 print('Distance = ', distance)
-res = minimize(distance_func, p, method='Nelder-Mead')
+#res = minimize(distance_func, p, method='Nelder-Mead')
+#
+#print('Minimal distance = ', res)
 
-print('Minimal distance = ', res)
+
+long_p = np.append([rho], p)
+wrapper_minimization(f, long_p)
+
+#print('Minimal distance = ', res)
 
 

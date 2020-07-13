@@ -51,7 +51,7 @@ class SaddleNode:
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
         if freeParameterValues is None:
-            freeParameter = fullParameter[freeParameterIndex]
+            freeParameter = [fullParameter[freeParameterIndex]]
         else:
             freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
 
@@ -65,6 +65,10 @@ class SaddleNode:
             p = np.insert(fixedParameter, freeParameterIndex, rho)
             tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p),
                                              self.model.diff(equilibrium, p, diffIndex=freeParameterIndex))
+            # in R, we still have one choice of orientation once we fix the norm - this is done by checking the sign of
+            # the first element of the eigenvector. If we extend to C, more work will be needed
+            if tangentVector[0] < 0:
+                tangentVector = - tangentVector
             return tangentVector / np.linalg.norm(tangentVector)
 
         def root(u0):
@@ -75,7 +79,11 @@ class SaddleNode:
                              u0,
                              diagnose=True)
 
-        saddleNodePoints = []
+        if flag_return is 0:
+            saddleNodePoints = []
+        else:
+            saddleNodePoints = np.empty((0, self.mapDimension))
+
         for parmValue in freeParameter:
             saddleNodeZeros = list(filter(lambda soln: soln.success,
                                           [root(ezcat(equilibria[:, j], init_eigenvector(equilibria[:, j], parmValue),
@@ -86,12 +94,12 @@ class SaddleNode:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
             elif saddleNodeZeros:
-                addSols = np.array([sol.x for sol in saddleNodeZeros])
-                saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
+                addSols = np.array([sol.x for sol in saddleNodeZeros if all(sol.x) > 0])
+                saddleNodePoints = np.append(saddleNodePoints, addSols, axis=0)
 
         if flag_return is 0:
             return np.unique(np.round(saddleNodePoints, uniqueDigits))
-        return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=2)# remove duplicates and return values
+        return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=0)  # remove duplicates and return values
 
     def unpack_components(self, u):
         """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, p) where:
@@ -110,7 +118,7 @@ class SaddleNode:
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
-        parameterDim = self.model.nVariableParameters if diffIndex is None else len(ezcat(diffIndex))
+        parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
         mapDimension = 2 * n + parameterDim
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
@@ -155,7 +163,7 @@ class SaddleNode:
 
         index1 = np.range(n)
         index2 = index1 + 2
-        index3 = 2*n
+        index3 = 2 * n
 
         # ROW 1
         Dg[index1, index1, index1] = Dxxf  # block - (1,1,1)
