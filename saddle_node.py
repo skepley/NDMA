@@ -122,23 +122,29 @@ class SaddleNode:
         mapDimension = 2 * n + parameterDim
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
+        Dg = np.zeros([mapDimension, mapDimension])  # initialize (2n+m)-by-(2n+m) matrix
         Dxf = self.model.dx(stateVector, fullParameter)  # store derivative of vector field which appears in 2 blocks
 
+        # the indices of x v and p respectively
+        index1 = np.arange(n)
+        index2 = np.arange(n) + n
+        index3 = 2 * n + np.arange(parameterDim)
+
         # BLOCK ROW 1
-        Dg[0:n, 0:n] = Dxf  # block - (1,1)
+        Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
         # block - (1, 2) is an n-by-n zero block
-        Dg[0:n, -1] = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # block - (1,3)
+        a = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # block - (1,3)
+        Dg[np.ix_(index1, index3)] = a
         # BLOCK ROW 2
-        Dg[n:2 * n, 0:n] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
-                                     tangentVector)  # block - (2,1)
-        Dg[n:2 * n, n:2 * n] = Dxf  # block - (2,2)
-        Dg[n:2 * n, -1] = np.einsum('ij, j',
-                                    self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
-                                    tangentVector)  # block - (2,3)
+        Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
+                                       tangentVector)  # block - (2,1)
+        Dg[np.ix_(index2, index2)] = Dxf  # block - (2,2)
+        Dg[np.ix_(index2, index3)] = np.einsum('ij, j',
+                                       self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
+                                       tangentVector)  # block - (2,3)
         # BLOCK ROW 3
         # block - (3, 1) is a 1-by-n zero block
-        Dg[-1, n:2 * n] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
+        Dg[np.ix_(index3, index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
         # block - (3, 1) is a 1-by-1 zero block
         return Dg
 
@@ -153,7 +159,7 @@ class SaddleNode:
         mapDimension = 2 * n + parameterDim
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, mapDimension, mapDimension])  # initialize (2n+1)-by-(2n+1) matrix
+        Dg = np.zeros([mapDimension, mapDimension, mapDimension])  # initialize (2n+1)-by-(2n+1)-by-(2n+1) matrix
         Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
         Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxxxf = self.model.dx3(stateVector, fullParameter)
@@ -161,25 +167,26 @@ class SaddleNode:
         Dxppf = self.model.dxdiff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
         Dppf = self.model.diff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
 
-        index1 = np.range(n)
-        index2 = index1 + 2
-        index3 = 2 * n
+        # the indices of x v and p respectively
+        index1 = np.array(range(n))
+        index2 = np.array(range(n)) + n
+        index3 = 2 * n + np.array(range(parameterDim))
 
         # ROW 1
-        Dg[index1, index1, index1] = Dxxf  # block - (1,1,1)
-        Dg[index1, index1, index3] = Dxpf
-        Dg[index1, index3, index1] = Dxpf
-        Dg[index1, index3, index3] = Dppf
+        Dg[np.ix_(index1, index1, index1)] = Dxxf  # block - (1,1,1)
+        Dg[np.ix_(index1, index1, index3)] = Dxpf
+        Dg[np.ix_(index1, index3, index1)] = Dxpf
+        Dg[np.ix_(index1, index3, index3)] = Dppf
 
         # BLOCK ROW 2 - derivatives of Dxf*v
-        Dg[index2, index1, index1] = np.einsum('ijkl,j', Dxxxf, tangentVector)
-        Dg[index2, index1, index2] = Dxxf
-        Dg[index2, index1, index3] = np.einsum('ijk,j', Dxxpf, tangentVector)
-        Dg[index2, index2, index1] = Dxxf
-        Dg[index2, index2, index3] = Dxpf
-        Dg[index2, index3, index1] = np.einsum('ijk,j', Dxxpf, tangentVector)
-        Dg[index2, index3, index2] = Dxpf
-        Dg[index2, index3, index3] = Dxppf
+        Dg[np.ix_(index2, index1, index1)] = np.einsum('ijkl,j', Dxxxf, tangentVector)
+        Dg[np.ix_(index2, index1, index2)] = Dxxf
+        Dg[np.ix_(index2, index1, index3)] = np.einsum('ijk,j', Dxxpf, tangentVector)
+        Dg[np.ix_(index2, index2, index1)] = Dxxf
+        Dg[np.ix_(index2, index2, index3)] = Dxpf
+        Dg[np.ix_(index2, index3, index1)] = np.einsum('ijk,j', Dxxpf, tangentVector)
+        Dg[np.ix_(index2, index3, index2)] = Dxpf
+        Dg[np.ix_(index2, index3, index3)] = Dxppf
 
         # BLOCK ROW 3
         # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
