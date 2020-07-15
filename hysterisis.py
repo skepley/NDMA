@@ -50,7 +50,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     else:
         raise Exception("Not coded yet = only hysteresis considered")
 
-    results = minimize(min_function, all_starting_values, method='SLSQP', jac='True', constraints=all_constraints)
+    results = minimize(min_function, all_starting_values, method='SLSQP', jac='True', constraints=all_constraints[0])
     return results
 
 
@@ -60,7 +60,7 @@ def negative_distance(parameterIndex):
         gamma1 = variables[parameterIndex + 5]
         fun = gamma0 - gamma1
         dim_jac = np.shape(variables)[0]
-        jac = np.zeros([dim_jac, dim_jac])
+        jac = np.zeros([dim_jac])
         jac[parameterIndex] = 1
         jac[parameterIndex + 5] = -1
         return fun, jac
@@ -69,21 +69,40 @@ def negative_distance(parameterIndex):
 
 def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
     def saddle_node_problem(variables):
-        fixed_pars = variables[-8:]
-        u_and_v_index0 = 1 + (first_or_second - 1)*5
-        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 4]
-        gamma = variables[u_and_v_index0-1]
+        n = SN_loc.model.dimension
+        num_pars = SN_loc.model.nVariableParameter
+        fixed_pars = variables[-num_pars:]
+        index_gamma = (first_or_second - 1)*(2 * n + 1)
+        u_and_v_index0 = 1 + index_gamma
+        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 2*n]
+        gamma = variables[index_gamma]
         all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:])
+
         return SN_loc(all_vars)
 
     def saddle_node_jac(variables):
-        fixed_pars = variables[-8:]
-        u_and_v_index0 = 1 + (first_or_second - 1)*5
-        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 4]
-        gamma = variables[u_and_v_index0-1]
+        # variables = lambda1, x1, v1, lambda2, x2, v2, other_pars
+        n = SN_loc.model.dimension
+        num_pars = SN_loc.model.nVariableParameter
+        fixed_pars = variables[-num_pars:]
+
+        index_gamma = (first_or_second - 1)*(2 * n + 1)
+        u_and_v_index0 = 1 + index_gamma
+        u_and_v = variables[u_and_v_index0:u_and_v_index0 + 2*n]
+        gamma = variables[index_gamma]
         all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:])
-        # warning: not sure if diff does the trick here
-        return SN_loc.diff(all_vars)
+        non_zero_diff = SN_loc.diff(all_vars)
+
+        # reordering of the result w.r.t. the global ordering
+        full_derivative = np.zeros([non_zero_diff.shape[0], len(variables)])
+        #
+        full_derivative[:, index_gamma] = non_zero_diff[:, 2*n + paramIndex]
+        full_derivative[:, index_gamma+1: index_gamma+2 * n + 1] = non_zero_diff[:, 0:2*n]
+
+        indices_fixed_pars = np.arange(num_pars)
+        indices_fixed_pars = np.delete(indices_fixed_pars, paramIndex)
+        full_derivative[:, -num_pars+1:] = non_zero_diff[:, 2*n+indices_fixed_pars]
+        return full_derivative
     return saddle_node_problem, saddle_node_jac
 
 
@@ -107,7 +126,7 @@ def parameter_norm():
         return np.sum(parameter)
 
     def jac_norm_par(parameters):
-        jac = np.ones_like(parameters)
+        jac = np.ones(len(parameters))
         return jac
     return norm_par, jac_norm_par
 
@@ -172,8 +191,8 @@ print('Distance = ', distance)
 
 
 long_p = np.append([rho], p)
-wrapper_minimization(f, long_p)
-
+results = wrapper_minimization(f, long_p)
+print(results)
 #print('Minimal distance = ', res)
 
 
