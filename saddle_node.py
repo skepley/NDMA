@@ -113,16 +113,17 @@ class SaddleNode:
 
     def diff(self, u, diffIndex=None):
         """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
-        Dg: R^{2n+1} ---> M_{2n+1}(R).
+        Dg: R^{2n+1} ---> M_{2n+1 x 2n+m}(R).
         INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
         parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
-        mapDimension = 2 * n + parameterDim
+        dimension_space = 2 * n + parameterDim
+        mapDimension = 2 * n + 1
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, mapDimension])  # initialize (2n+m)-by-(2n+m) matrix
+        Dg = np.zeros([mapDimension, dimension_space])  # initialize (2n+1)-by-(2n+m) matrix
         Dxf = self.model.dx(stateVector, fullParameter)  # store derivative of vector field which appears in 2 blocks
 
         # the indices of x v and p respectively
@@ -161,22 +162,23 @@ class SaddleNode:
                                            tangentVector)  # block - (2,3)
             # BLOCK ROW 3
             # block - (3, 1) is a 1-by-n zero block
-            Dg[np.ix_(index3, index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
+            Dg[index3[0], np.ix_(index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
             # block - (3, 1) is a 1-by-1 zero block
         return Dg
 
     def diff2(self, u, diffIndex=None):
         """Evaluate the second derivative of the zero finding map. This is a function of the form
-        D^2g: R^{2n+1} ---> M_{2n+1}(R).
+        D^2g: R^{2n+1} ---> R^{2n+1 x 2n+1+M x 2n+1+M}, M length of diffIndex.
         INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
 
-        # unpack input vector and set dimensions for Jacobian blocks
+        # unpack input vector and set dimensions for Hessian blocks
         n = self.model.dimension
-        parameterDim = self.model.nVariableParameters if diffIndex is None else len(ezcat(diffIndex))
-        mapDimension = 2 * n + parameterDim
+        parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
+        dimension_space = 2 * n + parameterDim
+        mapDimension = 2 * n + 1
 
         stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, mapDimension, mapDimension])  # initialize (2n+1)-by-(2n+1)-by-(2n+1) matrix
+        Dg = np.zeros([mapDimension, dimension_space, dimension_space])  # initialize (2n+1)-by-(2n+m)-by-(2n+m) matrix
         Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
         Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxxxf = self.model.dx3(stateVector, fullParameter)
