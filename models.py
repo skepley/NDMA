@@ -33,7 +33,7 @@ class ToggleSwitch(HillModel):
         self.hillInsertionIndex = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + nComponent))
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.hillIndex = np.array(self.variableIndexByCoordinate[
-            1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
+                                  1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
         self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
         self.hillInsertionIndex = self.hillIndex - np.array(range(1, 1 + nComponent))
@@ -83,6 +83,58 @@ class ToggleSwitch(HillModel):
             return np.squeeze(
                 Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
+    def diff2(self, x, *parameter, diffIndex=None):
+        """Overload the diff2 function to identify the Hill parameters"""
+
+        fullDf = super().diff2(x, *parameter)
+        Dpf = np.zeros(
+            [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf[:, 1:, 1:] = fullDf[np.ix_(np.arange(self.dimension), self.nonhillIndex,
+                                       self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
+                                                         self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
+        else:
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), diffIndex,
+                           diffIndex)])  # return only slices for the specified subset of partials
+
+    def dx2diff(self, x, *parameter, diffIndex=None):
+        """Overload the dx2diff function to identify the Hill parameters"""
+
+        fullDf = super().dx2diff(x, *parameter)
+        Dpf = np.zeros(
+            3 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf[:, :, :, 1:] = fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
+        else:
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                           diffIndex)])  # return only slices for the specified subset of partials
+
+    def dxdiff2(self, x, *parameter, diffIndex=None):
+        """Overload the dxdiff2 function to identify the Hill parameters"""
+
+        fullDf = super().dxdiff2(x, *parameter)
+        Dpf = np.zeros(
+            2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf[:, :, 1:, 1:] = fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex, self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex, self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
+        else:
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), diffIndex,
+                           diffIndex)])  # return only slices for the specified subset of partials
+
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
@@ -106,6 +158,25 @@ class ToggleSwitch(HillModel):
         else:
             plt.scatter(equilibria[0, :], equilibria[1, :])
 
+    def dsgrn_region(self, *parameter):
+        """Return a dsgrn parameter region for the toggle switch as an integer in {1,...,9}
+
+        INPUT: parameter = (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_1 theta_2)
+        with fixed parameters omitted."""
+
+        def factor_slice(gamma, ell, delta, theta):
+            T = gamma * theta
+            if T <= ell:
+                return 0
+            elif ell < T <= ell + delta:
+                return 1
+            else:
+                return 2
+
+        fullParameterVector = self.parse_parameter(*parameter)
+        DSGRNParameter = fullParameterVector[[0, 1, 2, 3, 5, 6, 7, 8]]  # remove Hill coefficients from parameter vector
+        return 3 * (factor_slice(*DSGRNParameter[[0, 1, 2, 7]]) + 1) - factor_slice(*DSGRNParameter[[4, 5, 6, 3]])
+
 
 class ToggleSwitchPlus(HillModel):
     """Two-dimensional toggle switch with one gene self activating/repressing inherited as a HillModel. Each edge has
@@ -128,7 +199,9 @@ class ToggleSwitchPlus(HillModel):
             if is_vector(parameterArray):
                 return np.insert(parameterArray, 3, np.nan)  # Add Hill coefficient placeholder to a single edge.
             else:
-                return np.array([np.insert(row, 3, np.nan) for row in parameterArray])  # Add Hill coefficient to each row of array
+                return np.array(
+                    [np.insert(row, 3, np.nan) for row in parameterArray])  # Add Hill coefficient to each row of array
+
         parameter = [insert_nan(parmArray) for parmArray in parameter]
 
         # Add interactions for the basic toggle switch
@@ -143,20 +216,19 @@ class ToggleSwitchPlus(HillModel):
                                            1)  # This assumes only a product interaction function for both coordinates
                 interactionIndex[j].insert(j, j)
 
-        # print(gamma)
-        print(parameter)
-        # print(interactionSigns)
-        # print(interactionTypes)
-        # print(interactionIndex)
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel for toggle switch by inheritance
-        self.nComponent = np.sum([self.coordinates[j].nComponent for j in range(2)])  # count total number of Hill components
-        self.hillIndex = ezcat(*[self.variableIndexByCoordinate[j] + self.coordinates[j].variableIndexByComponent[1:] - 1 for j in range(2)])
+        self.nComponent = np.sum(
+            [self.coordinates[j].nComponent for j in range(2)])  # count total number of Hill components
+        self.hillIndex = ezcat(
+            *[self.variableIndexByCoordinate[j] + self.coordinates[j].variableIndexByComponent[1:] - 1 for j in
+              range(2)])
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
         self.hillInsertionIndex = self.hillIndex - np.arange(self.nComponent)
-        self.nVariableParameter -= (self.nComponent - 1)  # adjust variable parameter count to account for the identified Hill coefficients.
+        self.nVariableParameter -= (
+                self.nComponent - 1)  # adjust variable parameter count to account for the identified Hill coefficients.
 
     def parse_parameter(self, *parameter):
         """Overload the generic parameter parsing for HillModels to identify all HillCoefficients as a single parameter, hill. The
