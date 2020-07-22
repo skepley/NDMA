@@ -1318,6 +1318,25 @@ class HillModel:
                 iCoordinate])  # insert derivative of this coordinate
         return Dxxxf
 
+    def dx2diff(self, x, *parameter, diffIndex=None):
+        """Evaluate the third order derivative of a HillModel w.r.t. parameters (once) and state variable vector (twice)"""
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
+            Dpxxf = np.zeros(3 * [self.dimension] + [len(parameter)])  # initialize Derivative as 4-tensor
+            parameterByCoordinate = self.unpack_variable_parameters(
+                parameter)  # unpack variable parameters by component
+
+            for iCoordinate in range(self.dimension):
+                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                xSlice = np.array(f_i.globalStateIndex)
+                Dppxf[np.ix_([iCoordinate], xSlice, xSlice, parameterSlice)] = f_i.dx2diff(x, parameterByCoordinate[
+                    iCoordinate])  # insert derivative of this coordinate
+            return Dpxxf
+        else:
+            raise ValueError  # this isn't implemented yet
+
     def dxdiff2(self, x, *parameter, diffIndex=None):
         """Evaluate the third order derivative of f w.r.t. parameters (twice) and state variable vector (once)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
@@ -1330,9 +1349,9 @@ class HillModel:
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.globalStateIndex)
-                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.diff2(x,
-                                                                                                 parameterByCoordinate[
-                                                                                                     iCoordinate])  # insert derivative of this coordinate
+                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.dxdiff2(x,
+                                                                                                   parameterByCoordinate[
+                                                                                                       iCoordinate])  # insert derivative of this coordinate
             return Dppxf
         else:
             raise ValueError  # this isn't implemented yet
@@ -1379,15 +1398,3 @@ class HillModel:
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
             return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
                                     range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
-
-# ## toggle switch plus
-# # set some parameters to test
-# decay = np.array([np.nan, np.nan], dtype=float)  # gamma
-# f1parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
-# f2parameter = np.array([[np.nan, np.nan, np.nan, np.nan] for j in range(2)], dtype=float)  # all variable parameters
-# parameter = [f1parameter, f2parameter]
-# interactionSigns = [[1, -1], [1, -1]]
-# interactionTypes = [[2], [2]]
-# interactionIndex = [[0, 1], [1, 0]]
-# tsPlus = HillModel(decay, parameter, interactionSigns, interactionTypes,
-#                    interactionIndex)  # define HillModel for toggle switch plus
