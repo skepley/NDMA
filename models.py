@@ -30,13 +30,12 @@ class ToggleSwitch(HillModel):
         interactionIndex = [[1], [0]]
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel for toggle switch by inheritance
-        self.hillInsertionIndex = self.variableIndexByCoordinate[1:] - np.array(range(1, 1 + nComponent))
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.hillIndex = np.array(self.variableIndexByCoordinate[
                                   1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
         self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
-        self.hillInsertionIndex = self.hillIndex - np.array(range(1, 1 + nComponent))
+        self.hillInsertionIndex = self.hillIndex - np.array(range(nComponent))
         self.nVariableParameter -= 1  # adjust variable parameter count by 1 to account for the identified Hill coefficients.
 
     def parse_parameter(self, *parameter):
