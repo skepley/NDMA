@@ -29,6 +29,8 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
 
     # find starting point
     starting_values = SN.find_saddle_node(parameterIndex, starting_pars, flag_return=1)
+    index_new = np.append([starting_values.shape[1]-1], np.arange(0, starting_values.shape[1]-1))
+    starting_values = starting_values[:,index_new]
 
     # restructuring starting values in the right format
     # the right format: [lambda1, x1, v1, lambda2, x2, v2, other_pars]
@@ -48,7 +50,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
 
     # create minimizing function
     if problem is 'hysteresis':
-        min_function, jac_func, hessian_func = negative_distance(parameterIndex)
+        min_function, jac_func, hessian_func = negative_distance(parameterIndex, SN)
     else:
         raise Exception("Not coded yet = only hysteresis considered")
 
@@ -57,18 +59,21 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     return results_min
 
 
-def negative_distance(parameterIndex):
+def negative_distance(parameterIndex, SN_loc):
     def compute_distance(variables):
-        gamma0 = variables[parameterIndex]
-        gamma1 = variables[parameterIndex + 5]
+        gamma0 = variables[0]
+        n = SN_loc.model.dimension
+        gamma1 = variables[2*n+1]
         fun = gamma0 - gamma1
+        # fun needs to be negative
         return fun
 
     def jacobian_distance(variables):
         dim_par = np.shape(variables)[0]
         jac = np.zeros([dim_par])
-        jac[parameterIndex] = 1
-        jac[parameterIndex + 5] = -1
+        jac[0] = 1
+        n = SN_loc.model.dimension
+        jac[2*n+1] = -1
         return jac
 
     def hessian_distance(variables):
@@ -180,7 +185,7 @@ def hysteresis(p_loc, SN_loc, rho_loc):
     fullParameter = ezcat(rho_loc, p_loc)
     j = 1
     jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
-    jSols = SN_loc.find_saddle_node(j, rho_loc, p_loc, freeParameterValues=jSearchNodes)
+    jSols = SN_loc.find_saddle_node(j, fullParameter, freeParameterValues=jSearchNodes)
     if len(jSols) is 2:
         distance_loc = abs(jSols[1] - jSols[0])
     else:
@@ -230,4 +235,4 @@ results = wrapper_minimization(f, long_p)
 print('Success: ', results.success)
 #print('Minimal distance = ', res)
 
-
+stopHere

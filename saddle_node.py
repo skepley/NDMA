@@ -94,7 +94,7 @@ class SaddleNode:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
             elif saddleNodeZeros:
-                addSols = np.array([sol.x for sol in saddleNodeZeros if all(sol.x) > 0])
+                addSols = np.array([sol.x for sol in saddleNodeZeros])
                 saddleNodePoints = np.append(saddleNodePoints, addSols, axis=0)
 
         if flag_return is 0:
