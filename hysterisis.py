@@ -28,9 +28,10 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     SN = SaddleNode(HM)
 
     # find starting point
-    starting_values = SN.find_saddle_node(parameterIndex, starting_pars, flag_return=1)
+    jSearchNodes = np.linspace(starting_pars[parameterIndex] / 10, 10 * starting_pars[parameterIndex], 25)
+    starting_values = SN.find_saddle_node(parameterIndex, starting_pars, freeParameterValues=jSearchNodes, flag_return=1)
     index_new = np.append([starting_values.shape[1]-1], np.arange(0, starting_values.shape[1]-1))
-    starting_values = starting_values[:,index_new]
+    starting_values = starting_values[:, index_new]
 
     # restructuring starting values in the right format
     # the right format: [lambda1, x1, v1, lambda2, x2, v2, other_pars]
@@ -50,7 +51,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
 
     # create minimizing function
     if problem is 'hysteresis':
-        min_function, jac_func, hessian_func = negative_distance(parameterIndex, SN)
+        min_function, jac_func, hessian_func = negative_distance(SN)
     else:
         raise Exception("Not coded yet = only hysteresis considered")
 
@@ -59,7 +60,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     return results_min
 
 
-def negative_distance(parameterIndex, SN_loc):
+def negative_distance(SN_loc):
     def compute_distance(variables):
         gamma0 = variables[0]
         n = SN_loc.model.dimension
@@ -99,7 +100,6 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
         return all_vars, index_gamma
 
     def saddle_node_problem(variables):
-
         all_vars, index_gamma = get_small_variables(variables)
         sd_rhs = SN_loc(all_vars)
         print('saddle node problem = ', sd_rhs)
@@ -160,7 +160,7 @@ def hysteresis_constraints(SN_loc, paramIndex=1):
 
 def parameter_norm(initial_sol):
     def norm_par(parameter):
-        norm_los =  np.sum(np.abs(parameter)) - np.sum(np.abs(initial_sol))
+        norm_los = np.sum(np.abs(parameter)) - np.sum(np.abs(initial_sol))
         print("norm = ", norm_los)
         return norm_los
 
@@ -190,6 +190,7 @@ def hysteresis(p_loc, SN_loc, rho_loc):
     j = 1
     jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
     jSols = SN_loc.find_saddle_node(j, fullParameter, freeParameterValues=jSearchNodes)
+    print(jSols)
     if len(jSols) is 2:
         distance_loc = abs(jSols[1] - jSols[0])
     else:
@@ -206,18 +207,12 @@ p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1
 p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
 
 f = ToggleSwitch(decay, [p1, p2])
-f1 = f.coordinates[0]
-f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
 
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
-              dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
 SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
 rho = 4.1
-p = np.array([1, 1, 5, 3, 1, 1, 6, 3.5], dtype=float)
+p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
 
 
