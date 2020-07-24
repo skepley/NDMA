@@ -56,7 +56,6 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
         raise Exception("Not coded yet = only hysteresis considered")
 
     results_min = minimize(min_function, all_starting_values, method='trust-constr', jac=jac_func, constraints=all_constraints, hess=hessian_func)
-    # needs to add hessian to all constraints and change constraints to NonLinearConstraint
     return results_min
 
 
@@ -88,8 +87,7 @@ def negative_distance(SN_loc):
 def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
     def get_small_variables(variables):
         n = SN_loc.model.dimension
-        num_pars = SN_loc.model.nVariableParameter
-        fixed_pars = variables[-num_pars:]
+        fixed_pars = variables[2*(2*n+1):]
 
         index_gamma = (first_or_second - 1) * (2 * n + 1)
         u_and_v_index0 = 1 + index_gamma
@@ -213,9 +211,6 @@ SN = SaddleNode(f)
 # ==== find saddle node for a parameter choice
 rho = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
-
-
-
 
 def distance_func(p_loc, SN_loc=SN, rho_loc=rho):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
