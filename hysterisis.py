@@ -46,7 +46,7 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     if 'hysteresis' in list_of_constraints + [problem]:
         all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
     if 'norm_param' in list_of_constraints:
-        all_constraints = all_constraints + parameter_norm_constraint()
+        all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
 
     # create minimizing function
     if problem is 'hysteresis':
@@ -66,6 +66,7 @@ def negative_distance(parameterIndex, SN_loc):
         gamma1 = variables[2*n+1]
         fun = gamma0 - gamma1
         # fun needs to be negative
+        print('negative parameter distance =', fun)
         return fun
 
     def jacobian_distance(variables):
@@ -101,6 +102,7 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
 
         all_vars, index_gamma = get_small_variables(variables)
         sd_rhs = SN_loc(all_vars)
+        print('saddle node problem = ', sd_rhs)
         return sd_rhs
 
     def saddle_node_jac(variables):
@@ -156,9 +158,11 @@ def hysteresis_constraints(SN_loc, paramIndex=1):
     return list_of_constr
 
 
-def parameter_norm():
+def parameter_norm(initial_sol):
     def norm_par(parameter):
-        return np.sum(np.abs(parameter)) - 3
+        norm_los =  np.sum(np.abs(parameter)) - np.sum(np.abs(initial_sol))
+        print("norm = ", norm_los)
+        return norm_los
 
     def jac_norm_par(parameters):
         jac = np.ones(len(parameters))
@@ -173,8 +177,8 @@ def parameter_norm():
     return norm_par, jac_norm_par, hess_norm_par
 
 
-def parameter_norm_constraint():
-    function_loc, function_jac, func_hessian = parameter_norm()
+def parameter_norm_constraint(initial_sol):
+    function_loc, function_jac, func_hessian = parameter_norm(initial_sol)
     constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac=function_jac, hess=func_hessian)
     list_constr = [constraint]
     return list_constr
