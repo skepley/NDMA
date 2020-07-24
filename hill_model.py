@@ -1331,7 +1331,7 @@ class HillModel:
                 parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
                                            self.variableIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.globalStateIndex)
-                Dppxf[np.ix_([iCoordinate], xSlice, xSlice, parameterSlice)] = f_i.dx2diff(x, parameterByCoordinate[
+                Dpxxf[np.ix_([iCoordinate], xSlice, xSlice, parameterSlice)] = f_i.dx2diff(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
             return Dpxxf
         else:

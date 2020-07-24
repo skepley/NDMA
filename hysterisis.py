@@ -87,7 +87,8 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
         u_and_v_index0 = 1 + index_gamma
         u_and_v = variables[u_and_v_index0:u_and_v_index0 + 2 * n]
         gamma = variables[index_gamma]
-        all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex], gamma, fixed_pars[paramIndex:])
+        all_vars = ezcat(u_and_v, fixed_pars[0:paramIndex])
+        all_vars = ezcat(all_vars, gamma, fixed_pars[paramIndex:])
         return all_vars, index_gamma
 
     def saddle_node_problem(variables):
@@ -119,18 +120,20 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
         num_pars = SN_loc.model.nVariableParameter
         dim_var = np.shape(variables)[0]
         all_vars, index_gamma = get_small_variables(variables)
-        small_vector = get_small_variables(vector)
+        #small_vector, not_interesting = get_small_variables(vector)
         non_zero_hessian = SN.diff2(all_vars)
-        non_zero_prod = np.einsum('ijk,i', non_zero_hessian, small_vector)
-
+        non_zero_prod = np.einsum('ijk,i', non_zero_hessian, vector)
+        indices_lambda_x_and_v = (first_or_second - 1)*(1 + 2 * n) + np.arange(2*n+1)
+        indices_pars = 2*(2*n+1) + np.arange(num_pars-1)
+        indices_this_case = np.append(indices_lambda_x_and_v, indices_pars)
         # now we have to transport the result to the adequate shape
         full_hessian = np.zeros([dim_var, dim_var])
-        full_hessian[:, index_gamma] = non_zero_prod[:, 2*n + paramIndex]
-        full_hessian[:, index_gamma+1: index_gamma+2 * n + 1] = non_zero_prod[:, 0:2*n]
+        full_hessian[indices_this_case, index_gamma] = non_zero_prod[:, 2*n + paramIndex]
+        full_hessian[np.ix_(indices_this_case, index_gamma+1+np.arange(2*n))] = non_zero_prod[:, 0:2*n]
 
         indices_fixed_pars = np.arange(num_pars)
         indices_fixed_pars = np.delete(indices_fixed_pars, paramIndex)
-        full_hessian[:, -num_pars+1:] = non_zero_prod[:, 2*n+indices_fixed_pars]
+        full_hessian[np.ix_(indices_this_case, indices_pars)] = non_zero_prod[:, 2*n+indices_fixed_pars]
         return full_hessian
     return saddle_node_problem, saddle_node_jac, saddle_node_hess
 

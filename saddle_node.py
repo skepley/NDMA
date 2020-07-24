@@ -214,18 +214,18 @@ class SaddleNode:
             # ROW 1
             Dg[np.ix_(index1, index1, index1)] = Dxxf  # block - (1,1,1)
             Dg[np.ix_(index1, index1, index3)] = Dxpf
-            Dg[np.ix_(index1, index3, index1)] = Dxpf
+            Dg[np.ix_(index1, index3, index1)] = np.swapaxes(Dxpf, 1, 2)
             Dg[np.ix_(index1, index3, index3)] = Dppf
 
             # BLOCK ROW 2 - derivatives of Dxf*v
             Dg[np.ix_(index2, index1, index1)] = np.einsum('ijkl,j', Dxxxf, tangentVector)
             Dg[np.ix_(index2, index1, index2)] = Dxxf
-            Dg[np.ix_(index2, index1, index3)] = np.einsum('ijk,j', Dxxpf, tangentVector)
+            Dg[np.ix_(index2, index1, index3)] = np.swapaxes(np.einsum('ijk...,j...', Dxxpf, tangentVector), 0, 2)
             Dg[np.ix_(index2, index2, index1)] = Dxxf
             Dg[np.ix_(index2, index2, index3)] = Dxpf
-            Dg[np.ix_(index2, index3, index1)] = np.einsum('ijk,j', Dxxpf, tangentVector)
-            Dg[np.ix_(index2, index3, index2)] = Dxpf
-            Dg[np.ix_(index2, index3, index3)] = Dxppf
+            Dg[np.ix_(index2, index3, index1)] = np.swapaxes(np.einsum('ijk...,j...', Dxxpf, tangentVector), 0, 1)
+            Dg[np.ix_(index2, index3, index2)] = np.swapaxes(Dxpf, 1, 2)
+            Dg[np.ix_(index2, index3, index3)] = np.swapaxes(np.einsum('ijk...,j...', Dxppf, tangentVector), 0, 1)
 
             # BLOCK ROW 3
             # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear

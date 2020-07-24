@@ -82,7 +82,7 @@ class ToggleSwitch(HillModel):
             return np.squeeze(
                 Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
-    def diff2(self, x, *parameter, diffIndex=None):
+    def diff2(self, x, *parameter, diffIndex=[None, None]):
         """Overload the diff2 function to identify the Hill parameters"""
 
         fullDf = super().diff2(x, *parameter)
@@ -93,7 +93,7 @@ class ToggleSwitch(HillModel):
         Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
                                                          self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
-        if diffIndex is None:
+        if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
         else:
             return np.squeeze(
@@ -117,7 +117,7 @@ class ToggleSwitch(HillModel):
                 Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
                            diffIndex)])  # return only slices for the specified subset of partials
 
-    def dxdiff2(self, x, *parameter, diffIndex=None):
+    def dxdiff2(self, x, *parameter, diffIndex=[None, None]):
         """Overload the dxdiff2 function to identify the Hill parameters"""
 
         fullDf = super().dxdiff2(x, *parameter)
@@ -127,7 +127,7 @@ class ToggleSwitch(HillModel):
             np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex, self.nonhillIndex)]  # insert derivatives of non-hill parameters
         Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex, self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
-        if diffIndex is None:
+        if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
         else:
             return np.squeeze(
