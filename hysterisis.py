@@ -229,4 +229,16 @@ results = wrapper_minimization(f, long_p)
 print('Success: ', results.success)
 #print('Minimal distance = ', res)
 
+gamma_0 = 1
+gamma_1 = 2
+x0 = np.arrray([1, 2])
+v0 = np.array([3, 4])
+x1 = np.array([5, 6])
+v1 = np.array([7, 8])
+other_pars = p[0, 2, 3, 4, 5, 6, 7]
+
+variables = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, other_pars)
+
+
+
 stopHere

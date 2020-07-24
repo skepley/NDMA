@@ -224,7 +224,7 @@ class HillComponent:
 
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
-            dH = self.sign * delta * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
+            dH = self.sign * delta * xPower * thetaPower * (log(x)-log(theta))/ ((thetaPower + xPower) ** 2)
 
         return dH
 
@@ -267,7 +267,7 @@ class HillComponent:
             if diffParameter1 == 'theta':
                 dH = self.sign * -1 * hillCoefficient * xPower * thetaPower_minus / ((thetaPower + xPower) ** 2)
             if diffParameter1 == 'hillCoefficient':
-                dH = self.sign * xPower * thetaPower * log(x / theta) / ((thetaPower + xPower) ** 2)
+                dH = self.sign * xPower * thetaPower * (log(x) - log(theta)) / ((thetaPower + xPower) ** 2)
 
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
@@ -283,7 +283,7 @@ class HillComponent:
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
-            dH = self.sign * delta * (thetaPower * xPower * (thetaPower - xPower) * log(theta / x) ** 2) / \
+            dH = self.sign * delta * (thetaPower * xPower * (thetaPower - xPower) * (log(theta)- log(x)) ** 2) / \
                  (thetaPower + xPower) ** 3
 
         return dH
@@ -316,7 +316,7 @@ class HillComponent:
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                    hillCoefficient * (thetaPower - xPower) * log(x / theta) + thetaPower + xPower) / (
+                    hillCoefficient * (thetaPower - xPower) * (log(x)- log(theta) )+ thetaPower + xPower) / (
                           (thetaPower + xPower) ** 3)
         return ddH
 
