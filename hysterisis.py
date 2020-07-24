@@ -46,8 +46,8 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     all_constraints = list()
     if 'hysteresis' in list_of_constraints + [problem]:
         all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
-    if 'norm_param' in list_of_constraints:
-        all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
+    #if 'norm_param' in list_of_constraints:
+    #    all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
 
     # create minimizing function
     if problem is 'hysteresis':
@@ -112,7 +112,6 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
 
         # reordering of the result w.r.t. the global ordering
         full_derivative = np.zeros([non_zero_diff.shape[0], len(variables)])
-        #
         full_derivative[:, index_gamma] = non_zero_diff[:, 2*n + paramIndex]
         full_derivative[:, index_gamma+1: index_gamma+2 * n + 1] = non_zero_diff[:, 0:2*n]
 
@@ -147,7 +146,7 @@ def hysteresis_constraints(SN_loc, paramIndex=1):
 
     def wrap_in_constraint(first_or_second):
         function_loc, function_jac, func_hessian = one_saddlenode_problem(SN_loc, first_or_second, paramIndex)
-        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac=function_jac, hess=func_hessian)
+        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac='cs', hess=func_hessian)
         return constraint
 
     list_of_constr =list()
@@ -209,10 +208,10 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
-rho = 4.1
+hill = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
-def distance_func(p_loc, SN_loc=SN, rho_loc=rho):
+def distance_func(p_loc, SN_loc=SN, rho_loc=hill):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
     return -dist
 
@@ -224,21 +223,17 @@ print('Distance = ', distance)
 #print('Minimal distance = ', res)
 
 
-long_p = np.append([rho], p)
+long_p = np.append([hill], p)
 results = wrapper_minimization(f, long_p)
 print('Success: ', results.success)
 #print('Minimal distance = ', res)
 
 gamma_0 = 1
 gamma_1 = 2
-x0 = np.arrray([1, 2])
+x0 = np.array([1, 2])
 v0 = np.array([3, 4])
 x1 = np.array([5, 6])
 v1 = np.array([7, 8])
-other_pars = p[0, 2, 3, 4, 5, 6, 7]
+other_pars = p[1:]
 
-variables = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, other_pars)
-
-
-
-stopHere
+#variables_example = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, hill, [other_pars])
