@@ -224,7 +224,7 @@ class HillComponent:
 
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
-            dH = self.sign * delta * xPower * thetaPower * (log(x)-log(theta))/ ((thetaPower + xPower) ** 2)
+            dH = self.sign * delta * xPower * thetaPower * (log(x) - log(theta)) / ((thetaPower + xPower) ** 2)
 
         return dH
 
@@ -283,7 +283,7 @@ class HillComponent:
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
-            dH = self.sign * delta * (thetaPower * xPower * (thetaPower - xPower) * (log(theta)- log(x)) ** 2) / \
+            dH = self.sign * delta * (thetaPower * xPower * (thetaPower - xPower) * (log(theta) - log(x)) ** 2) / \
                  (thetaPower + xPower) ** 3
 
         return dH
@@ -316,7 +316,7 @@ class HillComponent:
         elif diffParameter == 'hillCoefficient':
             thetaPower = theta ** hillCoefficient
             ddH = self.sign * delta * thetaPower * xPower_der * (
-                    hillCoefficient * (thetaPower - xPower) * (log(x)- log(theta) )+ thetaPower + xPower) / (
+                    hillCoefficient * (thetaPower - xPower) * (log(x) - log(theta)) + thetaPower + xPower) / (
                           (thetaPower + xPower) ** 3)
         return ddH
 
@@ -453,7 +453,6 @@ class HillComponent:
         xPower = xPower_der * x
         x2Power = xPower ** 2
         hillsquare = hill ** 2
-
         return self.sign * (hill * delta * thetaPower * xPower_der3) / ((xPower + thetaPower) ** 4) * \
                (hillsquare * theta2Power - 4 * hillsquare * thetaPower * xPower + hillsquare * x2Power - \
                 3 * hill * theta2Power + 2 * theta2Power + 4 * thetaPower * xPower + 3 * hill * x2Power + 2 * x2Power)
@@ -504,8 +503,6 @@ class HillCoordinate:
         self.interactionIndex = interactionIndex[1:]  # Vector of global interaction variable indices
         self.parameterValues = parameter  # initialize array of fixed parameter values
         self.nComponent = len(interactionSign)  # number of interaction nodes
-        print(parameter)
-        print(interactionSign)
         self.components = self.set_components(parameter, interactionSign)
         self.interactionType = interactionType  # specified as an integer partition of K
         self.summand = self.set_summand()

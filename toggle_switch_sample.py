@@ -56,19 +56,7 @@ SN = SaddleNode(f)
 # np.savez('tsData', rhoInitData, np.array([rho]), allSols, parameterData)
 
 
-def dsgrn_region(parameter):
-    """Return a dsgrn classification of a parameter as an integer in {1,...,9}"""
 
-    def factor_slice(gamma, ell, delta, theta):
-        T = gamma * theta
-        if T <= ell:
-            return 0
-        elif ell < T <= ell + delta:
-            return 1
-        else:
-            return 2
-
-    return 1 + 3 * factor_slice(*parameter[[0, 1, 2, 7]]) + factor_slice(*parameter[[4, 5, 6, 3]])
 
 npData = np.load('tsData.npz')
 rhoInitData = npData['arr_0.npy']
