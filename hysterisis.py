@@ -47,15 +47,15 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     all_constraints = list()
     if 'hysteresis' in list_of_constraints + [problem]:
         all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
-    if 'norm_param' in list_of_constraints:
-        all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
+    #if 'norm_param' in list_of_constraints:
+    #    all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
 
     # create minimizing function
     if problem is 'hysteresis':
         min_function, jac_func, hessian_func = negative_distance(SN)
     else:
         raise Exception("Not coded yet = only hysteresis considered")
-
+    print(all_starting_values)
     results_min = minimize(min_function, all_starting_values, method='trust-constr', jac=jac_func, constraints=all_constraints, hess=hessian_func)
     return results_min
 
@@ -65,7 +65,7 @@ def negative_distance(SN_loc):
         gamma0 = variables[0]
         n = SN_loc.model.dimension
         gamma1 = variables[2*n+1]
-        fun = gamma0 - gamma1
+        fun = -np.abs(gamma0 - gamma1)
         # fun needs to be negative
         print('negative parameter distance =', fun)
         return fun
@@ -76,6 +76,11 @@ def negative_distance(SN_loc):
         jac[0] = 1
         n = SN_loc.model.dimension
         jac[2*n+1] = -1
+        gamma0 = variables[0]
+        n = SN_loc.model.dimension
+        gamma1 = variables[2*n+1]
+        if gamma0 - gamma1 < 0:
+            jac = - jac
         return jac
 
     def hessian_distance(variables):
@@ -210,7 +215,7 @@ SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
 hill = 4.1
-p = np.array([1, 1.5, 5, 3, 1, 1, 6, 3], dtype=float)
+p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
 def distance_func(p_loc, SN_loc=SN, rho_loc=hill):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
