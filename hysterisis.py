@@ -11,6 +11,7 @@ from saddle_node import SaddleNode
 from models import ToggleSwitch
 from scipy.optimize import minimize
 import scipy
+from scipy.optimize import BFGS
 
 
 def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresis', list_of_constraints=None):
@@ -46,8 +47,8 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     all_constraints = list()
     if 'hysteresis' in list_of_constraints + [problem]:
         all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
-    #if 'norm_param' in list_of_constraints:
-    #    all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
+    if 'norm_param' in list_of_constraints:
+        all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
 
     # create minimizing function
     if problem is 'hysteresis':
@@ -146,7 +147,7 @@ def hysteresis_constraints(SN_loc, paramIndex=1):
 
     def wrap_in_constraint(first_or_second):
         function_loc, function_jac, func_hessian = one_saddlenode_problem(SN_loc, first_or_second, paramIndex)
-        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac='cs', hess=func_hessian)
+        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac='cs', hess=BFGS())
         return constraint
 
     list_of_constr =list()
@@ -209,7 +210,7 @@ SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
 hill = 4.1
-p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
+p = np.array([1, 1.5, 5, 3, 1, 1, 6, 3], dtype=float)
 
 def distance_func(p_loc, SN_loc=SN, rho_loc=hill):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
@@ -226,6 +227,17 @@ print('Distance = ', distance)
 long_p = np.append([hill], p)
 results = wrapper_minimization(f, long_p)
 print('Success: ', results.success)
+f = open('optimal_results', 'a')
+if results.success:
+    f.write('\nNew try\n Starting point\n')
+    f.write(np.array_str(long_p))
+    f.write('\nResults\n')
+    f.write(np.array_str(results.x))
+    f.write('\n')
+    f.write('Function value:')
+    f.write(str(results.fun))
+f.close()
+print(results.x)
 #print('Minimal distance = ', res)
 
 gamma_0 = 1
@@ -236,4 +248,5 @@ x1 = np.array([5, 6])
 v1 = np.array([7, 8])
 other_pars = p[1:]
 
+exit()
 #variables_example = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, hill, [other_pars])
