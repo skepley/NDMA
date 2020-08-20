@@ -97,9 +97,12 @@ class SaddleNode:
                 addSols = np.array([sol.x for sol in saddleNodeZeros])
                 saddleNodePoints = np.append(saddleNodePoints, addSols, axis=0)
 
-        if flag_return is 0:
+        if flag_return is 0 and len(saddleNodePoints) > 0:
             return np.unique(np.round(saddleNodePoints, uniqueDigits))
-        return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=0)  # remove duplicates and return values
+        elif len(saddleNodePoints) > 0:
+            return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=0)  # remove duplicates and return values
+        else:  # return empty array. nothing found
+            return saddleNodePoints
 
     def unpack_components(self, u):
         """Unpack the input vector for a SaddleNode problem into 3 component vectors of the form (x, v, p) where:
@@ -138,7 +141,7 @@ class SaddleNode:
             Dg[index1, index3] = a
             # BLOCK ROW 2
             Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
-                                           tangentVector)  # block - (2,1)
+                                                   tangentVector)  # block - (2,1)
             Dg[np.ix_(index2, index2)] = Dxf  # block - (2,2)
             Dg[index2, index3] = np.einsum('ij, j',
                                            self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
@@ -155,11 +158,11 @@ class SaddleNode:
             Dg[np.ix_(index1, index3)] = a
             # BLOCK ROW 2
             Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
-                                           tangentVector)  # block - (2,1)
+                                                   tangentVector)  # block - (2,1)
             Dg[np.ix_(index2, index2)] = Dxf  # block - (2,2)
             Dg[np.ix_(index2, index3)] = np.einsum('ijk, j',
-                                           self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
-                                           tangentVector)  # block - (2,3)
+                                                   self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
+                                                   tangentVector)  # block - (2,3)
             # BLOCK ROW 3
             # block - (3, 1) is a 1-by-n zero block
             Dg[index3[0], np.ix_(index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
