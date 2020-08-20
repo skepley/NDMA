@@ -11,6 +11,7 @@ from saddle_node import SaddleNode
 from models import ToggleSwitch
 from scipy.optimize import minimize
 import scipy
+from scipy.optimize import BFGS
 
 
 def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresis', list_of_constraints=None):
@@ -46,15 +47,15 @@ def wrapper_minimization(HM, starting_pars, parameterIndex=1, problem='hysteresi
     all_constraints = list()
     if 'hysteresis' in list_of_constraints + [problem]:
         all_constraints = all_constraints + hysteresis_constraints(SN, parameterIndex)
-    if 'norm_param' in list_of_constraints:
-        all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
+    #if 'norm_param' in list_of_constraints:
+    #    all_constraints = all_constraints + parameter_norm_constraint(all_starting_values)
 
     # create minimizing function
     if problem is 'hysteresis':
         min_function, jac_func, hessian_func = negative_distance(SN)
     else:
         raise Exception("Not coded yet = only hysteresis considered")
-
+    print(all_starting_values)
     results_min = minimize(min_function, all_starting_values, method='trust-constr', jac=jac_func, constraints=all_constraints, hess=hessian_func)
     return results_min
 
@@ -64,7 +65,7 @@ def negative_distance(SN_loc):
         gamma0 = variables[0]
         n = SN_loc.model.dimension
         gamma1 = variables[2*n+1]
-        fun = gamma0 - gamma1
+        fun = -np.abs(gamma0 - gamma1)
         # fun needs to be negative
         print('negative parameter distance =', fun)
         return fun
@@ -75,6 +76,11 @@ def negative_distance(SN_loc):
         jac[0] = 1
         n = SN_loc.model.dimension
         jac[2*n+1] = -1
+        gamma0 = variables[0]
+        n = SN_loc.model.dimension
+        gamma1 = variables[2*n+1]
+        if gamma0 - gamma1 < 0:
+            jac = - jac
         return jac
 
     def hessian_distance(variables):
@@ -112,7 +118,6 @@ def one_saddlenode_problem(SN_loc, first_or_second, paramIndex):
 
         # reordering of the result w.r.t. the global ordering
         full_derivative = np.zeros([non_zero_diff.shape[0], len(variables)])
-        #
         full_derivative[:, index_gamma] = non_zero_diff[:, 2*n + paramIndex]
         full_derivative[:, index_gamma+1: index_gamma+2 * n + 1] = non_zero_diff[:, 0:2*n]
 
@@ -147,7 +152,7 @@ def hysteresis_constraints(SN_loc, paramIndex=1):
 
     def wrap_in_constraint(first_or_second):
         function_loc, function_jac, func_hessian = one_saddlenode_problem(SN_loc, first_or_second, paramIndex)
-        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac=function_jac, hess=func_hessian)
+        constraint = scipy.optimize.NonlinearConstraint(fun=function_loc, lb=0, ub=0, jac='cs', hess=BFGS())
         return constraint
 
     list_of_constr =list()
@@ -209,10 +214,10 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
-rho = 4.1
+hill = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
-def distance_func(p_loc, SN_loc=SN, rho_loc=rho):
+def distance_func(p_loc, SN_loc=SN, rho_loc=hill):
     dist = hysteresis(p_loc, SN_loc, rho_loc)
     return -dist
 
@@ -224,21 +229,29 @@ print('Distance = ', distance)
 #print('Minimal distance = ', res)
 
 
-long_p = np.append([rho], p)
+long_p = np.append([hill], p)
 results = wrapper_minimization(f, long_p)
 print('Success: ', results.success)
+f = open('optimal_results', 'a')
+if results.success:
+    f.write('\nNew try\n Starting point\n')
+    f.write(np.array_str(long_p))
+    f.write('\nResults\n')
+    f.write(np.array_str(results.x))
+    f.write('\n')
+    f.write('Function value:')
+    f.write(str(results.fun))
+f.close()
+print(results.x)
 #print('Minimal distance = ', res)
 
 gamma_0 = 1
 gamma_1 = 2
-x0 = np.arrray([1, 2])
+x0 = np.array([1, 2])
 v0 = np.array([3, 4])
 x1 = np.array([5, 6])
 v1 = np.array([7, 8])
-other_pars = p[0, 2, 3, 4, 5, 6, 7]
+other_pars = p[1:]
 
-variables = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, other_pars)
-
-
-
-stopHere
+exit()
+#variables_example = ezcat(gamma_0, x0, v0, gamma_1, x1, v1, hill, [other_pars])

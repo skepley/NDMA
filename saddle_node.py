@@ -116,8 +116,8 @@ class SaddleNode:
 
     def diff(self, u, diffIndex=None):
         """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
-        Dg: R^{2n+1} ---> M_{2n+1 x 2n+m}(R).
-        INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
+        Dg: R^{2n+M} ---> M_{2n+1 x 2n+m}(R).
+        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector."""
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
@@ -171,8 +171,8 @@ class SaddleNode:
 
     def diff2(self, u, diffIndex=None):
         """Evaluate the second derivative of the zero finding map. This is a function of the form
-        D^2g: R^{2n+1} ---> R^{2n+1 x 2n+1+M x 2n+1+M}, M length of diffIndex.
-        INPUT: u = (x, v, hillCoefficient) where x is a state vector, v a tangent vector."""
+        D^2g: R^{2n+M} ---> R^{2n+1 x 2n+1+M x 2n+1+M}, M length of diffIndex.
+        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector."""
 
         # unpack input vector and set dimensions for Hessian blocks
         n = self.model.dimension
