@@ -153,9 +153,9 @@ class ToggleSwitch(HillModel):
             warnings.warn('No equilibria found')
             return
         elif equilibria.ndim == 1:
-            plt.scatter(equilibria[0], equilibria[1])
+            plt.scatter(equilibria[0], equilibria[1], color='b')
         else:
-            plt.scatter(equilibria[0, :], equilibria[1, :])
+            plt.scatter(equilibria[0, :], equilibria[1, :], color='b')
 
     def dsgrn_region(self, *parameter):
         """Return a dsgrn parameter region for the toggle switch as an integer in {1,...,9}

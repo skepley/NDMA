@@ -91,12 +91,14 @@ def estimate_saddle_node(hill, p, gridDensity=10):
 
 # ============ Sample the fiber and find saddle node points ============
 # generate some sample parameters
-nSample = 10
+nSample = 10 ** 3
+hillRange = [2, 1000]
+hillDensity = [25, 5, 5]  # coarse, fine, ultrafine node density
 parameterData = np.array([sampler() for j in range(nSample)])
-nCourseHill = 25  # number of nodes used for for selection based on equilibrium counting
-nFineHill = 5  # number of nodes for refined Hill candidate interval subdivision (equilibria are recomputed)
-nUltraFineHill = 5  # number of initial Hill candidates for each refined candidate (equilibria are NOT recomputed)
-coarseInitialHillData = np.linspace(2, 1000,
+nCourseHill = hillDensity[0]  # number of nodes used for for selection based on equilibrium counting
+nFineHill = hillDensity[1]  # number of nodes for refined Hill candidate interval subdivision (equilibria are recomputed)
+nUltraFineHill = hillDensity[2]  # number of initial Hill candidates for each refined candidate (equilibria are NOT recomputed)
+coarseInitialHillData = np.linspace(hillRange[0], hillRange[1],
                                     nCourseHill)  # hill coefficient vector to use for candidate selection by counting equilibria
 
 # compute saddle nodes on samples
@@ -137,7 +139,15 @@ for j in range(nSample):
     print(j)
 
 tf = time.time() - t0
-print(tf)
+print('Computation time: {0} hours'.format(tf/(24*60)))
+np.savez('upperRightFiberData', parameterData, hillRange, hillDensity, monostableParameters, badCandidates, SNParameters)
 
-print(badCandidates)
-print(SNParameters)
+npData = np.load('upperRightFiberData.npz', allow_pickle=True)
+parameterData = npData['arr_0.npy']
+hillRange = npData['arr_1.npy']
+hillDensity = npData['arr_2.npy']
+monostableParameters = npData['arr_3.npy']
+badCandidates = npData['arr_4.npy']
+SNParameters = npData['arr_5.npy']
+# print(badCandidates)
+# print(SNParameters)

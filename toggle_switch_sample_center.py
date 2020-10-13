@@ -23,8 +23,8 @@ SN = SaddleNode(f)
 
 # # =========== NON-DIMENSIONALIZED UNIFORM:  23.36 percent, 5,545 max Hill, 3.393 mean Hill
 # saveFile = 'tsDataCenter'
-# rhoInitData = np.linspace(2, 20, 10)
-# rho = 3
+# hillInitialData = np.linspace(2, 20, 10)
+# hill = 3
 #
 #
 # def sample_center():
@@ -43,8 +43,8 @@ SN = SaddleNode(f)
 
 # # =========== NON-DIMENSIONALIZED AWAY FROM BOUNDARY:  31.21 percent, 5.719 max Hill, 0.917 mean Hill
 # saveFile = 'tsDataCenterMid'
-# rhoInitData = np.linspace(2, 20, 10)
-# rho = 3
+# hillInitialData = np.linspace(2, 20, 10)
+# hill = 3
 # def sample_center():
 #     """Return a sample point in the DSGRN central region"""
 #     theta_1 = theta_2 = gamma_1 = 1.  # set fixed parameters for from non-dimensionalization
@@ -60,8 +60,8 @@ SN = SaddleNode(f)
 
 # =========== NON-DIMENSIONALIZED AWAY FROM BOUNDARY, ORDERED LINEAR DECAY (g2 < g1): 29.82 percent, 5.346 max Hill,  0.875 mean Hill
 saveFile = 'tsDataCenterMidGammaOrdered'
-rhoInitData = np.linspace(2, 20, 10)
-rho = 3
+hillInitialData = np.linspace(2, 20, 10)
+hill = 3
 
 
 def sample_center():
@@ -85,7 +85,7 @@ t0 = time.time()
 allSols = np.zeros(nSample)
 for j in range(nSample):
     p = parameterData[j]
-    jSols = SN.find_saddle_node(0, rho, p, freeParameterValues=rhoInitData)
+    jSols = SN.find_saddle_node(0, hill, p, freeParameterValues=hillInitialData)
     if len(jSols) > 0:
         allSols[j] = np.min(jSols)
     if j % 1000 == 0:
@@ -93,11 +93,11 @@ for j in range(nSample):
 
 tf = time.time() - t0
 print('Finished in {0} minutes \n'.format(round(tf / 60)))
-np.savez(saveFile, rhoInitData, np.array([rho]), allSols, parameterData)
+np.savez(saveFile, hillInitialData, np.array([hill]), allSols, parameterData)
 
 npData = np.load(saveFile + '.npz')
-rhoInitData = npData['arr_0.npy']
-rho = npData['arr_1.npy']
+hillInitialData = npData['arr_0.npy']
+hill = npData['arr_1.npy']
 allSols = npData['arr_2.npy']
 parameterData = npData['arr_3.npy']
 # dsgrnData = np.array([dsgrn_region(parameterData[j]) for j in range(np.shape(parameterData)[0])])
