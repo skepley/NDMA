@@ -64,6 +64,12 @@ def count_eq(hill, p, gridDensity=10):
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
+            if np.shape(eq)[1] == 4:
+                print('odd')
+
+            if np.shape(eq)[1] == 2:
+                eq = f.find_equilibria(gridDensity*3, hill, p)
+                print('odd')
             return np.shape(eq)[1]  # number of columns is the number of equilibria found
         else:
             return 0
@@ -75,20 +81,32 @@ def estimate_saddle_node(hill, p, gridDensity=10):
     return an empty interval."""
 
     hillIdx = 0
-    numEquilibria = 1
     hill = ezcat(1, hill)  # append 1 to the front of the hill vector
 
-    while numEquilibria < 2 and hillIdx < len(hill) - 1:
+    numEquilibria = count_eq(hill[0], p, gridDensity)
+    numEquilibriaInf = count_eq(hill[-1], p, gridDensity)
+
+    bounds_on_saddle = []
+
+    if numEquilibriaInf > 1:
+        n_steps = int(np.ceil((hill[-1] - hill[0])/5))
+        [hillMin, hillMax] = bisection(hill[0], hill[-1], p, n_steps)
+        bounds_on_saddle.append([hillMin, hillMax])
+        return bounds_on_saddle
+
+    while hillIdx < len(hill) - 1:
         hillMin = hill[hillIdx]  # update lower hill coefficient bound
         hillMax = hill[hillIdx + 1]  # update upper hill coefficient bound
+        numEquilibriaOld = numEquilibria
         numEquilibria = count_eq(hillMax, p, gridDensity)
         hillIdx += 1  # increment hill index counter
+        if numEquilibria - numEquilibriaOld != 0:
+            n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
+            hillBound = bisection(hillMin, hillMax, p, n_steps)
+            bounds_on_saddle = bounds_on_saddle.append(hillBound)
 
-    if numEquilibria < 2:
-        return None  # p is monostable
+    return bounds_on_saddle
 
-    else:  # p is a candidate for a saddle node parameter
-        return np.array([hillMin, hillMax])
 
 def heat_coordinates(alpha, beta, alphaMax):
     """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
@@ -147,13 +165,11 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
 
 # ============ Sample the fiber and find saddle node points ============
 # generate some sample parameters
-nSample = 10 ** 3
+nSample = 10 ** 2
 hillRange = [2, 1000]
-hillDensity = [25, 5, 5]  # coarse, fine, ultrafine node density
+hillDensity = [25]  # coarse, fine, ultrafine node density
 parameterData = np.array([sampler() for j in range(nSample)])
 nCourseHill = hillDensity[0]  # number of nodes used for for selection based on equilibrium counting
-nFineHill = hillDensity[1]  # number of nodes for refined Hill candidate interval subdivision (equilibria are recomputed)
-nUltraFineHill = hillDensity[2]  # number of initial Hill candidates for each refined candidate (equilibria are NOT recomputed)
 coarseInitialHillData = np.linspace(hillRange[0], hillRange[1],
                                     nCourseHill)  # hill coefficient vector to use for candidate selection by counting equilibria
 
@@ -164,35 +180,28 @@ badCandidates = []  # list for parameters which pass the candidate check but fai
 SNParameters = []  # list for parameters where a saddle node is found
 for j in range(nSample):
     p = parameterData[j]
-    candidateInterval = estimate_saddle_node(coarseInitialHillData, p)
+    candidateIntervals = estimate_saddle_node(coarseInitialHillData, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
-    if candidateInterval is not None:  # p should have a saddle node point
-        jSols = np.array([])  # initialize list to hold solutions
-        fineInitialHillData = np.linspace(*candidateInterval, nFineHill)
-        # print('Medium grid: {0}'.format(fineInitialHillData))
-        fineHillStep = fineInitialHillData[1] - fineInitialHillData[0]  # step size for ultra-fine Hill grid
-        fattenGrid = ezcat(fineInitialHillData[0], fineInitialHillData,
-                           fineInitialHillData[-1])  # append double copies of the first and last initial condition
-        for k in range(1, len(fattenGrid) - 1):
-            hill = fattenGrid[k]
-            ultraFineHill = np.arange(fattenGrid[k - 1], fattenGrid[k + 1],
-                                      fineHillStep / (
-                                              nUltraFineHill - 1 - 1e-13))  # get additional grid of hill coefficients
+    if candidateIntervals is None:
+        monostableParameters.append(j) # this is a monostable parameter
+    else:
+        while candidateIntervals != []:  # p should have at least one saddle node point
+            candidateInterval = np.array(candidateIntervals.pop())
+            ultraFineHill = np.arange(candidateInterval[0], candidateInterval[1], 10 ** -3)  # get additional grid of hill coefficients
             # print('Fine grid: {0}'.format(ultraFineHill))
+            hill = np.mean(candidateInterval)
             jkSols = SN.find_saddle_node(0, hill, p, freeParameterValues=ultraFineHill)
             jSols = ezcat(jkSols)
+            if len(jSols) > 0:
+                jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
+                SNParameters.append((j, jSols))
 
-        if len(jSols) > 0:
-            jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
-            SNParameters.append((j, jSols))
-
-        else:
-            badCandidates.append(j)  # this parameter passed the selection but failed to return any saddle not points
-
-    else:  # this is a monostable parameter
-        monostableParameters.append(j)
+            else:
+                badCandidates.append((j,candidateInterval))  # this parameter passed the selection but failed to return any saddle not points
 
     print(j)
+
+print()
 
 tf = time.time() - t0
 print('Computation time: {0} hours'.format(tf/(24*60)))

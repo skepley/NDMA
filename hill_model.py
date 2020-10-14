@@ -1353,7 +1353,7 @@ class HillModel:
         else:
             raise ValueError  # this isn't implemented yet
 
-    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=7):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
             *parameter - (numpy vectors) Evaluations for variable parameters to use for evaluating the root finding algorithm
