@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from hill_model import *
 from saddle_node import SaddleNode
 from models import ToggleSwitch
+from scipy.interpolate import griddata
+
 
 plt.close('all')
 
@@ -87,6 +89,60 @@ def estimate_saddle_node(hill, p, gridDensity=10):
 
     else:  # p is a candidate for a saddle node parameter
         return np.array([hillMin, hillMax])
+
+def heat_coordinates(alpha, beta, alphaMax):
+    """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
+    alpha = ell / gamma and beta = (ell + delta) / gamma"""
+
+    if beta < 1:  # (ell + delta)/gamma < theta
+        x = beta
+
+    elif alpha > 1:  # theta < ell/gamma
+        x = 2 + (alpha - 1) / (alphaMax - 1)
+
+    else:  # ell/gamma < theta < (ell + delta)/gamma
+        x = 1 + (1 - alpha) / (beta - alpha)
+    return x
+
+def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
+    """Produce a heat map plot of a given choice of toggle switch parameters using the specified color map data.
+    ParameterData is a N-by-5 matrix where each row is a parameter of the form (ell_1, delta_1, gamma_2, ell_2, delta_2)"""
+
+    nParameter = len(parameterData)
+    alpha_1 = parameterData[:,0]
+    beta_1 = parameterData[:,1]
+    alpha_2 = parameterData[:, 3] / parameterData[:, 2]
+    beta_2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
+    x = np.array([heat_coordinates(alpha_1[j], beta_1[j], alphaMax) for j in range(nParameter)])
+    y = np.array([heat_coordinates(alpha_2[j], beta_2[j], alphaMax) for j in range(nParameter)])
+    z = np.array([np.min([val, heatMin]) for val in colorData])
+
+    # define grid.
+    plt.figure()
+    xGrid = np.linspace(0, 3, 100)
+    yGrid = np.linspace(0, 3, 100)
+    # grid the data.
+    zGrid = griddata((x, y), z, (xGrid[None, :], yGrid[:, None]), method='linear')
+    # contour the gridded data, plotting dots at the randomly spaced data points.
+    zmin = 0
+    zmax = np.nanmax(zGrid)
+    palette = plt.matplotlib.colors.LinearSegmentedColormap('jet3', plt.cm.datad['jet'], 2048)
+    palette.set_under(alpha=0.0)
+    plt.imshow(zGrid, extent=(0, 3, 0, 3), cmap=palette, origin='lower', vmin=zmin, vmax=zmax, aspect='auto',
+               interpolation='bilinear')
+    # CS = plt.contour(xGrid, yGrid, zGrid, 15, linewidths=0.5, colors='k')
+    # CS = plt.contourf(xGrid, yGrid, zGrid, 15, cmap=plt.cm.jet)
+    plt.colorbar()  # draw colorbar
+    # plot data points.
+    plt.scatter(x, y, marker='o', c='k', s=2)
+    plt.xlim(0, 3)
+    plt.ylim(0, 3)
+    # plt.title('griddata test (%d points)' % npts)
+    plt.show()
+    for i in range(1, 3):
+        plt.plot([i, i], [0, 3], 'k')
+        plt.plot([0, 3], [i, i], 'k')
+
 
 
 # ============ Sample the fiber and find saddle node points ============
