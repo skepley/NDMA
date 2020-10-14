@@ -108,6 +108,30 @@ def estimate_saddle_node(hill, p, gridDensity=10):
     return bounds_on_saddle
 
 
+def bisection(hill0, hill1, p, n_steps):
+
+    if n_steps is 0:
+        return np.array([hill0, hill1])
+
+    nEq0 = count_eq(hill0, p)
+    nEq1 = count_eq(hill1, p)
+    for i in range(n_steps):
+        if hill1 - hill0 > 0.1:
+            hill_middle = (hill0 + hill1)/2
+            nEqmiddle = count_eq(hill_middle, p)
+
+            if nEqmiddle == nEq0:
+                hill0 = hill_middle
+                nEq0 = nEqmiddle
+            elif nEqmiddle == nEq1:
+                hill1 = hill_middle
+                nEq1 = nEqmiddle
+            else:
+                return np.array([hill_middle, hill_middle])
+
+    return np.array([hill0, hill1])
+
+
 def heat_coordinates(alpha, beta, alphaMax):
     """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
     alpha = ell / gamma and beta = (ell + delta) / gamma"""
