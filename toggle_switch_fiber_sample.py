@@ -65,10 +65,10 @@ def count_eq(hill, p, gridDensity=10):
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
-            eq = f.find_equilibria(gridDensity*3, hill, p)
             return np.shape(eq)[1], eq  # number of columns is the number of equilibria found
         else:
-            return 0, []
+            eq = f.find_equilibria(gridDensity * 2, hill, p)
+            return np.shape(eq)[1], eq
 
 
 def estimate_saddle_node(hill, p, gridDensity=10):
@@ -101,7 +101,7 @@ def estimate_saddle_node(hill, p, gridDensity=10):
         hillMin = hill[hillIdx]  # update lower hill coefficient bound
         hillMax = hill[hillIdx + 1]  # update upper hill coefficient bound
         numEquilibriaOld = numEquilibria
-        numEquilibria = count_eq(hillMax, p, gridDensity)
+        numEquilibria, eq = count_eq(hillMax, p, gridDensity)
         hillIdx += 1  # increment hill index counter
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
@@ -137,7 +137,7 @@ def bisection(hill0, hill1, p, n_steps):
                 return hill_middle, EqMiddle
         else:
             break
-    if nEq0 < nEq1:
+    if nEq0 > nEq1:
         return hill0, Eq0
     else:
         return hill1, Eq1
@@ -218,14 +218,13 @@ for j in range(nSample):
     p = parameterData[j]
     hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(coarseInitialHillData, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
-    if hill_for_saddle is None:
+    if hill_for_saddle is []:
         monostableParameters.append(j) # this is a monostable parameter
     else:
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
-            if equilibria.shape[0]==1:
-                print('no no')
+            print(equilibria.shape)
             SN_candidate_eq = SN_candidates_from_bisection(equilibria)
             jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=SN_candidate_eq)
             jSols = ezcat(jkSols)
@@ -236,8 +235,6 @@ for j in range(nSample):
                 badCandidates.append((j, candidateHill, equilibria))  # this parameter passed the selection but failed to return any saddle not points
 
     print(j)
-
-print()
 
 tf = time.time() - t0
 print('Computation time: {0} hours'.format(tf/(24*60)))
@@ -258,4 +255,3 @@ point_1 = badCandidates[1]
 par = parameterData[point_1[0]]
 
 f.plot_nullcline(point_1[1][0], par, domainBounds=((0.8, 1.3), (0.8, 1.3)))
-print('afg')
