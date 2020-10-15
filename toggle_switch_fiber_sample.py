@@ -14,7 +14,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from hill_model import *
-from saddle_node import SaddleNode
+from saddle_node import *
 from models import ToggleSwitch
 from scipy.interpolate import griddata
 
@@ -87,8 +87,8 @@ def estimate_saddle_node(hill, p, gridDensity=10):
 
     if numEquilibriaInf > 1:
         n_steps = int(np.ceil((hill[-1] - hill[0])/5))
-        hill, eqs = bisection(hill[0], hill[-1], p, n_steps)
-        hill_for_saddle.append(hill)
+        hill_SN, eqs = bisection(hill[0], hill[-1], p, n_steps)
+        hill_for_saddle.append(hill_SN)
         equilibria_for_saddle.append(eqs)
         return hill_for_saddle, equilibria_for_saddle
 
@@ -100,8 +100,8 @@ def estimate_saddle_node(hill, p, gridDensity=10):
         hillIdx += 1  # increment hill index counter
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
-            hill, equilibria = bisection(hillMin, hillMax, p, n_steps)
-            hill_for_saddle.append(hill)
+            hill_SN, equilibria = bisection(hillMin, hillMax, p, n_steps)
+            hill_for_saddle.append(hill_SN)
             equilibria_for_saddle.append(equilibria)
 
     return hill_for_saddle, equilibria_for_saddle
@@ -199,8 +199,7 @@ hillRange = [2, 1000]
 hillDensity = [25]  # coarse, fine, ultrafine node density
 parameterData = np.array([sampler() for j in range(nSample)])
 nCourseHill = hillDensity[0]  # number of nodes used for for selection based on equilibrium counting
-coarseInitialHillData = np.linspace(hillRange[0], hillRange[1],
-                                    nCourseHill)  # hill coefficient vector to use for candidate selection by counting equilibria
+coarseInitialHillData = [hillRange[0], hillRange[1]]  # hill coefficient vector to use for candidate selection by counting equilibria
 
 # compute saddle nodes on samples
 t0 = time.time()
@@ -217,7 +216,8 @@ for j in range(nSample):
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
-            jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=equilibria)
+            SN_candadate_eq = SN_candidates_from_bisection(equilibria)
+            jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=SN_candadate_eq)
             jSols = ezcat(jkSols)
             if len(jSols) > 0:
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
