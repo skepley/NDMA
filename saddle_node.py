@@ -37,17 +37,22 @@ class SaddleNode:
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return ezcat(g1, g2, g3)
 
-    def find_saddle_node(self, freeParameterIndex, *parameter, freeParameterValues=None, uniqueDigits=5, flag_return=0):
+    def find_saddle_node(self, freeParameterIndex, *parameter, equilibria=None, freeParameterValues=None, uniqueDigits=5, flag_return=0):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
         None if it fails to find any
+
+        Inputs:
+            equilibria - Specify a list of equilibria to use as initial guesses. If none are specified it uses any equilibria
+            which are found using the find_equilibria method.
         flag_return asks for complete info on the parameters and solutions at the saddle node"""
 
-        equilibria = self.model.find_equilibria(10, *parameter)
-        if equilibria is None:
-            print('No equilibria found for parameter: {0} \n'.format(parameter))
-            return []
+        if equilibria is None:  # start the saddle node search at the equilibria returned by the find_equilbria method
+            equilibria = self.model.find_equilibria(10, *parameter)
+            if equilibria is None:
+                print('No equilibria found for parameter: {0} \n'.format(parameter))
+                return []
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
         if freeParameterValues is None:
