@@ -25,7 +25,7 @@ def SN_candidates_from_bisection(equilibria):
             if eqDistance < minDistance:
                 minDistance = eqDistance
                 eqPair = (idx1, idx2)
-    return (equilibria[:, eqPair[0]] + equilibria[:, eqPair[1]]) / 2  # return midpoint between 2 closest equilibria
+    return np.row_stack((equilibria[:, eqPair[0]] + equilibria[:, eqPair[1]]) / 2 ) # return midpoint between 2 closest equilibria
 
 
 class SaddleNode:
