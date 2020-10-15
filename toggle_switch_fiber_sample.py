@@ -58,21 +58,17 @@ def count_eq(hill, p, gridDensity=10):
     """Count the number of equilibria found for a given parameter"""
     if is_vector(hill):
         countVector = np.zeros_like(hill)
+        equilibria = []
         for j in range(len(countVector)):
-            countVector[j] = count_eq(hill[j], p)
+            countVector[j], equilibria[j] = count_eq(hill[j], p)
         return countVector
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
-            if np.shape(eq)[1] == 4:
-                print('odd')
-
-            if np.shape(eq)[1] == 2:
-                eq = f.find_equilibria(gridDensity*3, hill, p)
-                print('odd')
-            return np.shape(eq)[1]  # number of columns is the number of equilibria found
+            eq = f.find_equilibria(gridDensity*3, hill, p)
+            return np.shape(eq)[1], eq  # number of columns is the number of equilibria found
         else:
-            return 0
+            return 0, []
 
 
 def estimate_saddle_node(hill, p, gridDensity=10):
@@ -83,8 +79,8 @@ def estimate_saddle_node(hill, p, gridDensity=10):
     hillIdx = 0
     hill = ezcat(1, hill)  # append 1 to the front of the hill vector
 
-    numEquilibria = count_eq(hill[0], p, gridDensity)
-    numEquilibriaInf = count_eq(hill[-1], p, gridDensity)
+    numEquilibria, Eq = count_eq(hill[0], p, gridDensity)
+    numEquilibriaInf, Eqs = count_eq(hill[-1], p, gridDensity)
 
     hill_for_saddle = []
     equilibria_for_saddle = []
@@ -93,7 +89,7 @@ def estimate_saddle_node(hill, p, gridDensity=10):
         n_steps = int(np.ceil((hill[-1] - hill[0])/5))
         hill, eqs = bisection(hill[0], hill[-1], p, n_steps)
         hill_for_saddle.append(hill)
-        equilibria_for_saddle = equilibria_for_saddle.append(eqs)
+        equilibria_for_saddle.append(eqs)
         return hill_for_saddle, equilibria_for_saddle
 
     while hillIdx < len(hill) - 1:
@@ -105,8 +101,8 @@ def estimate_saddle_node(hill, p, gridDensity=10):
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
             hill, equilibria = bisection(hillMin, hillMax, p, n_steps)
-            hill_for_saddle = bounds_on_saddle.append(hill)
-            equilibria_for_saddle = equilibria_for_saddle.append(equilibria)
+            hill_for_saddle.append(hill)
+            equilibria_for_saddle.append(equilibria)
 
     return hill_for_saddle, equilibria_for_saddle
 
@@ -221,7 +217,7 @@ for j in range(nSample):
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
-            jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria)
+            jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=equilibria)
             jSols = ezcat(jkSols)
             if len(jSols) > 0:
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
