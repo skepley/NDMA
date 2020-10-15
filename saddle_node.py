@@ -13,9 +13,12 @@ from hill_model import *
 def SN_candidates_from_bisection(equilibria):
     """Given an array whose columns are equilibria, return the center of the midpoint between the two equilibria nearest
     to one another."""
+    nEquilibria = np.shape(equilibria)[1]  # count columns of equilibrium data
+    if nEquilibria == 1:
+        return equilibria
+
     minDistance = np.inf  # initialize distance between nearest equilibrium pair
     eqPair = (0, 0)  # initialize indices for nearest equilibrium pair
-    nEquilibria = np.shape(equilibria)[1]  # count columns of equilibrium data
     for idx1 in range(nEquilibria):
         for idx2 in range(idx1 + 1, nEquilibria):
             eqDistance = np.linalg.norm(equilibria[:, idx1] - equilibria[:, idx2])
