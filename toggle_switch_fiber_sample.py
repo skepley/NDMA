@@ -121,7 +121,6 @@ def bisection(hill0, hill1, p, n_steps):
     nEq1, Eq1 = count_eq(hill1, p)
     for i in range(n_steps):
         if hill1 - hill0 > 1:
-            print('bisection ', i)
             hill_middle = (hill0 + hill1)/2
             nEqmiddle, EqMiddle = count_eq(hill_middle, p)
 
@@ -202,7 +201,7 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
 # ============ Sample the fiber and find saddle node points ============
 # generate some sample parameters
 
-nSample = 30
+nSample = 10 ** 3
 hillRange = [2, 1000]
 hillDensity = [25]  # coarse, fine, ultrafine node density
 parameterData = np.array([sampler() for j in range(nSample)])
@@ -218,13 +217,12 @@ for j in range(nSample):
     p = parameterData[j]
     hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(coarseInitialHillData, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
-    if hill_for_saddle is []:
+    if len(hill_for_saddle) == 0:
         monostableParameters.append(j) # this is a monostable parameter
     else:
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
-            print(equilibria.shape)
             SN_candidate_eq = SN_candidates_from_bisection(equilibria)
             jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=SN_candidate_eq)
             jSols = ezcat(jkSols)
