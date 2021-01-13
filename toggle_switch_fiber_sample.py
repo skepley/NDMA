@@ -17,6 +17,7 @@ from hill_model import *
 from saddle_node import *
 from models import ToggleSwitch
 from scipy.interpolate import griddata
+from saddle_finding import *
 
 
 plt.close('all')
@@ -201,8 +202,8 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
 # ============ Sample the fiber and find saddle node points ============
 # generate some sample parameters
 
-nSample = 10 ** 3
-hillRange = [2, 1000]
+nSample = 10 ** 2
+hillRange = [2, 100]
 hillDensity = [25]  # coarse, fine, ultrafine node density
 parameterData = np.array([sampler() for j in range(nSample)])
 nCourseHill = hillDensity[0]  # number of nodes used for for selection based on equilibrium counting
@@ -215,6 +216,7 @@ badCandidates = []  # list for parameters which pass the candidate check but fai
 SNParameters = []  # list for parameters where a saddle node is found
 for j in range(nSample):
     p = parameterData[j]
+    """
     hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(coarseInitialHillData, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
     if len(hill_for_saddle) == 0:
@@ -230,16 +232,26 @@ for j in range(nSample):
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
                 SNParameters.append((j, jSols))
             else:
-                badCandidates.append((j, candidateHill, equilibria))  # this parameter passed the selection but failed to return any saddle not points
+                badCandidates.append((j, candidateHill, equilibria))  # this parameter passed the selection but failed to return any saddle not points"""
+    SNParametersj , badCandidatesj = find_saddle_coef(f, hillRange, p)
+    if SNParametersj == 0 and badCandidatesj == 0:
+        monostableParameters.append(j)
+    else:
+        while SNParametersj:
+            SNParameters.append((j, SNParametersj.pop()))
 
+        while badCandidatesj:
+            badCandidates.append((j, badCandidatesj.pop()))
     print(j)
 
 tf = time.time() - t0
 print('Computation time: {0} hours'.format(tf/(24*60)))
 np.savez('upperRightFiberData', parameterData, hillRange, hillDensity, monostableParameters, badCandidates, SNParameters)
 
+if badCandidates:
+    print('Not great, there are', len(badCandidates), ' bad candidates')
 
-npData = np.load('upperRightFiberData.npz', allow_pickle=True)
+npData = np.load('upperRightFiberData_highHill.npz', allow_pickle=True)
 parameterData = npData['arr_0.npy']
 hillRange = npData['arr_1.npy']
 hillDensity = npData['arr_2.npy']
@@ -249,7 +261,9 @@ SNParameters = npData['arr_5.npy']
 # print(badCandidates)
 # print(SNParameters)
 
-point_1 = badCandidates[1]
-par = parameterData[point_1[0]]
 
-f.plot_nullcline(point_1[1][0], par, domainBounds=((0.8, 1.3), (0.8, 1.3)))
+
+#point_1 = badCandidates[]
+#par = parameterData[point_1[0]]
+
+#f.plot_nullcline(point_1[1][0], par, domainBounds=((0.8, 1.3), (0.8, 1.3)))

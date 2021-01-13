@@ -13,7 +13,8 @@ from hill_model import *
 from saddle_node import SaddleNode
 from models import ToggleSwitch
 from scipy.interpolate import griddata
-from binData import bin_data
+from toggle_switch_heat_functionalities import sampler
+# from binData import bin_data
 import numpy.ma as ma
 
 plt.close('all')
@@ -32,26 +33,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 
-def sampler():
-    """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
-     so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:
-     (ell_1, delta_1, gamma_1, ell_2, delta_2)."""
 
-    # pick ell_2, delta_2
-    ell_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
-    delta_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
-
-    # pick gamma_2
-    gammaScale = 1 + 9 * np.random.random_sample()  # gamma scale in [1, 10]
-    g = lambda x: x if np.random.randint(2) else 1 / x
-    gamma_2 = g(gammaScale)  # sample in (.1, 10) to preserve symmetry between genes
-
-    # pick ell_2, delta_2
-    ellByGamma_2 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
-    deltaByGamma_2 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
-    ell_2 = ellByGamma_2 * gamma_2
-    delta_2 = deltaByGamma_2 * gamma_2
-    return ezcat(ell_1, delta_1, gamma_2, ell_2, delta_2)
 
 
 def count_eq(hill, p, gridDensity=10):
@@ -135,25 +117,25 @@ def dsgrn_plot(parameterArray, alphaMax):
 # ============ SPARSE HILL COEFFICIENTS ============
 
 # # compute saddle nodes on samples
-# nSample = 10 ** 3
-# parameterData = np.array([sampler() for j in range(nSample)])
-# t0 = time.time()
-# hillInitialData = np.linspace(2, 1000, 250)
-# hill = 1
-# allSols = np.zeros([nSample, 2])
-# for j in range(nSample):
-#     p = parameterData[j]
-#     jSols = SN.find_saddle_node(0, hill, p, freeParameterValues=hillInitialData)
-#     if len(jSols) == 1:
-#         allSols[j] = ezcat(jSols, 0)
-#     elif len(jSols) == 2:
-#         allSols[j] = jSols
-#     if j % 1000 == 0:
-#         print(j)
-#
-# tf = time.time() - t0
-# print(tf)
-# np.savez('UniformTSDataLong', hillInitialData, np.array([hill]), allSols, parameterData)
+nSample = 10 ** 3
+parameterData = np.array([sampler() for j in range(nSample)])
+t0 = time.time()
+hillInitialData = np.linspace(2, 1000, 250)
+hill = 1
+allSols = np.zeros([nSample, 2])
+for j in range(nSample):
+    p = parameterData[j]
+    jSols = SN.find_saddle_node(0, hill, p, freeParameterValues=hillInitialData)
+    if len(jSols) == 1:
+        allSols[j] = ezcat(jSols, 0)
+    elif len(jSols) == 2:
+        allSols[j] = jSols
+    if j % 1000 == 0:
+        print(j)
+
+tf = time.time() - t0
+print(tf)
+np.savez('UniformTSDataLong', hillInitialData, np.array([hill]), allSols, parameterData)
 npData = np.load('UniformTSDataLong.npz')
 
 hillInitialData = npData['arr_0.npy']
@@ -162,13 +144,13 @@ allSols = npData['arr_2.npy']
 parameterData = npData['arr_3.npy']
 nSample = np.shape(parameterData)[0]
 
-# hillInitialData = hillInitialData[::10]  # downsample by an order of magnitude
-# eqCounts = np.zeros([nSample, len(hillInitialData)])
-# for j in range(nSample):
-#     print(j)
-#     eqCounts[j] = count_eq(hillInitialData, parameterData[j])
+hillInitialData = hillInitialData[::10]  # downsample by an order of magnitude
+eqCounts = np.zeros([nSample, len(hillInitialData)])
+for j in range(nSample):
+    print(j)
+    eqCounts[j] = count_eq(hillInitialData, parameterData[j])
 
-# # np.savez('eqCounts', eqCounts)
+np.savez('eqCounts', eqCounts)
 eqData = np.load('eqCounts.npz')
 eqCounts = eqData['arr_0.npy']
 
