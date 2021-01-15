@@ -31,15 +31,15 @@ def fiber_sampler(u, v, alpha_bar=10):
     if u < 1:
         ell_2 = np.random.random_sample()
         delta_2 = np.random.random_sample()
-        gamma_2 = u / (ell_2 + delta_2)
+        gamma_2 = (ell_2 + delta_2) / u
     elif u < 2:
         ell_2 = np.random.random_sample()
         gamma_2 = ell_2 + np.random.random_sample()
         delta_2 = (gamma_2 - ell_2) / (u - 1)
     else:
-        ell_2 = np.random.random_sample()
+        gamma_2 = np.random.random_sample()
         delta_2 = np.random.random_sample()
-        gamma_2 = (u - 2) * (alpha_bar - 1) + 1
+        ell_2 = gamma_2 * ((u - 2) * (alpha_bar - 1) + 1)
 
     # the second component: v, relates to ell_1, delta_1
     if v < 1:
@@ -73,10 +73,18 @@ def heat_coordinate(alpha, beta, alphaMax):
 def heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
     x = np.array(
-        [heat_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
-    y = np.array(
         [heat_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
+    y = np.array(
+        [heat_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
     return x, y
+
+
+def parameter_to_DSGRN_coord(parameterArray):
+    alpha1 = parameterArray[0]
+    beta1 = parameterArray[0] + parameterArray[1]
+    alpha2 = parameterArray[3] / parameterArray[2]
+    beta2 = (parameterArray[3] + parameterArray[4]) / parameterArray[2]
+    return heat_coordinate(alpha2, beta2, 10),    heat_coordinate(alpha1, beta1, 10)
 
 
 def grid_lines():
@@ -97,7 +105,7 @@ def dsgrn_plot(parameterArray, alphaMax=None):
     beta2 = (parameterArray[:, 3] + parameterArray[:, 4]) / parameterArray[:, 2]
 
     if alphaMax is None:
-        alphaMax = np.max(np.max(alpha1), np.max(alpha2))
+        alphaMax = np.maximum(np.max(alpha1), np.max(alpha2))
 
     x, y = heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
@@ -105,20 +113,20 @@ def dsgrn_plot(parameterArray, alphaMax=None):
     grid_lines()
 
 
-def dsgrn_heat_plot(parameterData, colorData, heatMin=1000):
+def dsgrn_heat_plot(parameterData, colorData, heatMin=1000, alphaMax=None):
     """Produce a heat map plot of a given choice of toggle switch parameters using the specified color map data.
     ParameterData is a N-by-5 matrix where each row is a parameter of the form (ell_1, delta_1, gamma_2, ell_2, delta_2)"""
 
     nParameter = len(parameterData)
-    alpha_1 = parameterData[:, 0]
-    beta_1 = parameterData[:, 1]
-    alpha_2 = parameterData[:, 3] / parameterData[:, 2]
-    beta_2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
+    alpha1 = parameterData[:, 0]
+    beta1 = parameterData[:, 0] + parameterData[:, 1]
+    alpha2 = parameterData[:, 3] / parameterData[:, 2]
+    beta2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
 
-    alphaMax = np.maximum(np.max(alpha_1), np.max(alpha_2))
+    if alphaMax is None:
+        alphaMax = np.maximum(np.max(alpha1), np.max(alpha2))
 
-    x = np.array([heat_coordinate(alpha_1[j], beta_1[j], alphaMax) for j in range(nParameter)])
-    y = np.array([heat_coordinate(alpha_2[j], beta_2[j], alphaMax) for j in range(nParameter)])
+    x, y = heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
     z = np.array([np.min([val, heatMin]) for val in colorData])
 
     # define grid.
@@ -141,13 +149,10 @@ def dsgrn_heat_plot(parameterData, colorData, heatMin=1000):
     plt.scatter(x, y, marker='o', c='k', s=2)
     plt.xlim(0, 3)
     plt.ylim(0, 3)
-    # plt.title('griddata test (%d points)' % npts)
-    plt.show()
+
     for i in range(1, 3):
         plt.plot([i, i], [0, 3], 'k')
         plt.plot([0, 3], [i, i], 'k')
 
-
-
-number_of_samples = 100
-a = np.random.random_sample()
+    # plt.title('griddata test (%d points)' % npts)
+    plt.show()

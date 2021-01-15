@@ -10,10 +10,10 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 40
+n_sample = 1000
 # a random parameter list
-u = np.array([1 + np.random.random_sample() for j in range(n_sample)])
-v = np.array([1 + np.random.random_sample() for j in range(n_sample)])
+u = np.array([3 * np.random.random_sample() for j in range(n_sample)])
+v = np.array([3 * np.random.random_sample() for j in range(n_sample)])
 a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
 
 parameter_full = np.empty(shape=[0, 5])
@@ -26,10 +26,14 @@ for j in range(n_sample):
         for k in range(len(SNParameters)):
             parameter_full = np.append(parameter_full, [a_j], axis=0)
             if solutions is None:
-                print('There is a saddle node')
+                print('There is one saddle node')
                 solutions = SNParameters[k]
             else:
+                print('There is another saddle node')
                 solutions = ezcat(solutions, SNParameters[k])
+
+# parameter_full = a
+# solutions = np.array([3 * np.random.random_sample() for j in range(n_sample)])
 
 dsgrn_heat_plot(parameter_full, solutions)
 print('It is the end!')
