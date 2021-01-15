@@ -6,7 +6,6 @@ Input:
 
 """
 
-
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -48,11 +47,11 @@ def estimate_saddle_node(f, hill, p, gridDensity=10):
     equilibria_for_saddle = []
 
     if numEquilibriaInf > 1:
-        n_steps = int(np.ceil((hill[-1] - hill[0])/5))
-        #try:
+        n_steps = int(np.ceil((hill[-1] - hill[0]) / 5))
+        # try:
         hill_SN, eqs = bisection(f, hill[0], hill[-1], p, n_steps)
 
-        #except TypeError:
+        # except TypeError:
         #    print(hill[0], hill[-1], p, n_steps)
 
         hill_for_saddle.append(hill_SN)
@@ -75,15 +74,14 @@ def estimate_saddle_node(f, hill, p, gridDensity=10):
 
 
 def bisection(f, hill0, hill1, p, n_steps):
-
     if n_steps is 0:
         return np.array([hill0, hill1])
 
-    nEq0, Eq0 = count_eq(f,hill0, p)
-    nEq1, Eq1 = count_eq(f,hill1, p)
+    nEq0, Eq0 = count_eq(f, hill0, p)
+    nEq1, Eq1 = count_eq(f, hill1, p)
     for i in range(n_steps):
         if hill1 - hill0 > 1:
-            hill_middle = (hill0 + hill1)/2
+            hill_middle = (hill0 + hill1) / 2
             nEqmiddle, EqMiddle = count_eq(f, hill_middle, p)
 
             if nEqmiddle == nEq0:
@@ -102,7 +100,6 @@ def bisection(f, hill0, hill1, p, n_steps):
         return hill0, Eq0
     else:
         return hill1, Eq1
-
 
 
 def find_saddle_coef(hill_model, hillRange, parameter):
@@ -127,5 +124,6 @@ def find_saddle_coef(hill_model, hillRange, parameter):
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
                 SNParameters.append(jSols)
             else:
-                badCandidates.append((candidateHill, equilibria)) # error in computation : there is a saddle node but we could not find it
+                badCandidates.append((candidateHill,
+                                      equilibria))  # error in computation : there is a saddle node but we could not find it
     return SNParameters, badCandidates

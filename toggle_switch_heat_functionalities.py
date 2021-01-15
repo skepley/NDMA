@@ -1,10 +1,11 @@
 from hill_model import *
-
+from scipy.interpolate import griddata
 
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
      so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:
-     (ell_1, delta_1, gamma_1, ell_2, delta_2)."""
+     (ell_1, delta_1, gamma_1, ell_2, delta_2).
+     Takes a sample anywhere."""
 
     # pick ell_2, delta_2
     ell_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
@@ -70,11 +71,11 @@ def heat_coordinate(alpha, beta, alphaMax):
 
 
 def heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
-    """ take vector of coordinates and return vectors of x-coordinates and y-ccordinates"""
+    """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
     x = np.array(
-        [heat_coordinates(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
+        [heat_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
     y = np.array(
-        [heat_coordinates(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
+        [heat_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
     return x, y
 
 
@@ -104,8 +105,49 @@ def dsgrn_plot(parameterArray, alphaMax=None):
     grid_lines()
 
 
-print(fiber_sampler(1.2, 2.3))
-print(fiber_sampler(1.2, 2.3))
-print(fiber_sampler(1.2, 2.3))
-print(fiber_sampler(1.2, 2.3))
-print(fiber_sampler(1.2, 2.3))
+def dsgrn_heat_plot(parameterData, colorData, heatMin=1000):
+    """Produce a heat map plot of a given choice of toggle switch parameters using the specified color map data.
+    ParameterData is a N-by-5 matrix where each row is a parameter of the form (ell_1, delta_1, gamma_2, ell_2, delta_2)"""
+
+    nParameter = len(parameterData)
+    alpha_1 = parameterData[:, 0]
+    beta_1 = parameterData[:, 1]
+    alpha_2 = parameterData[:, 3] / parameterData[:, 2]
+    beta_2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
+
+    alphaMax = np.maximum(np.max(alpha_1), np.max(alpha_2))
+
+    x = np.array([heat_coordinate(alpha_1[j], beta_1[j], alphaMax) for j in range(nParameter)])
+    y = np.array([heat_coordinate(alpha_2[j], beta_2[j], alphaMax) for j in range(nParameter)])
+    z = np.array([np.min([val, heatMin]) for val in colorData])
+
+    # define grid.
+    plt.figure()
+    xGrid = np.linspace(0, 3, 100)
+    yGrid = np.linspace(0, 3, 100)
+    # grid the data.
+    zGrid = griddata((x, y), z, (xGrid[None, :], yGrid[:, None]), method='linear')
+    # contour the gridded data, plotting dots at the randomly spaced data points.
+    zmin = 0
+    zmax = np.nanmax(zGrid)
+    palette = plt.matplotlib.colors.LinearSegmentedColormap('jet3', plt.cm.datad['jet'], 2048)
+    palette.set_under(alpha=0.0)
+    plt.imshow(zGrid, extent=(0, 3, 0, 3), cmap=palette, origin='lower', vmin=zmin, vmax=zmax, aspect='auto',
+               interpolation='bilinear')
+    # CS = plt.contour(xGrid, yGrid, zGrid, 15, linewidths=0.5, colors='k')
+    # CS = plt.contourf(xGrid, yGrid, zGrid, 15, cmap=plt.cm.jet)
+    plt.colorbar()  # draw colorbar
+    # plot data points.
+    plt.scatter(x, y, marker='o', c='k', s=2)
+    plt.xlim(0, 3)
+    plt.ylim(0, 3)
+    # plt.title('griddata test (%d points)' % npts)
+    plt.show()
+    for i in range(1, 3):
+        plt.plot([i, i], [0, 3], 'k')
+        plt.plot([0, 3], [i, i], 'k')
+
+
+
+number_of_samples = 100
+a = np.random.random_sample()

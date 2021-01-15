@@ -158,7 +158,7 @@ def heat_coordinates(alpha, beta, alphaMax):
     return x
 
 
-def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
+def dsgrn_heat_plot(parameterData, colorData, heatMin=1000):
     """Produce a heat map plot of a given choice of toggle switch parameters using the specified color map data.
     ParameterData is a N-by-5 matrix where each row is a parameter of the form (ell_1, delta_1, gamma_2, ell_2, delta_2)"""
 
@@ -167,6 +167,9 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax, heatMin=1000):
     beta_1 = parameterData[:,1]
     alpha_2 = parameterData[:, 3] / parameterData[:, 2]
     beta_2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
+
+    alphaMax = np.max(np.max(alpha_1, alpha_2))
+
     x = np.array([heat_coordinates(alpha_1[j], beta_1[j], alphaMax) for j in range(nParameter)])
     y = np.array([heat_coordinates(alpha_2[j], beta_2[j], alphaMax) for j in range(nParameter)])
     z = np.array([np.min([val, heatMin]) for val in colorData])
