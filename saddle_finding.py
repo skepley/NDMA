@@ -103,6 +103,21 @@ def bisection(f, hill0, hill1, p, n_steps):
 
 
 def find_saddle_coef(hill_model, hillRange, parameter):
+    """
+    This function takes a Hill model and search for saddle nodes
+
+    INPUTS:
+    hill_model      a hill model with a singled parameter out - the one for the search
+    hillRange       bounds on the singled parameter
+    parameter       all but one parameter are fixed
+
+    OUTPUT
+    FAILURE: 0,0            found no saddle node
+    ELSE
+    SNParameters            list of all singled parameter values undergoing a saddle node
+    badCandidates           list of all singled parameter values that *should* be undergoing a saddle node, but we
+                            couldn't find it
+    """
     f = hill_model
     SN = SaddleNode(f)
     p = parameter

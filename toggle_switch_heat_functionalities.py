@@ -80,6 +80,7 @@ def heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
 
 
 def parameter_to_DSGRN_coord(parameterArray):
+    """ takes a 5D parameter and returns a 2D DSGRN parameter"""
     alpha1 = parameterArray[0]
     beta1 = parameterArray[0] + parameterArray[1]
     alpha2 = parameterArray[3] / parameterArray[2]
