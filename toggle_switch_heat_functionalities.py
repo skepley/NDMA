@@ -101,6 +101,8 @@ def dsgrn_plot(parameterData, alphaMax=None):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
 
+    plt.figure()
+
     alpha1 = parameterData[:, 0]
     beta1 = parameterData[:, 0] + parameterData[:, 1]
     alpha2 = parameterData[:, 3] / parameterData[:, 2]
@@ -111,7 +113,7 @@ def dsgrn_plot(parameterData, alphaMax=None):
 
     x, y = heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
-    plt.scatter(x, y, marker='o', c='k', s=2)
+    plt.scatter(x, y, marker='o', c='k', s=4)
     grid_lines()
 
 

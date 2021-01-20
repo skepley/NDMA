@@ -11,35 +11,50 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 400
+n_sample = 1000
 # a random parameter list
-u = np.random.uniform(2, 2.5, n_sample)
-v = np.random.uniform(2, 2.5, n_sample)
+u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
+v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
 
 parameter_full = np.empty(shape=[0, 5])
 solutions = None
-"""for j in range(0):
+bad_parameters = np.empty(shape=[0, 5])
+boring_parameters = np.empty(shape=[0, 5])
+multiple_saddles = np.empty(shape=[0, 5])
+for j in range(n_sample):
     print(j)
     a_j = a[j, :]
     SNParameters, badCandidates = find_saddle_coef(f, 100, a_j)
     if SNParameters is not 0:
         for k in range(len(SNParameters)):
+            print('Saddle detected')
             parameter_full = np.append(parameter_full, [a_j], axis=0)
             if solutions is None:
-                print('There is one saddle node')
                 solutions = SNParameters[k]
             else:
-                print('There is another saddle node')
                 solutions = ezcat(solutions, SNParameters[k])
-"""
-parameter_full = a
-solutions = np.array([3 * np.random.random_sample() for j in range(n_sample)])
+            if k > 0:
+                print('More than one saddle detected!')
+                multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
+    if badCandidates is not 0:
+        for k in range(len(badCandidates)):
+            print('A bad parameter')
+            bad_parameters = np.append(bad_parameters, [a_j], axis=0)
+    if SNParameters is 0 and badCandidates is 0:
+        boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
-plt.scatter(u, v)
+if bad_parameters is not None:
+    dsgrn_plot(bad_parameters, 10)
+    plt.title('bad candidates')
 
-dsgrn_plot(parameter_full, 10)
+if boring_parameters is not None:
+    dsgrn_plot(boring_parameters, 10)
+    plt.title('No saddle detected')
 
 dsgrn_heat_plot(parameter_full, solutions, 10)
+
+
+np.savez('data_center_region', u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters, boring_parameters=boring_parameters)
 
 print('It is the end!')
