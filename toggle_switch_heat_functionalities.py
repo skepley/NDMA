@@ -79,13 +79,14 @@ def heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     return x, y
 
 
-def parameter_to_DSGRN_coord(parameterArray):
+def parameter_to_DSGRN_coord(parameterArray, alphaMax=10):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
-    alpha1 = parameterArray[0]
-    beta1 = parameterArray[0] + parameterArray[1]
-    alpha2 = parameterArray[3] / parameterArray[2]
-    beta2 = (parameterArray[3] + parameterArray[4]) / parameterArray[2]
-    return heat_coordinate(alpha2, beta2, 10),    heat_coordinate(alpha1, beta1, 10)
+    alpha1 = [parameterArray[0]]
+    beta1 = [parameterArray[0] + parameterArray[1]]
+    alpha2 = [parameterArray[3] / parameterArray[2]]
+    beta2 = [(parameterArray[3] + parameterArray[4]) / parameterArray[2]]
+    return heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
+    #return heat_coordinate(alpha2, beta2, alphaMax),    heat_coordinate(alpha1, beta1, alphaMax)
 
 
 def grid_lines():
@@ -96,14 +97,14 @@ def grid_lines():
     return
 
 
-def dsgrn_plot(parameterArray, alphaMax=None):
+def dsgrn_plot(parameterData, alphaMax=None):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
 
-    alpha1 = parameterArray[:, 0]
-    beta1 = parameterArray[:, 0] + parameterArray[:, 1]
-    alpha2 = parameterArray[:, 3] / parameterArray[:, 2]
-    beta2 = (parameterArray[:, 3] + parameterArray[:, 4]) / parameterArray[:, 2]
+    alpha1 = parameterData[:, 0]
+    beta1 = parameterData[:, 0] + parameterData[:, 1]
+    alpha2 = parameterData[:, 3] / parameterData[:, 2]
+    beta2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
 
     if alphaMax is None:
         alphaMax = np.maximum(np.max(alpha1), np.max(alpha2))
