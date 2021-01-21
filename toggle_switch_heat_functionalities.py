@@ -110,7 +110,7 @@ def grid_lines(ax=None):
     return
 
 
-def dsgrn_plot(parameterData, alphaMax=None, ax=None):
+def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOPts):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
 
@@ -118,7 +118,7 @@ def dsgrn_plot(parameterData, alphaMax=None, ax=None):
         fig = plt.gcf()
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
-    ax.scatter(x, y, marker='o', c='k', s=4)
+    ax.scatter(x, y, marker='o', s=4, **pyPlotOPts)
     grid_lines()
 
 
@@ -160,4 +160,4 @@ solutions = np.random.uniform(1, 1.5, n_sample)
 fig1 = plt.figure()
 dsgrn_heat_plot(parameter_full, solutions, 10)
 fig2 = plt.figure()
-dsgrn_plot(parameter_full, 10)
+dsgrn_plot(parameter_full, 10, **{'c': 'k'})
