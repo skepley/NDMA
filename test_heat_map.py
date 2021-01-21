@@ -11,7 +11,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 1000
+n_sample = 10000
 # a random parameter list
 u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
@@ -44,6 +44,10 @@ for j in range(n_sample):
     if SNParameters is 0 and badCandidates is 0:
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
+
+np.savez('data_center_region', u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters, boring_parameters=boring_parameters)
+np.load('data_center_region.npz')
+
 if bad_parameters is not None:
     dsgrn_plot(bad_parameters, 10)
     plt.title('bad candidates')
@@ -54,7 +58,5 @@ if boring_parameters is not None:
 
 dsgrn_heat_plot(parameter_full, solutions, 10)
 
-
-np.savez('data_center_region', u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters, boring_parameters=boring_parameters)
 
 print('It is the end!')
