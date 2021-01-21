@@ -1,6 +1,7 @@
 from hill_model import *
 from scipy.interpolate import griddata
 
+
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
      so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:
@@ -55,7 +56,7 @@ def fiber_sampler(u, v, alpha_bar=10):
     return ezcat(ell_1, delta_1, gamma_2, ell_2, delta_2)
 
 
-def heat_coordinate(alpha, beta, alphaMax):
+def DSGRN_coordinate(alpha, beta, alphaMax):
     """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
     alpha = ell / gamma and beta = (ell + delta) / gamma"""
 
@@ -70,71 +71,69 @@ def heat_coordinate(alpha, beta, alphaMax):
     return x
 
 
-def heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
+def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
     x = np.array(
-        [heat_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
+        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
     y = np.array(
-        [heat_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
+        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
     return x, y
 
 
-def parameter_to_DSGRN_coord(parameterArray, alphaMax=10):
+def parameter_to_alpha_beta(parameterArray):
+    """Return alpha/beta coordinates for the toggle switch for given parameters in R^5"""
+    alpha1 = parameterArray[:, 0]
+    beta1 = parameterArray[:, 0] + parameterArray[:, 1]
+    alpha2 = parameterArray[:, 3] / parameterArray[:, 2]
+    beta2 = (parameterArray[:, 3] + parameterArray[:, 4]) / parameterArray[:, 2]
+    return alpha1, beta1, alpha2, beta2
+
+
+def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
-    alpha1 = [parameterArray[0]]
-    beta1 = [parameterArray[0] + parameterArray[1]]
-    alpha2 = [parameterArray[3] / parameterArray[2]]
-    beta2 = [(parameterArray[3] + parameterArray[4]) / parameterArray[2]]
-    return heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
-    #return heat_coordinate(alpha2, beta2, alphaMax),    heat_coordinate(alpha1, beta1, alphaMax)
+    alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
+    if alphaMax is None:
+        alphaMax = np.max(np.max(alpha1), np.max(alpha2))
+
+    return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
 
-def grid_lines():
+def grid_lines(ax=None):
     """Add grid lines to a dsgrn coordinate plot"""
+    if ax is None:
+        fig = plt.gcf()
+        ax = fig.gca()
+
     for i in range(1, 3):
-        plt.plot([i, i], [0, 3], 'k')
-        plt.plot([0, 3], [i, i], 'k')
+        ax.plot([i, i], [0, 3], 'k')
+        ax.plot([0, 3], [i, i], 'k')
     return
 
 
-def dsgrn_plot(parameterData, alphaMax=None):
+def dsgrn_plot(parameterData, alphaMax=None, ax=None):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
 
-    plt.figure()
-
-    alpha1 = parameterData[:, 0]
-    beta1 = parameterData[:, 0] + parameterData[:, 1]
-    alpha2 = parameterData[:, 3] / parameterData[:, 2]
-    beta2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
-
-    if alphaMax is None:
-        alphaMax = np.maximum(np.max(alpha1), np.max(alpha2))
-
-    x, y = heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
-
-    plt.scatter(x, y, marker='o', c='k', s=4)
+    if ax is None:
+        fig = plt.gcf()
+        ax = fig.gca()
+    x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
+    ax.scatter(x, y, marker='o', c='k', s=4)
     grid_lines()
 
 
-def dsgrn_heat_plot(parameterData, colorData, heatMin=1000, alphaMax=None):
+def dsgrn_heat_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=True):
     """Produce a heat map plot of a given choice of toggle switch parameters using the specified color map data.
     ParameterData is a N-by-5 matrix where each row is a parameter of the form (ell_1, delta_1, gamma_2, ell_2, delta_2)"""
 
-    nParameter = len(parameterData)
-    alpha1 = parameterData[:, 0]
-    beta1 = parameterData[:, 0] + parameterData[:, 1]
-    alpha2 = parameterData[:, 3] / parameterData[:, 2]
-    beta2 = (parameterData[:, 3] + parameterData[:, 4]) / parameterData[:, 2]
+    if ax is None:
+        fig = plt.gcf()
+        ax = fig.gca()
 
-    if alphaMax is None:
-        alphaMax = np.maximum(np.max(alpha1), np.max(alpha2))
-
-    x, y = heat_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
-    z = np.array([np.min([val, heatMin]) for val in colorData])
+    x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
+    z = colorData
 
     # define grid.
-    plt.figure()
     xGrid = np.linspace(0, 3, 100)
     yGrid = np.linspace(0, 3, 100)
     # grid the data.
@@ -146,17 +145,19 @@ def dsgrn_heat_plot(parameterData, colorData, heatMin=1000, alphaMax=None):
     palette.set_under(alpha=0.0)
     plt.imshow(zGrid, extent=(0, 3, 0, 3), cmap=palette, origin='lower', vmin=zmin, vmax=zmax, aspect='auto',
                interpolation='bilinear')
-    # CS = plt.contour(xGrid, yGrid, zGrid, 15, linewidths=0.5, colors='k')
-    # CS = plt.contourf(xGrid, yGrid, zGrid, 15, cmap=plt.cm.jet)
+
     plt.colorbar()  # draw colorbar
-    # plot data points.
-    plt.scatter(x, y, marker='o', c='k', s=2)
-    plt.xlim(0, 3)
-    plt.ylim(0, 3)
+    if gridLines:
+        grid_lines(ax)
 
-    for i in range(1, 3):
-        plt.plot([i, i], [0, 3], 'k')
-        plt.plot([0, 3], [i, i], 'k')
 
-    # plt.title('griddata test (%d points)' % npts)
-    plt.show()
+plt.close('all')
+n_sample = 500
+u = 0 + 0.5 * np.random.rand(n_sample)
+v = 0 + 0.5 * np.random.rand(n_sample)
+parameter_full = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
+solutions = np.random.uniform(1, 1.5, n_sample)
+fig1 = plt.figure()
+dsgrn_heat_plot(parameter_full, solutions, 10)
+fig2 = plt.figure()
+dsgrn_plot(parameter_full, 10)
