@@ -11,7 +11,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10000
+n_sample = 1000
 # a random parameter list
 u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
@@ -20,13 +20,14 @@ a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
 parameter_full = np.empty(shape=[0, 5])
 solutions = None
 bad_parameters = np.empty(shape=[0, 5])
+bad_candidates = []
 boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):
     print(j)
     a_j = a[j, :]
     SNParameters, badCandidates = find_saddle_coef(f, 100, a_j)
-    if SNParameters is not 0:
+    if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
             print('Saddle detected')
             parameter_full = np.append(parameter_full, [a_j], axis=0)
@@ -37,16 +38,19 @@ for j in range(n_sample):
             if k > 0:
                 print('More than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
-    if badCandidates is not 0:
-        for k in range(len(badCandidates)):
-            print('A bad parameter')
-            bad_parameters = np.append(bad_parameters, [a_j], axis=0)
+    if badCandidates and badCandidates is not 0:
+        print('A bad parameter')
+        bad_parameters = np.append(bad_parameters, [a_j], axis=0)
+        bad_candidates.append(badCandidates)
+
     if SNParameters is 0 and badCandidates is 0:
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
 
-np.savez('data_center_region', u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters, boring_parameters=boring_parameters)
-np.load('data_center_region.npz')
+np.savez('data_center_region_small',
+         u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
+         bad_candidates=bad_candidates, boring_parameters=boring_parameters)
+np.load('data_center_region_small.npz')
 
 if bad_parameters is not None:
     dsgrn_plot(bad_parameters, 10)
@@ -57,6 +61,5 @@ if boring_parameters is not None:
     plt.title('No saddle detected')
 
 dsgrn_heat_plot(parameter_full, solutions, 10)
-
 
 print('It is the end!')
