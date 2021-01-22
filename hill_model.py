@@ -1353,16 +1353,15 @@ class HillModel:
         else:
             raise ValueError  # this isn't implemented yet
 
-    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
-            *parameter - (numpy vectors) Evaluations for variable parameters to use for evaluating the root finding algorithm
-            gridDensity - (int) density to sample in each dimension.
-            uniqueRootDigits - (int) Number of digits to use for distinguishing between floats."""
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            gridDensity - density to sample in each dimension.
+            uniqueRootDigits - Number of digits to use for distinguishing between floats.
+            eqBound - N-by-2 array of intervals defining a search rectangle. Initial data will be chosen uniformly here. """
 
         # TODO: Include root finding method as kwarg
-
-        # parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
         parameterByCoordinate = self.unpack_variable_parameters(
             self.parse_parameter(*parameter))  # unpack variable parameters by component
 
@@ -1379,19 +1378,18 @@ class HillModel:
             return np.all(equilibrium > 0)
 
         # build a grid of initial data for Newton algorithm
-        coordinateIntervals = list(
-            map(lambda f_i, parm: np.linspace(*f_i.eq_interval(parm), num=gridDensity), self.coordinates,
-                parameterByCoordinate))
+        if eqBound is None:  # use the trivial equilibrium bounds
+            eqBound = np.array(list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
+        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
         evalGrid = np.meshgrid(*coordinateIntervals)
-        X = np.row_stack([G_i.flatten() for G_i in evalGrid])
-        solns = list(
-            filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, X[:, j], diagnose=True)
-                                                                          for j in
-                                                                          range(X.shape[
-                                                                                    1])]))  # return equilibria which converged
+        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
 
+        # Apply rootfinding algorithm to each initial condition
+        solns = list(
+            filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
+                                                                          for x in X]))  # return equilibria which converged
         if solns:
-            equilibria = np.column_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-            equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=1)  # remove duplicates
-            return np.column_stack([find_root(F, DF, equilibria[:, j]) for j in
-                                    range(np.shape(equilibria)[1])])  # Iterate Newton again to regain lost digits
+            equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
+            print(equilibria)
+            equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
+            return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
