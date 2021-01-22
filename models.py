@@ -107,8 +107,11 @@ class ToggleSwitch(HillModel):
         Dpf = np.zeros(
             3 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, :, 1:] = fullDf[
-            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex)]  # insert derivatives of non-hill parameters
-        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex is None:
             return Dpf  # return the full vector of partials
@@ -124,8 +127,11 @@ class ToggleSwitch(HillModel):
         Dpf = np.zeros(
             2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:, 1:] = fullDf[
-            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex, self.nonhillIndex)]  # insert derivatives of non-hill parameters
-        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex, self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex,
+                   self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex,
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
@@ -139,7 +145,8 @@ class ToggleSwitch(HillModel):
 
         fullParm = self.parse_parameter(
             *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
-        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(fullParm)  # unpack variable parameters by component
+        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
+            fullParm)  # unpack variable parameters by component
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
 
@@ -171,7 +178,8 @@ class ToggleSwitch(HillModel):
         # get initial condition for Phi
         fullParm = self.parse_parameter(
             *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
-        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(fullParm)  # unpack variable parameters by component
+        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
+            fullParm)  # unpack variable parameters by component
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
         H0 = self.coordinates[0].components[0]
@@ -199,7 +207,7 @@ class ToggleSwitch(HillModel):
         alpha, beta = np.split(u, 2)
         intervalFactors = np.array(list(zip(alpha, beta)))
         return u0, np.unique(np.round(intervalFactors, 13), axis=1).squeeze()  # remove degenerate intervals and return
-    
+
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
@@ -210,6 +218,20 @@ class ToggleSwitch(HillModel):
         Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
         plt.contour(X1, X2, Z1, [0], colors='g')
         plt.contour(X1, X2, Z2, [0], colors='r')
+
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, bootstrap=True):
+        """Overloading the HillModel find equilibrium method to use the bootstrap approach for the ToggleSwitch. The output
+         is an array whose rows are coordinates of found equilibria for the ToggleSwitch."""
+
+        if bootstrap:
+            eqBound = self.bootstrap_enclosure(*parameter)[1]
+            if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
+                return eqBound
+            else:
+                return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits, eqBound=eqBound)
+
+        else:  # Use the old version inherited from the HillModel class. This should only be used to troubleshoot
+            return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
 
     def plot_equilibria(self, *parameter, nInitData=10):
         """Find equilibria at given parameter and add to current plot"""
@@ -230,6 +252,7 @@ class ToggleSwitch(HillModel):
         with fixed parameters omitted."""
 
         print('deprecated. Use the dsgrn_coordinates functionality in the toggle_switch_heat_functionalities')
+
         def factor_slice(gamma, ell, delta, theta):
             T = gamma * theta
             if T <= ell:

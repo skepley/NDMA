@@ -1390,6 +1390,5 @@ class HillModel:
                                                                           for x in X]))  # return equilibria which converged
         if solns:
             equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-            print(equilibria)
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
