@@ -5,7 +5,7 @@ A separate file to store important HillModel subclasses for analysis or testing
 
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 6/24/20; Last revision: 6/24/20
+    Date: 6/24/20; Last revision: 1/22/21
 """
 from hill_model import *
 
@@ -108,8 +108,11 @@ class ToggleSwitch(HillModel):
         Dpf = np.zeros(
             3 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, :, 1:] = fullDf[
-            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex)]  # insert derivatives of non-hill parameters
-        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension), self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex is None:
             return Dpf  # return the full vector of partials
@@ -125,8 +128,11 @@ class ToggleSwitch(HillModel):
         Dpf = np.zeros(
             2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:, 1:] = fullDf[
-            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex, self.nonhillIndex)]  # insert derivatives of non-hill parameters
-        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex, self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex,
+                   self.nonhillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex,
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
 
         if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
@@ -134,6 +140,74 @@ class ToggleSwitch(HillModel):
             return np.squeeze(
                 Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), diffIndex,
                            diffIndex)])  # return only slices for the specified subset of partials
+
+    def bootstrap_map(self, *parameter):
+        """Return the bootstrap map for the toggle switch, Phi: R^4 ---> R^4 which is iterated to bound equilibrium enclosures"""
+
+        fullParm = self.parse_parameter(
+            *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
+        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
+            fullParm)  # unpack variable parameters by component
+        g0, p0 = self.coordinates[0].parse_parameters(P0)
+        g1, p1 = self.coordinates[1].parse_parameters(P1)
+
+        def H0(x):
+            """Evaluate the function from R^2 to R defined by the first and 3rd components of Phi"""
+            return (1 / g0) * self.coordinates[0].components[0](x[1], p0[0])
+
+        def H1(x):
+            """Evaluate the function from R^2 to R defined by the second and fourth components of Phi"""
+            return (1 / g1) * self.coordinates[1].components[0](x[0], p1[0])
+
+        def bootstrap(u):
+            alpha, beta = np.split(u, 2)
+            alphaNew = np.array([H0(beta), H1(beta)])
+            betaNew = np.array([H0(alpha), H1(alpha)])
+            return ezcat(alphaNew, betaNew)
+
+        return bootstrap
+
+    def bootstrap_enclosure(self, *parameter, tol=1e-13):
+        """Return an enclosure of all equilibria for the toggle switch as a rectangle of one of the following forms:
+    
+        1. R = [a1, b1]x[a2,b2] and the returned array has rows of the form [ai, bi]. In this case the vector field has at least
+        two equilibria at the coordinates, x1 = (min(ai), max(bi)) and x2 = (max(ai), min(bi)).
+    
+        2. R = [x1, x1]x[x2,x2] which is a degenerate rectangle returned as an array [x1,x2]. In this case the vector field has
+        a unique equilibrium at the coordinates x = (x1, x2) which is always stable."""
+
+        # get initial condition for Phi
+        fullParm = self.parse_parameter(
+            *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
+        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
+            fullParm)  # unpack variable parameters by component
+        g0, p0 = self.coordinates[0].parse_parameters(P0)
+        g1, p1 = self.coordinates[1].parse_parameters(P1)
+        H0 = self.coordinates[0].components[0]
+        H1 = self.coordinates[1].components[0]
+        x0Bounds = H0.image(p0[0])
+        x1Bounds = H1.image(p1[0])
+        u0 = np.array(list(zip(x0Bounds, x1Bounds))).flatten()  # zip initial bounds
+
+        # iterate the bootstrap map to obtain an enclosure
+        Phi = self.bootstrap_map(*parameter)
+        maxIter = 100
+        u = u0
+        notConverged = True
+        nIter = 0
+        while nIter < maxIter and notConverged:
+            uNew = Phi(u)
+            notConverged = np.linalg.norm(uNew - u) > tol
+            u = uNew
+            nIter += 1
+
+        if nIter == maxIter:
+            print('Uh oh. The bootstrap map failed to converge')
+
+        # unzip i.e. (alpha, beta) ---> (a1, b1)x(a2, b2)
+        alpha, beta = np.split(u, 2)
+        intervalFactors = np.array(list(zip(alpha, beta)))
+        return u0, np.unique(np.round(intervalFactors, 13), axis=1).squeeze()  # remove degenerate intervals and return
 
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
@@ -145,6 +219,20 @@ class ToggleSwitch(HillModel):
         Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
         plt.contour(X1, X2, Z1, [0], colors='g')
         plt.contour(X1, X2, Z2, [0], colors='r')
+
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, bootstrap=True):
+        """Overloading the HillModel find equilibrium method to use the bootstrap approach for the ToggleSwitch. The output
+         is an array whose rows are coordinates of found equilibria for the ToggleSwitch."""
+
+        if bootstrap:
+            eqBound = self.bootstrap_enclosure(*parameter)[1]
+            if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
+                return eqBound
+            else:
+                return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits, eqBound=eqBound)
+
+        else:  # Use the old version inherited from the HillModel class. This should only be used to troubleshoot
+            return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
 
     def plot_equilibria(self, *parameter, nInitData=10):
         """Find equilibria at given parameter and add to current plot"""
@@ -163,6 +251,8 @@ class ToggleSwitch(HillModel):
 
         INPUT: parameter = (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_1 theta_2)
         with fixed parameters omitted."""
+
+        print('deprecated. Use the dsgrn_coordinates functionality in the toggle_switch_heat_functionalities')
 
         def factor_slice(gamma, ell, delta, theta):
             T = gamma * theta
@@ -384,3 +474,9 @@ class Network12(HillModel):
         else:
             return np.squeeze(
                 Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
+
+
+"""Revisions
+1/22/21 - Implemented equilibria finding for the ToggleSwitch using the bootstrap method.
+
+"""
