@@ -11,7 +11,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 1000
+n_sample = 30
 # a random parameter list
 u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
@@ -26,7 +26,7 @@ multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):
     print(j)
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, 100, a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1,100], a_j)
     if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
             print('Saddle detected')
@@ -53,13 +53,15 @@ np.savez('data_center_region_small',
 np.load('data_center_region_small.npz')
 
 if bad_parameters is not None:
+    fig1 = plt.figure()
     dsgrn_plot(bad_parameters, 10)
     plt.title('bad candidates')
 
 if boring_parameters is not None:
+    fig1 = plt.figure()
     dsgrn_plot(boring_parameters, 10)
     plt.title('No saddle detected')
-
+fig1 = plt.figure()
 dsgrn_heat_plot(parameter_full, solutions, 10)
 
 print('It is the end!')

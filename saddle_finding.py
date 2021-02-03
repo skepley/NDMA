@@ -29,6 +29,8 @@ def count_eq(f, hill, p, gridDensity=10):
             return np.shape(eq)[1], eq  # number of columns is the number of equilibria found
         else:
             eq = f.find_equilibria(gridDensity * 2, hill, p)
+            if eq is None:
+                print(72)
             return np.shape(eq)[1], eq
 
 
@@ -38,7 +40,8 @@ def estimate_saddle_node(f, hill, p, gridDensity=10):
     return an empty interval."""
 
     hillIdx = 0
-    hill = ezcat(1, hill)  # append 1 to the front of the hill vector
+    # hill = ezcat(hill[0], hill)  # append 1 to the front of the hill vector
+    # UPDATE: expect hill to already have at least two elements
 
     numEquilibria, Eq = count_eq(f, hill[0], p, gridDensity)
     numEquilibriaInf, Eqs = count_eq(f, hill[-1], p, gridDensity)
@@ -102,7 +105,7 @@ def bisection(f, hill0, hill1, p, n_steps):
         return hill1, Eq1
 
 
-def find_saddle_coef(hill_model, hillRange, parameter):
+def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
     """
     This function takes a Hill model and search for saddle nodes
 
@@ -110,6 +113,7 @@ def find_saddle_coef(hill_model, hillRange, parameter):
     hill_model      a hill model with a singled parameter out - the one for the search
     hillRange       bounds on the singled parameter
     parameter       all but one parameter are fixed
+    freePrameter    parameter w.r.t. which we are looking for the saddle node - default is the initial parameter
 
     OUTPUT
     FAILURE: 0,0            found no saddle node
@@ -133,7 +137,7 @@ def find_saddle_coef(hill_model, hillRange, parameter):
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
             SN_candidate_eq = SN_candidates_from_bisection(equilibria)
-            jkSols = SN.find_saddle_node(0, candidateHill, p, equilibria=SN_candidate_eq)
+            jkSols = SN.find_saddle_node(freeParameter, candidateHill, p, equilibria=SN_candidate_eq)
             jSols = ezcat(jkSols)
             if len(jSols) > 0:
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions

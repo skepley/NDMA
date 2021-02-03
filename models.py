@@ -16,14 +16,15 @@ class ToggleSwitch(HillModel):
     for analysis and also a canonical example of how to implement a HillModel in which some parameters are constrained
     by others."""
 
-    def __init__(self, gamma, parameter):
+    def __init__(self, gamma, parameter, hill=np.nan):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^2 of linear decay rates or NaN if decays are variable parameters.
-            parameter - A length-2 list of length-3 parameter vectors of the form (ell, delta, theta)"""
+            parameter - A length-2 list of length-3 parameter vectors of the form (ell, delta, theta)
+            hill - float for the (identified) Hill coefficient"""
 
         nComponent = 2  # number of total Hill components (edges in GRN)
-        parameter = [np.insert(parmList, 3, np.nan) for parmList in
+        parameter = [np.insert(parmList, 3, hill) for parmList in
                      parameter]  # append hillCoefficient as free parameter
         interactionSigns = [[-1], [-1]]
         interactionTypes = [[1], [1]]

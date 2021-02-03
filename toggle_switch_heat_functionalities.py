@@ -82,10 +82,16 @@ def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
 
 def parameter_to_alpha_beta(parameterArray):
     """Return alpha/beta coordinates for the toggle switch for given parameters in R^5"""
-    alpha1 = parameterArray[:, 0]
-    beta1 = parameterArray[:, 0] + parameterArray[:, 1]
-    alpha2 = parameterArray[:, 3] / parameterArray[:, 2]
-    beta2 = (parameterArray[:, 3] + parameterArray[:, 4]) / parameterArray[:, 2]
+    if is_vector(parameterArray):
+        alpha1 = parameterArray[0]
+        beta1 = parameterArray[0] + parameterArray[1]
+        alpha2 = parameterArray[3] / parameterArray[2]
+        beta2 = (parameterArray[3] + parameterArray[4]) / parameterArray[2]
+    else:
+        alpha1 = parameterArray[:, 0]
+        beta1 = parameterArray[:, 0] + parameterArray[:, 1]
+        alpha2 = parameterArray[:, 3] / parameterArray[:, 2]
+        beta2 = (parameterArray[:, 3] + parameterArray[:, 4]) / parameterArray[:, 2]
     return alpha1, beta1, alpha2, beta2
 
 
@@ -150,7 +156,7 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=
     if gridLines:
         grid_lines(ax)
 
-
+"""
 plt.close('all')
 n_sample = 500
 u = 0 + 0.5 * np.random.rand(n_sample)
@@ -161,3 +167,4 @@ fig1 = plt.figure()
 dsgrn_heat_plot(parameter_full, solutions, 10)
 fig2 = plt.figure()
 dsgrn_plot(parameter_full, 10)
+"""
