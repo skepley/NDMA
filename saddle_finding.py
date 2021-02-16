@@ -26,12 +26,12 @@ def count_eq(f, hill, p, gridDensity=10):
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
-            return np.shape(eq)[1], eq  # number of columns is the number of equilibria found
+            return np.shape(eq)[0], eq  # number of columns is the number of equilibria found
         else:
             eq = f.find_equilibria(gridDensity * 2, hill, p)
             if eq is None:
                 print(72)
-            return np.shape(eq)[1], eq
+            return np.shape(eq)[0], eq
 
 
 def estimate_saddle_node(f, hill, p, gridDensity=10):
