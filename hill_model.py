@@ -1178,6 +1178,12 @@ class HillModel:
         self.coordinates = [HillCoordinate(parameter[j], interactionSign[j],
                                            interactionType[j], [j] + interactionIndex[j], gamma=gamma[j]) for j in
                             range(self.dimension)]
+
+        # This is a hacky and temporary fix to the problem where Hill Components do not know their own dimension based only on
+        # the input to their class constructor. This needs to be fixed with HillModel handling all global index bookkeeping.
+        for f_i in self.coordinates:
+            f_i.dim = self.dimension
+
         # A list of HillCoordinates specifying each coordinate of the vector field
         self.nVarByCoordinate = [fi.nVariableParameter for fi in
                                  self.coordinates]  # number of variable parameters by coordinate
