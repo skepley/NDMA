@@ -26,7 +26,7 @@ multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):
     print(j)
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 25], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 15], a_j)
     if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
             print('Saddle detected')
