@@ -2,6 +2,7 @@ from hill_model import *
 from saddle_finding import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
+import sys
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -24,12 +25,12 @@ bad_candidates = []
 boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):
-    print(j)
+    b='Completion: '+str(j)+' out of '+str(n_sample)
     a_j = a[j, :]
     SNParameters, badCandidates = find_saddle_coef(f, [1, 50], a_j)
     if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
-            print('Saddle detected')
+            #print('Saddle detected')
             parameter_full = np.append(parameter_full, [a_j], axis=0)
             if solutions is None:
                 solutions = SNParameters[k]
@@ -39,13 +40,19 @@ for j in range(n_sample):
                 print('More than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
     if badCandidates and badCandidates is not 0:
-        print('A bad parameter')
+        print('A bad parameter\n')
         bad_parameters = np.append(bad_parameters, [a_j], axis=0)
         bad_candidates.append(badCandidates)
+        print(b)
+    else:
+        sys.stdout.write('\r' + b)
+        sys.stdout.flush()
 
     if SNParameters is 0 and badCandidates is 0:
-        print('boooring')
+        #print('boooring')
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
+
+
 
 
 np.savez('data_center_region_small',
@@ -53,7 +60,10 @@ np.savez('data_center_region_small',
          bad_candidates=bad_candidates, boring_parameters=boring_parameters)
 np.load('data_center_region_small.npz')
 
-print('Number of bad candidates', len(bad_candidates))
+print('Number of bad candidates', len(bad_candidates), 'out of ', n_sample)
+print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)
+print('Number of saddles', len(parameter_full), 'out of ', n_sample)
+
 
 if bad_parameters is not None:
     fig1 = plt.figure()
