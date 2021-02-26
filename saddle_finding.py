@@ -24,13 +24,15 @@ def count_eq(f, hill, p, gridDensity=10):
             countVector[j], equilibria[j] = count_eq(hill[j], p)
         return countVector
     else:
-        eq = f.find_equilibria(gridDensity, hill, p)
+        eq = HillModel.find_equilibria(f,gridDensity, hill, p)
         if eq is not None:
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
             return np.shape(eq)[0], eq  # number of columns is the number of equilibria found
         else:
-            eq = f.find_equilibria(gridDensity * 2, hill, p)
+            eq = HillModel.find_equilibria(f, gridDensity * 2, hill, p)
+
+            
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
             return np.shape(eq)[0], eq
@@ -121,21 +123,24 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
         temp = equilibria_at_0
         equilibria_at_0 = equilibria_at_1
         equilibria_at_1 = temp
+    #print('Choosing the equilibirum from')
+    #print(equilibria_at_1,equilibria_at_0)
     # 0 has less equilibria than 1
     for i in range(equilibria_at_0.shape[0]):
         idx = find_nearest_row(equilibria_at_1, equilibria_at_0[i, :])
         equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
+    #print('Found')
     if equilibria_at_1.shape[1] == 1:
+        #print(equilibria_at_1)
         return equilibria_at_1
     else:
-        equilibrium = np.mean(equilibria_at_1, axis=1)
+        equilibrium = np.mean(equilibria_at_1, axis=0)
+        #print(equilibrium)
         return equilibrium
 
 
 def find_nearest_row(array2D, value1D):
-    match = np.zeros((1, array2D.shape[1]))
-    for i in range(len(match)):
-        match[i] = np.linalg.norm(array2D[i, :] - value1D)
+    match = np.array(list(map(lambda row: np.linalg.norm(row - value1D), array2D)))
     idx = match.argmin()
     return idx
 
@@ -164,7 +169,7 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
     SNParameters = []
     hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(f, hillRange, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
-    print(len(hill_for_saddle))
+    # print("there are possible saddles ", len(hill_for_saddle))
     if len(hill_for_saddle) == 0:
         return 0, 0
         # signature of monostability

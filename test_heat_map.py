@@ -26,7 +26,7 @@ multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):
     print(j)
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 15], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 50], a_j)
     if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
             print('Saddle detected')
@@ -52,6 +52,8 @@ np.savez('data_center_region_small',
          u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
          bad_candidates=bad_candidates, boring_parameters=boring_parameters)
 np.load('data_center_region_small.npz')
+
+print('Number of bad candidates', len(bad_candidates))
 
 if bad_parameters is not None:
     fig1 = plt.figure()
