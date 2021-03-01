@@ -20,7 +20,7 @@ u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
 
-hill_range = np.linspace(1.1, 40, 20)
+hill_range = np.linspace(1.1, 4, 5)
 
 parameter_full = np.empty(shape=[0, 5])
 solutions = None
@@ -35,7 +35,7 @@ for hill in hill_range:
         print(j)
         a_j = a[j, :]
         a_j = ezcat(hill, a_j[:interestingIndex], a_j[interestingIndex+1:]) # a_j has hill and skips the interestingIndex
-        SNParameters, badCandidates = find_saddle_coef(f, [0.5, a_j[interestingIndex]], a_j, interestingIndex) # totally arbitrary starting point
+        SNParameters, badCandidates = find_saddle_coef(f, [0, a_j[interestingIndex]], a_j, interestingIndex) # totally arbitrary starting point
         if SNParameters and SNParameters is not 0:
             for k in range(len(SNParameters)):
                 print('Saddle detected')
