@@ -169,6 +169,4 @@ fig2 = plt.figure()
 <<<<<<< HEAD
 dsgrn_plot(parameter_full, 10)
 """
-=======
-dsgrn_plot(parameter_full, 10, **{'c': 'k'})
->>>>>>> master
+#dsgrn_plot(parameter_full, 10, **{'c': 'k'})

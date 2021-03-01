@@ -197,6 +197,10 @@ class ToggleSwitch(HillModel):
         nIter = 0
         while nIter < maxIter and notConverged:
             uNew = Phi(u)
+            tol_loc = np.linalg.norm(uNew - u)
+            if nIter>3:
+                uveryOld = uOld
+            uOld = u
             notConverged = np.linalg.norm(uNew - u) > tol
             u = uNew
             nIter += 1
