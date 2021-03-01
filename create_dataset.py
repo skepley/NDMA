@@ -23,15 +23,28 @@ def create_dataset_ToggleSwitch(size_dataset, namefile=None, boolAppend=False):
         output_file.write(write(alpha, beta, parameters, parameter_region))
 
 
-def redTS(namefile=None):
+def readTS(namefile=None):
     if namefile is None:
         namefile = f"ToggleSwitchDataset"
     with open(f"{namefile}") as input_file:
         text = input_file.read()
     lines = text.split("\n")
-    [alpha, beta, parameters, parameter_region] = [int(i) for i in lines[0].split()]
-    # ask Ruben about this!
-    return alpha, beta, parameters, parameter_region
+    n_sample = int(lines[0])
+    alpha = np.empty(shape=n_sample)
+    beta = np.empty(shape=n_sample)
+    parameter =  np.empty(shape=[n_sample, 5])
+    parameter_region = np.empty(shape=n_sample)
+    for i, line in enumerate(lines[1:n_sample+1]):
+        [alpha_loc, beta_loc, _, p1, p2, p3, p4, p5, _, parameter_region_loc] = line.split()
+        alpha[i] = float(alpha_loc)
+        beta[i] = float(beta_loc)
+        parameter[i, 0] = float(p1)
+        parameter[i, 1] = float(p2)
+        parameter[i, 2] = float(p3)
+        parameter[i, 3] = float(p4)
+        parameter[i, 4] = float(p5)
+        parameter_region[i] = float(parameter_region_loc)
+    return alpha, beta, parameter, parameter_region
 
 
 def subsample_data_by_region(n_sample, region, alpha, beta, parameters, parameter_region):
@@ -61,7 +74,7 @@ def subsample_data_by_bounds(n_sample, alpha_min, alpha_max, beta_min, beta_max,
 def write(alpha, beta, parameters, parameter_region) -> str:
     output_lines = [f"{len(alpha)}"]
     for i in range(len(alpha)):
-        output_lines.append(f"{alpha[i]} {beta[i]} {parameters[i,:]} {parameter_region[i]}")
+        output_lines.append(f"{alpha[i]} {beta[i]} [ {parameters[i,0]} {parameters[i,1]} {parameters[i,2]} {parameters[i,3]} {parameters[i,4]} ] {parameter_region[i]}")
     return "\n".join(output_lines)
 
 
@@ -90,3 +103,4 @@ def associate_parameter_regionTS(alpha, beta):
 
 
 create_dataset_ToggleSwitch(10)
+readTS()
