@@ -10,6 +10,52 @@ from hill_model import *
 import numpy as np
 from toggle_switch_heat_functionalities import *
 import random
+import scipy
+
+
+def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, file_name=None, boolAppend=False):
+    if file_name is None:
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+        file_name = f"{timestamp}_{input_name}"
+
+    sampler = region_sampler(n_parameter_region)
+
+    def sampler_score(fisher_coefficients):
+        data = sampler(fisher_coefficients[:n_parameter_region], fisher_coefficients[n_parameter_region:], 10**3)
+        data_region = DSGRN_parameter_region(f, data)
+        # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
+        # vector data_region[1:size_sample], such that daa_region[i] tells us which region par[:, i] belongs to
+        # data_region goes from 0 to n_parameter_region -1
+        counter = np.zeros(n_parameter_region)
+        for i in range(n_parameter_region):
+            counter[i] = np.count_nonzero(data_region == i)
+        score = 1 - np.argmin(counter)/np.argmax(counter)
+        return score  # score must be minimized
+
+    coefficients = np.random.random(2*n_parameter_region)
+    optimal_coefs = scipy.optimize.minimize(sampler_score, coefficients, method='nelder-mead')
+
+    data = sampler(optimal_coefs[:n_parameter_region], optimal_coefs[n_parameter_region:], size_dataset)
+    parameter_region = DSGRN_parameter_region(f, data)
+    np.savez(file_name, data=data, parameter_region=parameter_region)
+    return file_name
+
+
+def load_dataset(file_name):
+    dataset = np.load(file_name)
+    return dataset.data, dataset.parameter_region
+
+
+def region_sampler():
+    def fisher_distribution(c1, c2, size):
+        return np.random.f(c1, c2, size)
+
+    def many_fisher_distributions(c1_vec, c2_vec, size):
+        par = np.zeros([len(c1_vec), size])
+        for i in range(c1_vec):
+            par[i, :] = fisher_distribution(c1_vec[i], c2_vec[i], size)
+        return par
+    return many_fisher_distributions
 
 
 def create_dataset_ToggleSwitch(size_dataset, namefile=None, boolAppend=False):
