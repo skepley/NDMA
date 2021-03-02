@@ -44,6 +44,9 @@ def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, fil
     print('Random initial condition chosen to the best of what random can give us')
     optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
     print(optimal_coefs.message)
+    if optimal_coefs.success is False:
+        print('The convergence failed, but the ration between worst region and best region is', optimal_coefs.fun,
+              ', where this is 1 if they have the same number of samples')
     optimal_coef = optimal_coefs.x
     data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     parameter_region = DSGRN_parameter_region(f, data)
