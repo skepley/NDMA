@@ -99,7 +99,7 @@ def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
     alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
     if alphaMax is None:
-        alphaMax = np.max(np.max(alpha1), np.max(alpha2))
+        alphaMax = np.max([np.max(alpha1), np.max(alpha2)])
 
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 

@@ -10,32 +10,42 @@ from hill_model import *
 import numpy as np
 from toggle_switch_heat_functionalities import *
 import random
-import scipy
+from scipy.optimize import minimize
+from datetime import datetime
+import warnings
 
 
 def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, file_name=None, boolAppend=False):
     if file_name is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-        file_name = f"{timestamp}_{input_name}"
-
-    sampler = region_sampler(n_parameter_region)
+        file_name = f"{timestamp}"
+    sampler_global = region_sampler()
 
     def sampler_score(fisher_coefficients):
-        data = sampler(fisher_coefficients[:n_parameter_region], fisher_coefficients[n_parameter_region:], 10**3)
-        data_region = DSGRN_parameter_region(f, data)
+
+        data_sample = sampler_global(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 10**3)
+        data_region = DSGRN_parameter_region(f, data_sample)
         # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
         # vector data_region[1:size_sample], such that daa_region[i] tells us which region par[:, i] belongs to
         # data_region goes from 0 to n_parameter_region -1
         counter = np.zeros(n_parameter_region)
         for i in range(n_parameter_region):
             counter[i] = np.count_nonzero(data_region == i)
-        score = 1 - np.argmin(counter)/np.argmax(counter)
+        score = 1 - np.min(counter)/np.max(counter)
+        # print(score) # lowest score is best score!
         return score  # score must be minimized
 
-    coefficients = np.random.random(2*n_parameter_region)
-    optimal_coefs = scipy.optimize.minimize(sampler_score, coefficients, method='nelder-mead')
-
-    data = sampler(optimal_coefs[:n_parameter_region], optimal_coefs[n_parameter_region:], size_dataset)
+    n_parameters = 5 # f.nVariableParameter
+    coefficients = np.abs(np.random.normal(size=2*n_parameters)/5)
+    for i in range(100):
+        other_random_coefs = np.abs(np.random.normal(size=2*n_parameters)/5)
+        if sampler_score(other_random_coefs) < sampler_score(coefficients):
+            coefficients = other_random_coefs
+    print('Random initial condition chosen to the best of what random can give us')
+    optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
+    print(optimal_coefs.message)
+    optimal_coef = optimal_coefs.x
+    data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     parameter_region = DSGRN_parameter_region(f, data)
     np.savez(file_name, data=data, parameter_region=parameter_region)
     return file_name
@@ -52,7 +62,7 @@ def region_sampler():
 
     def many_fisher_distributions(c1_vec, c2_vec, size):
         par = np.zeros([len(c1_vec), size])
-        for i in range(c1_vec):
+        for i in range(len(c1_vec)):
             par[i, :] = fisher_distribution(c1_vec[i], c2_vec[i], size)
         return par
     return many_fisher_distributions
@@ -148,5 +158,12 @@ def associate_parameter_regionTS(alpha, beta):
     return matrix_region[axes_1, axes_2]
 
 
+def DSGRN_parameter_region(_, parameter):
+    warnings.warn("This function is ONLY CODED FOR THE TOGGLE SWITCH")
+    alpha, beta = parameter_to_DSGRN_coord(parameter.T)
+    return associate_parameter_regionTS(alpha, beta) - 1
+
+
 create_dataset_ToggleSwitch(10)
 readTS()
+create_dataset(None, 9, 100) # create a new TS dataset
