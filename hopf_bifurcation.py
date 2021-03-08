@@ -16,16 +16,20 @@ or equivalently, dividing this into its real and imaginary part, such that v = v
 Df(x, lambda) v1 = - beta * v2
 Df(x, lambda) v2 = beta * v1
 We also want the phase condition 
-|| v1 + imag v2 || = 1, or equivalently sqrt( v1 ^2 + v2 ^2) = 1, where the square is interpreted as an inner product
+IS NOT || v1 + imag v2 || = 1, or equivalently sqrt( v1 ^2 + v2 ^2) = 1, where the square is interpreted as an inner product
+but is
+< l, v1>  =0 and <l, v2> =1 
 """
-
+# TODO: this is wrong AND afwul, fix!
+v_1_example = [2,3,4]
+Random_direction = np.random.random(size=np.size(v1))
+l_vec = Random_direction
 
 class HopfBifurcation:
     """A constraint class for working with HillModels along surfaces of Hopf bifurcations"""
 
-    def __init__(self, hillModel, phaseCondition=lambda v1, v2: np.sqrt(np.inner(v1, v1) + np.inner(v2, v2)) - 1,
-                 phaseConditionDerivative=lambda v1, v2: [1 / np.sqrt(np.inner(v1, v1) + np.inner(v2, v2)) * v1,
-                                                          1 / np.sqrt(np.inner(v1, v1) + np.inner(v2, v2)) * v2]):
+    def __init__(self, hillModel, phaseCondition=lambda v1, v2: [np.inner(l_vec, v1), np.inner(l_vec, v2) - 1],
+                 phaseConditionDerivative=lambda v1, v2: np.array([[ezcat(l_vec, 0*l_vec)], [ezcat(0*l_vec, l_vec)]])):
         """Construct an instance of a Hopf bifurcation problem for specified HillModel"""
 
         self.model = hillModel
@@ -144,119 +148,168 @@ class HopfBifurcation:
 
     def diff(self, u, diffIndex=None):
         """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
-        Dg: R^{2n+M} ---> M_{2n+1 x 2n+m}(R).
-        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector."""
+        Dg: R^{3n+1+M} ---> M_{3n+1 x 3n+1+M}(R).
+        INPUT: u = (x, v1, v2, beta, all parameters) where x is a state vector, v1 is the real component of a
+        tangent vector, v2 the imaginary component, beta the imaginary eigenvalue."""
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
         parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
-        dimension_space = 2 * n + parameterDim
-        mapDimension = 2 * n + 1
+        dimension_space = 3 * n + 1 + parameterDim
+        mapDimension = 3 * n + 2
 
-        stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, dimension_space])  # initialize (2n+1)-by-(2n+m) matrix
+        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(u)  # unpack input vector
+        Dg = np.zeros([mapDimension, dimension_space])  # initialize (3n+1)-by-(3n+1+M) matrix
         Dxf = self.model.dx(stateVector, fullParameter)  # store derivative of vector field which appears in 2 blocks
+        Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
+        Dpf = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)
+        Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
+        Id_v = np.identity(n)
+        Diff_PC = self.diffPhaseCondition(tangentVector1, tangentVector2) # it's
 
-        # the indices of x v and p respectively
-        index1 = np.arange(n)
-        index2 = np.arange(n) + n
-        index3 = 2 * n + np.arange(parameterDim)
+        # the indices of x v1, v2, beta and p respectively
+        index_x = np.arange(n)
+        index_v1 = np.arange(n) + n
+        index_v2 = np.arange(n) + 2 * n
+        index_beta = 3 * n
+        index_par = 3 * n + 1 + np.arange(parameterDim)
+        index_PC = 3 * n + 1 + np.array([0, 1])
         if parameterDim is 1:
             # BLOCK ROW 1
-            Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
+            Dg[np.ix_(index_x, index_x)] = Dxf  # block - (1,1)
             # block - (1, 2) is an n-by-n zero block
-            a = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # block - (1,3)
-            Dg[index1, index3] = a
+            # block - (1,3)
+            Dg[index_x, index_par] = Dpf
             # BLOCK ROW 2
-            Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
-                                                   tangentVector)  # block - (2,1)
-            Dg[np.ix_(index2, index2)] = Dxf  # block - (2,2)
-            Dg[index2, index3] = np.einsum('ij, j',
-                                           self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
-                                           tangentVector)  # block - (2,3)
+            Dg[np.ix_(index_v1, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector1)  # block - (2,1)
+            Dg[np.ix_(index_v1, index_v1)] = Dxf  # block - (2,2)
+            Dg[np.ix_(index_v1, index_v2)] = beta * Id_v # block - (2,3)
+            Dg[index_v1, index_beta] = tangentVector2 # block - (2,4)
+            Dg[index_v1, index_par] = np.einsum('ij, j', Dxpf, tangentVector1)  # block - (2,end)
             # BLOCK ROW 3
-            # block - (3, 1) is a 1-by-n zero block
-            Dg[index3, np.ix_(index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
-            # block - (3, 1) is a 1-by-1 zero block
+            Dg[np.ix_(index_v2, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector2)  # block - (3,1)
+            Dg[np.ix_(index_v2, index_v1)] = - beta * Id_v  # block - (3,3)
+            Dg[np.ix_(index_v2, index_v2)] = Dxf  # block - (3,2)
+            Dg[index_v2, index_beta] = - tangentVector1 # block - (3,4)
+            Dg[index_v2, index_par] = np.einsum('ij, j', Dxpf, tangentVector2)  # block - (3,end)
+
+            # BLOCK ROW 4
+            # block - (4, 1) is a 1-by-n zero block
+            Dg[np.ix_(index_PC, ezcat(index_v1, index_v2))] = Diff_PC  # block - (4, 2:3)
+            # block - (4, 4:5) is a 1-by-1 zero block
         else:
             # BLOCK ROW 1
-            Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
+            Dg[np.ix_(index_x, index_x)] = Dxf  # block - (1,1)
             # block - (1, 2) is an n-by-n zero block
-            a = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # block - (1,3)
-            Dg[np.ix_(index1, index3)] = a
+            # block - (1,3)
+            Dg[np.ix_(index_x, index_par)] = Dpf
             # BLOCK ROW 2
-            Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
-                                                   tangentVector)  # block - (2,1)
-            Dg[np.ix_(index2, index2)] = Dxf  # block - (2,2)
-            Dg[np.ix_(index2, index3)] = np.einsum('ijk, j',
-                                                   self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex),
-                                                   tangentVector)  # block - (2,3)
+            Dg[np.ix_(index_v1, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector1)  # block - (2,1)
+            Dg[np.ix_(index_v1, index_v1)] = Dxf  # block - (2,2)
+            Dg[np.ix_(index_v1, index_v2)] = beta * Id_v  # block - (2,3)
+            Dg[index_v1, index_beta] = tangentVector2  # block - (2,4)
+            Dg[np.ix_(index_v1, index_par)] = np.einsum('ij, j', Dxpf, tangentVector1)  # block - (2,end)
             # BLOCK ROW 3
-            # block - (3, 1) is a 1-by-n zero block
-            Dg[index3[0], np.ix_(index2)] = self.diffPhaseCondition(tangentVector)  # block - (3,2)
-            # block - (3, 1) is a 1-by-1 zero block
+            Dg[np.ix_(index_v2, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector2)  # block - (3,1)
+            Dg[np.ix_(index_v2, index_v1)] = - beta * Id_v  # block - (3,3)
+            Dg[np.ix_(index_v2, index_v2)] = Dxf  # block - (3,2)
+            Dg[index_v2, index_beta] = - tangentVector1  # block - (3,4)
+            Dg[np.ix_(index_v2, index_par)] = np.einsum('ij, j', Dxpf, tangentVector2)  # block - (3,end)
+
+            # BLOCK ROW 4
+            # block - (4, 1) is a 1-by-n zero block
+            Dg[np.ix_(index_PC, ezcat(index_v1, index_v2))] = Diff_PC  # block - (4, 2:3)
+            # block - (4, 4:5) is a 1-by-1 zero block
         return Dg
 
     def diff2(self, u, diffIndex=None):
         """Evaluate the second derivative of the zero finding map. This is a function of the form
-        D^2g: R^{2n+M} ---> R^{2n+1 x 2n+1+M x 2n+1+M}, M length of diffIndex.
-        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector."""
+        D^2g: R^{3n+1+M} ---> R^{3n+2 x 3n+1+M x 3n+1+M}, M length of diffIndex.
+        INPUT: u = (x, v1, v2, beta, all parameters) where x is a state vector, v1 is the real component of a
+        tangent vector, v2 the imaginary component, beta the imaginary eigenvalue."""
 
         # unpack input vector and set dimensions for Hessian blocks
         n = self.model.dimension
         parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
-        dimension_space = 2 * n + parameterDim
-        mapDimension = 2 * n + 1
+        dimension_space = 3 * n + 1 + parameterDim
+        mapDimension = 3 * n + 2
 
-        stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
-        Dg = np.zeros([mapDimension, dimension_space, dimension_space])  # initialize (2n+1)-by-(2n+m)-by-(2n+m) matrix
+        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(u) # unpack input vector
+        Dg = np.zeros([mapDimension, dimension_space, dimension_space])  # initialize (3n+2) x (3n+1+M) x (3n+1+M) matrix
         Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
         Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxxxf = self.model.dx3(stateVector, fullParameter)
         Dxxpf = self.model.dx2diff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxppf = self.model.dxdiff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
         Dppf = self.model.diff2(stateVector, fullParameter, diffIndex=[diffIndex, diffIndex])
+        Id_v = np.identity(n)
 
         # the indices of x v and p respectively
-        index1 = np.array(range(n))
-        index2 = np.array(range(n)) + n
-        index3 = 2 * n + np.array(range(parameterDim))
+        index_x = np.array(range(n))
+        index_v1 = np.array(range(n)) + n
+        index_v2 = np.arange(n) + 2 * n
+        index_beta = 3 * n
+        index_par = 3 * n + 1 + np.arange(parameterDim)
+        index_PC = 3 * n + 1 + np.array([0, 1])
+
+        # DxDF
+        Dg[np.ix_(index_x, index_x, index_x)] = Dxxf
+        Dg[np.ix_(index_v1, index_x, index_x)] = np.einsum('ijkl,j', Dxxxf, tangentVector1)
+        Dg[np.ix_(index_v1, index_x, index_v1)] = Dxxf
+        Dg[np.ix_(index_v2, index_x, index_x)] = np.einsum('ijkl,j', Dxxxf, tangentVector2)
+        Dg[np.ix_(index_v2, index_x, index_v2)] = Dxxf
+
+        # Dv1DF
+        Dg[np.ix_(index_v1, index_v1, index_x)] = Dxxf
+        Dg[np.ix_(index_v2, index_v1), index_beta] = - Id_v
+
+        # Dv2DF
+        Dg[np.ix_(index_v2, index_v2, index_x)] = Dxxf
+        Dg[np.ix_(index_v1, index_v2), index_beta] = Id_v
+
+        # DbetaDF
+        Dg[np.ix_(index_v1), index_beta, np.ix_(index_v2)] = Id_v
+        Dg[np.ix_(index_v2), index_beta, np.ix_(index_v1)] = - Id_v
+
         if parameterDim is 1:
             # ROW 1
-            Dg[np.ix_(index1, index1, index1)] = Dxxf  # block - (1,1,1)
-            Dg[np.ix_(index1, index1), index3] = Dxpf
-            Dg[np.ix_(index1), index3, np.ix_(index1)] = Dxpf
-            Dg[np.ix_(index1), index3, index3] = Dppf
+            Dg[np.ix_(index_x, index_x), index_par] = Dxpf
+            Dg[np.ix_(index_v1, index_x), index_par] = np.einsum('ijkl,j', Dxxpf, tangentVector1)
+            Dg[np.ix_(index_v2, index_x), index_par] = np.einsum('ijkl,j', Dxxpf, tangentVector2)
 
-            # BLOCK ROW 2 - derivatives of Dxf*v
-            Dg[np.ix_(index2, index1, index1)] = np.einsum('ijkl,j', Dxxxf, tangentVector)
-            Dg[np.ix_(index2, index1, index2)] = Dxxf
-            Dg[np.ix_(index2, index1), index3] = np.einsum('ijk,j', Dxxpf, tangentVector)
-            Dg[np.ix_(index2, index2, index1)] = Dxxf
-            Dg[np.ix_(index2, index2), index3] = Dxpf
-            Dg[np.ix_(index2), index3, np.ix_(index1)] = np.einsum('ijk,j', Dxxpf, tangentVector)
-            Dg[np.ix_(index2), index3, np.ix_(index2)] = Dxpf
-            Dg[np.ix_(index2), index3, index3] = Dxppf
+            Dg[np.ix_(index_v1, index_v1), index_par] = Dxpf
+            Dg[np.ix_(index_v2, index_v2), index_par] = Dxpf
 
+            Dg[np.ix_(index_x), index_par, np.ix_(index_x)] = Dxpf
+            Dg[index_par, index_par, index_par] = Dppf
+            Dg[np.ix_(index_v1), index_par, np.ix_(index_x)] = np.einsum('ijk,j', Dxxpf, tangentVector1)
+            Dg[np.ix_(index_v1), index_par, np.ix_(index_v1)] = Dxpf
+            Dg[np.ix_(index_v1), index_par, index_par] = np.einsum('jk,j', Dxppf, tangentVector1)
+
+            Dg[np.ix_(index_v2), index_par, np.ix_(index_x)] = np.einsum('ijk,j', Dxxpf, tangentVector2)
+            Dg[np.ix_(index_v2), index_par, np.ix_(index_v2)] = Dxpf
+            Dg[np.ix_(index_v2), index_par, index_par] = np.einsum('jk,j', Dxppf, tangentVector2)
             # BLOCK ROW 3
-            # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
+            # block - (4, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
         else:
 
             # ROW 1
-            Dg[np.ix_(index1, index1, index1)] = Dxxf  # block - (1,1,1)
-            Dg[np.ix_(index1, index1, index3)] = Dxpf
-            Dg[np.ix_(index1, index3, index1)] = np.swapaxes(Dxpf, 1, 2)
-            Dg[np.ix_(index1, index3, index3)] = Dppf
+            Dg[np.ix_(index_x, index_x, index_par)] = Dxpf
+            Dg[np.ix_(index_v1, index_x, index_par)] = np.einsum('ijkl,j', Dxxpf, tangentVector1)
+            Dg[np.ix_(index_v2, index_x, index_par)] = np.einsum('ijkl,j', Dxxpf, tangentVector2)
 
-            # BLOCK ROW 2 - derivatives of Dxf*v
-            Dg[np.ix_(index2, index1, index1)] = np.einsum('ijkl,j', Dxxxf, tangentVector)
-            Dg[np.ix_(index2, index1, index2)] = Dxxf
-            Dg[np.ix_(index2, index1, index3)] = np.swapaxes(np.einsum('ijk...,j...', Dxxpf, tangentVector), 0, 2)
-            Dg[np.ix_(index2, index2, index1)] = Dxxf
-            Dg[np.ix_(index2, index2, index3)] = Dxpf
-            Dg[np.ix_(index2, index3, index1)] = np.swapaxes(np.einsum('ijk...,j...', Dxxpf, tangentVector), 0, 1)
-            Dg[np.ix_(index2, index3, index2)] = np.swapaxes(Dxpf, 1, 2)
-            Dg[np.ix_(index2, index3, index3)] = np.swapaxes(np.einsum('ijk...,j...', Dxppf, tangentVector), 0, 1)
+            Dg[np.ix_(index_v1, index_v1, index_par)] = Dxpf
+            Dg[np.ix_(index_v2, index_v2, index_par)] = Dxpf
+
+            Dg[np.ix_(index_x, index_par, index_x)] = Dxpf
+            Dg[np.ix_(index_par, index_par, index_par)] = Dppf
+            Dg[np.ix_(index_v1, index_par, index_x)] = np.einsum('ijk,j', Dxxpf, tangentVector1)
+            Dg[np.ix_(index_v1, index_par, index_v1)] = Dxpf
+            Dg[np.ix_(index_v1, index_par, index_par)] = np.einsum('jk,j', Dxppf, tangentVector1)
+
+            Dg[np.ix_(index_v2, index_par, index_x)] = np.einsum('ijk,j', Dxxpf, tangentVector2)
+            Dg[np.ix_(index_v2, index_par, index_v2)] = Dxpf
+            Dg[np.ix_(index_v2, index_par, index_par)] = np.einsum('jk,j', Dxppf, tangentVector2)
 
             # BLOCK ROW 3
             # block - (3, :, :) is a 1-by-dim-by-dim zero block because the phase condition is linear
