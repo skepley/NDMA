@@ -8,8 +8,10 @@ Function and design testing for the SaddleNode class
     email: shane.kepley@rutgers.edu
     Date: 4/13/20; Last revision: 4/13/20
 """
-from hill_model import HillComponent, HillCoordinate,  HillModel, SaddleNode
-from test_HillModel import ToggleSwitch
+import numpy as np
+from hill_model import HillComponent, HillCoordinate,  HillModel, find_root
+from saddle_node import SaddleNode
+from models import ToggleSwitch
 
 
 # set some parameters to test using MATLAB toggle switch for ground truth
@@ -23,14 +25,14 @@ f1 = f.coordinates[0]
 f2 = f.coordinates[1]
 H1 = f1.components[0]
 H2 = f2.components[0]
-n0 = 4.1
+hill = 4.1
 
-SN = SaddleNode(f, unit_phase_condition, diff_unit_phase_condition)
-eq = f.find_equilibria(n0, 10)
+SN = SaddleNode(f)
+eq = f.find_equilibria(10, hill)
 # v0 = np.array([1, -.7])
 v0 = np.array([1, 1])
 x0 = eq[:, 1]
-u0 = np.concatenate((x0, v0, np.array(n0)), axis=None)
+u0 = np.concatenate((x0, v0, np.array(hill)), axis=None)
 
 uSol = find_root(SN.zero_map, SN.diff_zero_map, u0, diagnose=True)
 print(uSol)

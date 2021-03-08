@@ -31,7 +31,7 @@ p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
 SN = SaddleNode(f)
 
 # ==== find saddle node for a parameter choice
-rho = 4.1
+hill = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
 
@@ -41,18 +41,18 @@ p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 # plot nullclines and equilibria
 plt.close('all')
 plt.figure()
-f.plot_nullcline(rho, p)
-plt.title('Initial parameters: \n' + np.array2string(ezcat(rho, p)))
+f.plot_nullcline(hill, p)
+plt.title('Initial parameters: \n' + np.array2string(ezcat(hill, p)))
 
 fig = plt.figure(tight_layout=True, figsize=(15., 9.))
 allSol = []
-fullParameter = ezcat(rho, p)
+fullParameter = ezcat(hill, p)
 
 for j in range(9):
     fig.add_subplot(3, 3, j + 1)
     jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
     print(jSearchNodes)
-    jSols = SN.find_saddle_node(j, rho, p, freeParameterValues=jSearchNodes)
+    jSols = SN.find_saddle_node(j, hill, p, freeParameterValues=jSearchNodes)
     print(j, jSols)
     allSol.append(jSols)
     for sol in jSols:

@@ -19,6 +19,9 @@ n = 4.1
 x0 = np.array([3, 4, 5, 6])
 # x0 = 3
 
+# parameter choices which produce integer evaluations
+# In general, H(x, (3, 100, k*x, 2)) will be an integer for k = 1, 2, 3
+
 # test Hill component code
 H1 = HillComponent(-1, ell=ell, theta=theta, delta=delta,
                    hillCoefficient=n)  # A function of x with all parameters fixed

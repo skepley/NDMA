@@ -37,13 +37,15 @@ class EMT(HillModel):
                          interactionIndex)  # define HillModel for toggle switch by inheritance
 
 
-gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
-edgeCounts = [2, 2, 2, 1, 3, 2]
-parameterVar = [np.array([[np.nan for j in range(4)] for k in range(nEdge)]).squeeze() for nEdge in edgeCounts]
-f = EMT(gammaVar, parameterVar)
+if __name__ == '__main__':
+    gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
+    edgeCounts = [2, 2, 2, 1, 3, 2]
+    parameterVar = [np.array([[np.nan for j in range(4)] for k in range(nEdge)]).squeeze() for nEdge in edgeCounts]
+    f = EMT(gammaVar, parameterVar)
 
-gammaValues = np.array([j for j in range(1, 7)])
-parmValues = [np.random.rand(*np.shape(parameterVar[node])) for node in range(6)]
-x = np.random.rand(6)
-p = ezcat(*[ezcat(ezcat(tup[0], tup[1].flatten())) for tup in zip(gammaValues, parmValues)])  # this only works when all parameters are variable
-print(f(x, p))
+    gammaValues = np.array([j for j in range(1, 7)])
+    parmValues = [np.random.rand(*np.shape(parameterVar[node])) for node in range(6)]
+    x = np.random.rand(6)
+    p = ezcat(*[ezcat(ezcat(tup[0], tup[1].flatten())) for tup in
+                zip(gammaValues, parmValues)])  # this only works when all parameters are variable
+    print(f(x, p))
