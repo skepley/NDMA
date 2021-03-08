@@ -20,22 +20,22 @@ IS NOT || v1 + imag v2 || = 1, or equivalently sqrt( v1 ^2 + v2 ^2) = 1, where t
 but is
 < l, v1>  =0 and <l, v2> =1 
 """
-# TODO: this is wrong AND afwul, fix!
-v_1_example = [2,3,4]
-Random_direction = np.random.random(size=np.size(v1))
-l_vec = Random_direction
+
 
 class HopfBifurcation:
     """A constraint class for working with HillModels along surfaces of Hopf bifurcations"""
 
-    def __init__(self, hillModel, phaseCondition=lambda v1, v2: [np.inner(l_vec, v1), np.inner(l_vec, v2) - 1],
-                 phaseConditionDerivative=lambda v1, v2: np.array([[ezcat(l_vec, 0*l_vec)], [ezcat(0*l_vec, l_vec)]])):
+    def __init__(self, hillModel, phaseCondition=lambda v1, v2, l_vec: [np.inner(l_vec, v1), np.inner(l_vec, v2) - 1],
+                 phaseConditionDerivative=lambda v1, v2, l_vec: np.array([[ezcat(l_vec, 0*l_vec)], [ezcat(0*l_vec, l_vec)]])):
         """Construct an instance of a Hopf bifurcation problem for specified HillModel"""
-
         self.model = hillModel
+        self.mapDimension = 3 * hillModel.dimension + 1  # degrees of freedom of the constraint
+        if phaseCondition.__code__.co_argcount is 3:
+            Random_direction = np.random.random(size=hillModel.dimension)
+            phaseCondition = lambda v1, v2: phaseCondition(v1, v2, Random_direction)
+            phaseConditionDerivative = lambda v1, v2: phaseConditionDerivative(v1, v2, Random_direction)
         self.phaseCondition = phaseCondition
         self.diffPhaseCondition = phaseConditionDerivative
-        self.mapDimension = 3 * hillModel.dimension + 1  # degrees of freedom of the constraint
 
     def __call__(self, u):
         """Evaluation function for the saddle-node bifurcation constraints. This is a map of the form
