@@ -1179,6 +1179,9 @@ class HillModel:
                                            interactionType[j], [j] + interactionIndex[j], gamma=gamma[j]) for j in
                             range(self.dimension)]
         # A list of HillCoordinates specifying each coordinate of the vector field
+        for f_i in self.coordinates:
+            f_i.dim = self.dimension
+
         self.nVarByCoordinate = [fi.nVariableParameter for fi in
                                  self.coordinates]  # number of variable parameters by coordinate
         self.variableIndexByCoordinate = np.insert(np.cumsum(self.nVarByCoordinate), 0,
