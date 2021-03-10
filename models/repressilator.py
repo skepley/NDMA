@@ -17,7 +17,7 @@ from hill_model import *
 class Repressilator(HillModel):
     """Class definition inherited from HillModel with methods overloaded to identity Hill coefficients"""
 
-    def __init__(self, gamma, parameter, variant=0):
+    def __init__(self, gamma, parameter, variant=1):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^3 of linear decay rates or NaN if decays are variable parameters.
@@ -188,6 +188,12 @@ if __name__ == '__main__':
     # Check this against the true values:
 
     print(f(x, hill, p))
+
+    # TODO: this crashed
+    # print(f.dx(x, hill, p))
+    # therefor this doesn't run either...
+   # print(f.find_equilibria(10, hill, p))
+
     # TEST DERIVATIVE EVALUATION
     [f0, f1, f2] = f.coordinates
     pT = np.array([3, 100, x[0], 2])

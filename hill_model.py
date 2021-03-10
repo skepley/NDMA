@@ -844,8 +844,8 @@ class HillCoordinate:
         if diffIndex is None:
             gamma, parameterByComponent = self.parse_parameters(parameter)
             Df = np.zeros(self.dim, dtype=float)
-            xLocal = x[
-                self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
+            xLocal = np.take(x, self.interactionIndex)#x[
+                # self.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
             diffInteraction = self.diff_interaction(x,
                                                     parameter,
                                                     1)  # evaluate derivative of interaction function (outer term in chain rule)
