@@ -12,7 +12,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 300
+n_sample = 100
 # a random parameter list
 u = 1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = 1 + np.random.uniform(-0.1, 1.1, n_sample)
