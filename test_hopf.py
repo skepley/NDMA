@@ -74,7 +74,7 @@ for n_loc in [3, 4, 5, 6, 7]:
     plt.plot(x, f_x)
 
 """
-# print(jac(y0))
+f.dx(y0, hill, p)
 
 
 for i in range(10):
