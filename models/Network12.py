@@ -1,29 +1,26 @@
 """
-An implementation of a three node negative cyclic feedback oscillator. Each edge has free (but identical)
-Hill coefficients, hill_1 = hill_2 = hill_3 = hill, and possibly some other parameters free. This has a total of 3 edges
-and up to 13 variable parameters.
+An implementation of Network 12 from the three node hysteresis paper as a Hill model class. The best performing consistent
+3-node network for producing robust hysteresis. Each edge has free (but identical) Hill coefficients,
+hill_1 = hill_2 = hill_3 = hill, and possibly some other parameters free. This has a total of 6 edges and up to 22
+variable parameters.
+    SEE ALSO: HillModel.py, and ./models/ToggleSwitch.py
 
-    Other files required: HillModel.py
-    SEE ALSO: ./models/ToggleSwitch.py
-   
     Author: Shane Kepley
     email: shane.kepley@rutgers.edu
-    Date: 3/8/21; Last revision: 3/8/21
+    Date: 2/3/21; Last revision: 2/3/21
 """
-
 from hill_model import *
 
 
-class Repressilator(HillModel):
+class Network12(HillModel):
     """Class definition inherited from HillModel with methods overloaded to identity Hill coefficients"""
 
-    def __init__(self, gamma, parameter, variant=1):
+    def __init__(self, gamma, parameter):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^3 of linear decay rates or NaN if decays are variable parameters.
-            parameter - A length-3 list of parameter arrays each of size 1-by-3. Each parameter array
-                has the form (ell, delta, theta) and corresponds to the unique in-edge for node X_i.
-            variant - Either 0 or 1 for all repressors or 1 repressor/2 activators in the cycle respectively."""
+            parameter - A length-3 list of parameter arrays of size K_i-by-3 for K_i in {1,2,3}. Each row of a parameter array
+                has the form (ell, delta, theta) and corresponds to an in-edge for node X_i."""
 
         # append hillCoefficient as free parameter to each Hill Component
         def insert_nan(parameterArray):
@@ -38,13 +35,9 @@ class Repressilator(HillModel):
         parameter = [insert_nan(parmArray) for parmArray in parameter]
 
         # Add interactions defined by the topology and a choice of algebra.
-        if variant == 0:
-            interactionSigns = [[-1], [-1], [-1]]  # all nonlinear interactions are repression (strong negative feedback)
-        elif variant == 1:
-            interactionSigns = [[-1], [1], [1]]  # 1 repression and 2 activation (weak negative feedback)
-
-        interactionTypes = [[1], [1], [1]]  # all nonlinear interactions depend only on a single gene
-        interactionIndex = [[1], [2], [0]]  # interactions defined by a single cycle
+        interactionSigns = [[1, 1, 1], [1, 1], [1]]  # all interactions are activation
+        interactionTypes = [[3], [2], [1]]  # all interactions are single summand
+        interactionIndex = [[0, 1, 2], [0, 2], [0]]
 
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel by inheritance
@@ -168,54 +161,44 @@ class Repressilator(HillModel):
 if __name__ == '__main__':
     # TEST VECTOR FIELD EVALUATION
     gammaVar = np.array(3 * [np.nan])  # set all decay rates as variables
-    edgeCounts = [1, 1, 1]  # count incoming edges to each node to structure the parameter array
+    edgeCounts = [3, 2, 1]  # count incoming edges to each node to structure the parameter array
     parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]).squeeze() for nEdge in
                     edgeCounts]  # pass all parameters as variable
-    f = Repressilator(gammaVar, parameterVar)
+    f = Network12(gammaVar, parameterVar)
 
-    gammaValues = np.array([10, 20, 30])  # choose some decays
+    gammaValues = np.arange(1, 4)  # choose some decays
     x = np.arange(1, 4)  # choose the point x = (1,2,3) in phase space to test evaluations
     hill = 2  # choose a Hill coefficient
 
     # choose parameters which make the Hill components integer valued. All ell = 3, delta = 100, hill = 2, and theta = kx for k in {1,2,3}
     # All Hill functions are positive so the values are:
     # H(x, (3, 100, x, 2)) = 53,    H(x, (3, 100, 2*x, 2)) = 23,   H(x, (3, 100, 3*x, 2)) = 13
-    parmValues = [np.array([3, 100, x[0]]),
-                  np.array([3, 100, 2 * x[1]]),
-                  np.array([3, 100, 3 * x[2]])]
+    parmValues = [np.array([[3, 100, x[0]], [3, 100, 2 * x[1]], [3, 100, 3 * x[2]]]),
+                  np.array([[3, 100, x[0]], [3, 100, 2 * x[2]]]),
+                  np.array([3, 100, x[0]])]
     p = ezcat(*[ezcat(ezcat(tup[0], tup[1].flatten())) for tup in
                 zip(gammaValues, parmValues)])  # this only works when all parameters are variable
     # Check this against the true values:
-
-    print(f(x, hill, p))
-
+    # f0 = -1 + 53 + 23 + 13 = 88,      f1 = -4 + 53 + 23 = 72,      f2 = -9 + 53 = 44
+    assert (np.all((f(x, hill, p)) == np.array([88, 72, 44])))
 
     # TEST DERIVATIVE EVALUATION
     [f0, f1, f2] = f.coordinates
     pT = np.array([3, 100, x[0], 2])
-    p0 = ezcat(gammaValues[0], parmValues[0], hill)
-    p1 = ezcat(gammaValues[1], parmValues[1], hill)
-    p2 = ezcat(gammaValues[2], parmValues[2], hill)
+    p0 = ezcat(3, pT, pT, pT)
+    p1 = ezcat(3, pT, pT)
+    p2 = ezcat(3, pT)
 
-    # print(f0.dx(x, p0))
-    # print(f1.dx(x, p1))
-    # print(f2.dx(x, p2))
-    # print(f.dx(x, hill, p))
-
-    y0 = f0.dx2(x, p0)
-    y = f.dx2(x, hill, p)
-
-#
-    # gamma, p2ByComponent = f2.parse_parameters(p2)
-    # Df = np.zeros(f2.dim, dtype=float)
-    # xLocal = x[
-    #     f2.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
-    # diffInteraction = f2.diff_interaction(x,
-    #                                       p2,
-    #                                       1)  # evaluate derivative of interaction function (outer term in chain rule)
-    # DHillComponent = np.array(
-    #     list(map(lambda H, x_k, parm: H.dx(x_k, parm), f2.components, xLocal,
-    #              p2ByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
-    # Df[
-    #     f2.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
-    # Df[f2.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
+    gamma, p2ByComponent = f2.parse_parameters(p2)
+    Df = np.zeros(f2.dim, dtype=float)
+    xLocal = x[
+        f2.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
+    diffInteraction = f2.diff_interaction(x,
+                                          p2,
+                                          1)  # evaluate derivative of interaction function (outer term in chain rule)
+    DHillComponent = np.array(
+        list(map(lambda H, x_k, parm: H.dx(x_k, parm), f2.components, xLocal,
+                 p2ByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
+    Df[
+        f2.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+    Df[f2.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
