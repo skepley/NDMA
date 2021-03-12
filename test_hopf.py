@@ -7,6 +7,7 @@ import numpy as np
 from scipy.integrate import *
 import matplotlib.pyplot as plt
 from hill_model import *
+from hopf_bifurcation import *
 
 #
 # "Parameter":{"L[x1->x2]" : 0.9132235573212335, "L[x2->x3]" : 0.08856225631514987, "L[x3->x1]" : 0.081866957498757928,
@@ -35,7 +36,7 @@ f = Repressilator(gammaVar, parameterVar)
 
 hill = 2
 # p = np.concatenate([L, delta, T])
-p = np.array([L[0], delta[0], T[0], L[1], delta[1], T[1], L[2], delta[2], T[2]])
+p = np.array([1, 4, 4, 1, 4, 4, 1, 4, 4])# np.array([L[0], delta[0], T[0], L[1], delta[1], T[1], L[2], delta[2], T[2]])
 
 
 def f_call(t, x):
@@ -93,6 +94,7 @@ for i in range(10):
     # plt.plot(sol.t, sol.y[1, :])
 """
 
+"""
 eqs = HillModel.find_equilibria(f, 10, hill, p)
 
 
@@ -105,13 +107,44 @@ eqs = HillModel.find_equilibria(f, 10, 20, p)
 DF = jac(eqs[0], 20)
 eigs_i, eigenvectors = np.linalg.eig(DF)
 # print(eigs_i)
+"""
 
-plt.figure()
-for hill in np.linspace(0.1, 2, 10):
+"""plt.figure()
+for hill in np.linspace(0.1, 20, 100):
     eqs = HillModel.find_equilibria(f, 10, hill, p)
     DF = jac(eqs[0], hill)
     eigs_i, eigenvectors = np.linalg.eig(DF)
+    plt.figure(1)
     plt.plot(hill, np.min(np.abs(np.real(eigs_i))),'o')
+    plt.figure(2)
+    plt.plot(hill, np.max(np.abs(np.imag(eigs_i))), 'o')
+"""
 
+hill =11.9
+eqs = HillModel.find_equilibria(f, 10, hill, p)
+DF = jac(eqs[0], hill)
+eigs_i, eigenvectors = np.linalg.eig(DF)
+
+
+hill = 14
+y0 = np.random.random(size=3)
+# solutions I could find all shoot at an equilibrium
+sol = solve_ivp(f_call, [0, 100], y0)
+
+#fig = plt.figure()
+#ax = plt.axes(projection='3d')
+
+#plt.plot(sol.y[0, :], sol.y[1, :], sol.y[2, :])
+#plt.plot(sol.y[0, -1], sol.y[1, -1], sol.y[2, -1], 'o')
+
+
+H = HopfBifurcation(f)
+beta = np.max(np.abs(np.imag(eigs_i)))
+v = eigenvectors[:, np.min(np.where(np.imag(eigs_i) == beta)[0])]
+
+# stateVector, tangentVector1, tangentVector2, eig, fullParameter
+full_data = ezcat(eqs[0], np.real(v), np.imag(v), beta, hill, p)
+
+print(H(full_data))
 
 print('End of the game!')

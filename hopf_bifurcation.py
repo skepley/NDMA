@@ -25,15 +25,20 @@ but is
 class HopfBifurcation:
     """A constraint class for working with HillModels along surfaces of Hopf bifurcations"""
 
-    def __init__(self, hillModel, phaseCondition=lambda v1, v2, l_vec: [np.inner(l_vec, v1), np.inner(l_vec, v2) - 1],
-                 phaseConditionDerivative=lambda v1, v2, l_vec: np.array([[ezcat(l_vec, 0*l_vec)], [ezcat(0*l_vec, l_vec)]])):
+    def __init__(self, hillModel, phaseCondition=None, phaseConditionDerivative=None):
         """Construct an instance of a Hopf bifurcation problem for specified HillModel"""
+
+        def phasecond_and_Der():
+            Random_direction = np.random.random(size=hillModel.dimension)
+            Phase_cond = lambda v1, v2: [np.inner(Random_direction, v1), np.inner(Random_direction, v2) - 1]
+            der_Phase_cond = lambda v1, v2: np.array(
+                [[ezcat(Random_direction, 0 * Random_direction)], [ezcat(0 * Random_direction, Random_direction)]])
+            return Phase_cond, der_Phase_cond
+
         self.model = hillModel
         self.mapDimension = 3 * hillModel.dimension + 1  # degrees of freedom of the constraint
-        if phaseCondition.__code__.co_argcount is 3:
-            Random_direction = np.random.random(size=hillModel.dimension)
-            phaseCondition = lambda v1, v2: phaseCondition(v1, v2, Random_direction)
-            phaseConditionDerivative = lambda v1, v2: phaseConditionDerivative(v1, v2, Random_direction)
+        if phaseCondition is None:
+            phaseCondition, phaseConditionDerivative = phasecond_and_Der()
         self.phaseCondition = phaseCondition
         self.diffPhaseCondition = phaseConditionDerivative
 
@@ -83,7 +88,7 @@ class HopfBifurcation:
         def curry_parameters(u):
             x, v1, v2, beta, p0 = self.unpack_components(u)  # layout components in (R^n, R^n, R)
             return ezcat(x, v1, v2, beta, np.insert(fixedParameter, freeParameterIndex,
-                                         p0))  # embed into (R^n, R^n, R^n, R, R^m) by currying fixed Parameters
+                                                    p0))  # embed into (R^n, R^n, R^n, R, R^m) by currying fixed Parameters
 
         def init_eigenvector(equilibrium, rho):
             """Choose an initial eigenvector for the Hopf bifurcation root finding problem"""
@@ -115,10 +120,11 @@ class HopfBifurcation:
 
         for parmValue in freeParameter:
             HopfBifurcationZero = list(filter(lambda soln: soln.success,
-                                          [root(ezcat(equilibria[j, :], init_eigenvector(equilibria[j, :], parmValue),
-                                                      parmValue))
-                                           for j in
-                                           range(equilibria.shape[0])]))  # return equilibria which converged
+                                              [root(
+                                                  ezcat(equilibria[j, :], init_eigenvector(equilibria[j, :], parmValue),
+                                                        parmValue))
+                                               for j in
+                                               range(equilibria.shape[0])]))  # return equilibria which converged
             if HopfBifurcationZero and flag_return is 0:
                 addSols = np.array([sol.x[-1] for sol in HopfBifurcationZero])
                 HopfPoints = ezcat(HopfPoints, addSols[addSols > 0])
@@ -158,14 +164,15 @@ class HopfBifurcation:
         dimension_space = 3 * n + 1 + parameterDim
         mapDimension = 3 * n + 2
 
-        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(u)  # unpack input vector
+        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(
+            u)  # unpack input vector
         Dg = np.zeros([mapDimension, dimension_space])  # initialize (3n+1)-by-(3n+1+M) matrix
         Dxf = self.model.dx(stateVector, fullParameter)  # store derivative of vector field which appears in 2 blocks
         Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
         Dpf = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
         Id_v = np.identity(n)
-        Diff_PC = self.diffPhaseCondition(tangentVector1, tangentVector2) # it's
+        Diff_PC = self.diffPhaseCondition(tangentVector1, tangentVector2)  # it's
 
         # the indices of x v1, v2, beta and p respectively
         index_x = np.arange(n)
@@ -183,14 +190,14 @@ class HopfBifurcation:
             # BLOCK ROW 2
             Dg[np.ix_(index_v1, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector1)  # block - (2,1)
             Dg[np.ix_(index_v1, index_v1)] = Dxf  # block - (2,2)
-            Dg[np.ix_(index_v1, index_v2)] = beta * Id_v # block - (2,3)
-            Dg[index_v1, index_beta] = tangentVector2 # block - (2,4)
+            Dg[np.ix_(index_v1, index_v2)] = beta * Id_v  # block - (2,3)
+            Dg[index_v1, index_beta] = tangentVector2  # block - (2,4)
             Dg[index_v1, index_par] = np.einsum('ij, j', Dxpf, tangentVector1)  # block - (2,end)
             # BLOCK ROW 3
             Dg[np.ix_(index_v2, index_x)] = np.einsum('ijk,j', Dxxf, tangentVector2)  # block - (3,1)
             Dg[np.ix_(index_v2, index_v1)] = - beta * Id_v  # block - (3,3)
             Dg[np.ix_(index_v2, index_v2)] = Dxf  # block - (3,2)
-            Dg[index_v2, index_beta] = - tangentVector1 # block - (3,4)
+            Dg[index_v2, index_beta] = - tangentVector1  # block - (3,4)
             Dg[index_v2, index_par] = np.einsum('ij, j', Dxpf, tangentVector2)  # block - (3,end)
 
             # BLOCK ROW 4
@@ -234,8 +241,10 @@ class HopfBifurcation:
         dimension_space = 3 * n + 1 + parameterDim
         mapDimension = 3 * n + 2
 
-        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(u) # unpack input vector
-        Dg = np.zeros([mapDimension, dimension_space, dimension_space])  # initialize (3n+2) x (3n+1+M) x (3n+1+M) matrix
+        stateVector, tangentVector1, tangentVector2, beta, fullParameter = self.unpack_components(
+            u)  # unpack input vector
+        Dg = np.zeros(
+            [mapDimension, dimension_space, dimension_space])  # initialize (3n+2) x (3n+1+M) x (3n+1+M) matrix
         Dxxf = self.model.dx2(stateVector, fullParameter)  # 3D tensor
         Dxpf = self.model.dxdiff(stateVector, fullParameter, diffIndex=diffIndex)
         Dxxxf = self.model.dx3(stateVector, fullParameter)
