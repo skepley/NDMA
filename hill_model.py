@@ -1179,6 +1179,7 @@ class HillModel:
                                            interactionType[j], [j] + interactionIndex[j], gamma=gamma[j]) for j in
                             range(self.dimension)]
 
+        # TODO: FIX THIS HACKY NONSENSE.
         # This is a hacky and temporary fix to the problem where Hill Components do not know their own dimension based only on
         # the input to their class constructor. This needs to be fixed with HillModel handling all global index bookkeeping.
         for f_i in self.coordinates:
@@ -1232,12 +1233,13 @@ class HillModel:
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor (Jacobian matrix)
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        for iCoordinate in range(self.dimension):
-            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            Dxf[np.ix_([iCoordinate], f_i.globalStateIndex)] = f_i.dx(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
+        Dxf = np.array([self.coordinates[i].dx(x, parameterByCoordinate[i]) for i in range(self.dimension)])
+        # Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor (Jacobian matrix)
+        # for iCoordinate in range(self.dimension):
+        #     f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+        #     Dxf[np.ix_([iCoordinate], f_i.globalStateIndex)] = f_i.dx(x, parameterByCoordinate[
+        #             iCoordinate])  # insert derivative of this coordinate
         return Dxf
 
     def diff(self, x, *parameter, diffIndex=None):
@@ -1265,29 +1267,33 @@ class HillModel:
     def dx2(self, x, *parameter):
         """Evaluate the second derivative of f w.r.t. state variable vector (twice), returns a 3D tensr"""
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        for iCoordinate in range(self.dimension):
-            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.globalStateIndex)
-            Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
+        Dxf = np.array([self.coordinates[i].dx2(x, parameterByCoordinate[i]) for i in range(self.dimension)])
+
+        # Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor
+        # for iCoordinate in range(self.dimension):
+        #     f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+        #     xSlice = np.array(f_i.globalStateIndex)
+        #     Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
+        #         iCoordinate])  # insert derivative of this coordinate
         return Dxf
 
     def dxdiff(self, x, *parameter, diffIndex=None):
         """Evaluate the second order mixed derivative of f w.r.t. state variables and parameters (once each)"""
         if diffIndex is None:  # return the full derivative wrt all parameters
             parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dpxf = np.zeros(2 * [self.dimension] + [len(parameter)])  # initialize Derivative as 3-tensor
             parameterByCoordinate = self.unpack_variable_parameters(
                 parameter)  # unpack variable parameters by component
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.globalStateIndex)
-                Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
-                    iCoordinate])  # insert derivative of this coordinate
+            Dpxf = np.array([self.coordinates[i].dxdiff(x, parameterByCoordinate[i]) for i in range(self.dimension)])
+
+            # Dpxf = np.zeros(2 * [self.dimension] + [len(parameter)])  # initialize Derivative as 3-tensor
+            # for iCoordinate in range(self.dimension):
+            #     f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+            #     parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
+            #                                self.variableIndexByCoordinate[iCoordinate + 1])
+            #     xSlice = np.array(f_i.globalStateIndex)
+            #     Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
+            #         iCoordinate])  # insert derivative of this coordinate
             return Dpxf
         else:
             raise ValueError  # this isn't implemented yet
@@ -1312,13 +1318,14 @@ class HillModel:
     def dx3(self, x, *parameter):
         """Evaluate the third derivative of f w.r.t. state variable vector (three times)"""
         parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor
         parameterByCoordinate = self.unpack_variable_parameters(parameter)  # unpack variable parameters by component
-        for iCoordinate in range(self.dimension):
-            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.globalStateIndex)
-            Dxxxf[np.ix_([iCoordinate], xSlice, xSlice, xSlice)] = f_i.dx3(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
+        Dxxxf = np.array([self.coordinates[i].dx3(x, parameterByCoordinate[i]) for i in range(self.dimension)])
+        # Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor
+        # for iCoordinate in range(self.dimension):
+        #     f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
+        #     xSlice = np.array(f_i.globalStateIndex)
+        #     Dxxxf[np.ix_([iCoordinate], xSlice, xSlice, xSlice)] = f_i.dx3(x, parameterByCoordinate[
+        #         iCoordinate])  # insert derivative of this coordinate
         return Dxxxf
 
     def dx2diff(self, x, *parameter, diffIndex=None):

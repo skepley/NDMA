@@ -43,7 +43,7 @@ class Repressilator(HillModel):
         elif variant == 1:
             interactionSigns = [[-1], [1], [1]]  # 1 repression and 2 activation (weak negative feedback)
 
-        interactionTypes = [[3], [2], [1]]  # all nonlinear interactions depend only on a single gene
+        interactionTypes = [[1], [1], [1]]  # all nonlinear interactions depend only on a single gene
         interactionIndex = [[1], [2], [0]]  # interactions defined by a single cycle
 
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
@@ -188,23 +188,34 @@ if __name__ == '__main__':
     # Check this against the true values:
 
     print(f(x, hill, p))
+
+
     # TEST DERIVATIVE EVALUATION
     [f0, f1, f2] = f.coordinates
     pT = np.array([3, 100, x[0], 2])
-    p0 = ezcat(3, pT)
-    p1 = ezcat(3, pT)
-    p2 = ezcat(3, pT)
+    p0 = ezcat(gammaValues[0], parmValues[0], hill)
+    p1 = ezcat(gammaValues[1], parmValues[1], hill)
+    p2 = ezcat(gammaValues[2], parmValues[2], hill)
 
-    gamma, p2ByComponent = f2.parse_parameters(p2)
-    Df = np.zeros(f2.dim, dtype=float)
-    xLocal = x[
-        f2.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
-    diffInteraction = f2.diff_interaction(x,
-                                          p2,
-                                          1)  # evaluate derivative of interaction function (outer term in chain rule)
-    DHillComponent = np.array(
-        list(map(lambda H, x_k, parm: H.dx(x_k, parm), f2.components, xLocal,
-                 p2ByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
-    Df[
-        f2.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
-    Df[f2.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
+    # print(f0.dx(x, p0))
+    # print(f1.dx(x, p1))
+    # print(f2.dx(x, p2))
+    # print(f.dx(x, hill, p))
+
+    y0 = f0.dx2(x, p0)
+    y = f.dx2(x, hill, p)
+
+#
+    # gamma, p2ByComponent = f2.parse_parameters(p2)
+    # Df = np.zeros(f2.dim, dtype=float)
+    # xLocal = x[
+    #     f2.interactionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{n_i}
+    # diffInteraction = f2.diff_interaction(x,
+    #                                       p2,
+    #                                       1)  # evaluate derivative of interaction function (outer term in chain rule)
+    # DHillComponent = np.array(
+    #     list(map(lambda H, x_k, parm: H.dx(x_k, parm), f2.components, xLocal,
+    #              p2ByComponent)))  # evaluate vector of partial derivatives for Hill components (inner term in chain rule)
+    # Df[
+    #     f2.interactionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+    # Df[f2.index] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate

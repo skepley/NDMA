@@ -34,13 +34,13 @@ class Network12(HillModel):
 
         parameter = [insert_nan(parmArray) for parmArray in parameter]
 
-        # Add interactions for the basic toggle switch
+        # Add interactions defined by the topology and a choice of algebra.
         interactionSigns = [[1, 1, 1], [1, 1], [1]]  # all interactions are activation
         interactionTypes = [[3], [2], [1]]  # all interactions are single summand
         interactionIndex = [[0, 1, 2], [0, 2], [0]]
 
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
-                         interactionIndex)  # define HillModel for toggle switch by inheritance
+                         interactionIndex)  # define HillModel by inheritance
 
         self.nComponent = np.sum(
             [self.coordinates[j].nComponent for j in range(self.dimension)])  # count total number of Hill components
