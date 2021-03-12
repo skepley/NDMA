@@ -12,7 +12,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 11
+n_sample = 6
 n_second_sample = 10
 # a random parameter list
 u = np.linspace(0.5, 2.5, n_sample)#1 + np.random.uniform(-0.1, 1.1, n_sample)
@@ -63,9 +63,15 @@ print('\n')
 
 average_hill = np.empty(n_sample)
 for i in range(n_sample):
-    average_hill[i] = np.mean(n_info_n_vs_gamma(np.where(u_info_n_vs_gamma == u[i])))
+    average_hill[i] = np.mean(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u[i])])
 plt.figure()
 plt.plot(u, average_hill)
+
+count_hill = []
+number_saddles = []
+for i in range(n_sample):
+    count_hill.append(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u[i])])
+    number_saddles.append(len(count_hill[i]))
 
 
 

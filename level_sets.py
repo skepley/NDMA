@@ -11,17 +11,17 @@ p2 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_2, delta_2, theta_2)
 f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
-interestingIndex = 0
+interestingIndex = 2
 # this index indicates what we parameter we are changing to find the saddle node
 
 # size of the sample
 n_sample = 10
 # a random parameter list
-u = np.linspace(0.1, 3, n_sample)#1 + np.random.uniform(-0.1, 1.1, n_sample)
+u = np.linspace(1.1, 1.9, n_sample)#1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = np.full(n_sample, 1.5) #1 + np.random.uniform(-0.1, 1.1, n_sample)
 a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample)])
 
-hill_range = np.linspace(4, 15, 5)
+hill_range = np.linspace(10, 15, 5)
 
 parameter_full = np.empty(shape=[0, 5])
 solutions = None
