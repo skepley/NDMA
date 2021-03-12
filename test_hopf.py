@@ -121,14 +121,13 @@ for hill in np.linspace(0.1, 20, 100):
 """
 
 hill =11.9
-eqs = HillModel.find_equilibria(f, 10, hill, p)
+eqs = HillModel.find_equilibria(f, 10, ezcat(hill, p))
 DF = jac(eqs[0], hill)
 eigs_i, eigenvectors = np.linalg.eig(DF)
 
 
 hill = 14
 y0 = np.random.random(size=3)
-# solutions I could find all shoot at an equilibrium
 sol = solve_ivp(f_call, [0, 100], y0)
 
 #fig = plt.figure()
@@ -137,6 +136,8 @@ sol = solve_ivp(f_call, [0, 100], y0)
 #plt.plot(sol.y[0, :], sol.y[1, :], sol.y[2, :])
 #plt.plot(sol.y[0, -1], sol.y[1, -1], sol.y[2, -1], 'o')
 
+print(f(eqs[0], ezcat(hill, p)))
+print('This should be zero! why?')
 
 H = HopfBifurcation(f)
 beta = np.max(np.abs(np.imag(eigs_i)))
