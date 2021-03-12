@@ -21,10 +21,10 @@ def count_eq(f, hill, p, gridDensity=10):
         countVector = np.zeros_like(hill)
         equilibria = []
         for j in range(len(countVector)):
-            countVector[j], equilibria[j] = count_eq(hill[j], p)
+            countVector[j], equilibria[j] = count_eq(f, hill[j], p)
         return countVector
     else:
-        eq = HillModel.find_equilibria(f,gridDensity, hill, p)
+        eq = HillModel.find_equilibria(f, gridDensity, hill, p)
         if eq is not None:
             if is_vector(eq):
                 eq = eq[np.newaxis, :]

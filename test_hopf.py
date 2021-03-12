@@ -6,6 +6,7 @@ from repressilator import Repressilator
 import numpy as np
 from scipy.integrate import *
 import matplotlib.pyplot as plt
+from hill_model import *
 
 #
 # "Parameter":{"L[x1->x2]" : 0.9132235573212335, "L[x2->x3]" : 0.08856225631514987, "L[x3->x1]" : 0.081866957498757928,
@@ -32,7 +33,7 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]).squ
                 edgeCounts]  # pass all parameters as variable
 f = Repressilator(gammaVar, parameterVar)
 
-hill = 10
+hill = 2
 # p = np.concatenate([L, delta, T])
 p = np.array([L[0], delta[0], T[0], L[1], delta[1], T[1], L[2], delta[2], T[2]])
 
@@ -41,11 +42,11 @@ def f_call(t, x):
     return f(x, hill, p)
 
 
-def jac(x):
-    return f.dx(x, hill, p)
+def jac(x, hill_loc):
+    return f.dx(x, hill_loc, p)
 
 
-y0 = np.random.random(size = 3)
+y0 = np.random.random(size=3)
 
 f_call(1, y0)
 
@@ -76,9 +77,9 @@ for n_loc in [3, 4, 5, 6, 7]:
 """
 f.dx(y0, hill, p)
 
-
+"""
 for i in range(10):
-    y0 = np.random.random(size = 3)
+    y0 = np.random.random(size=3)
     # solutions I could find all shoot at an equilibrium
     sol = solve_ivp(f_call, [0, 100], y0)
 
@@ -88,11 +89,29 @@ for i in range(10):
     plt.plot(sol.y[0, :], sol.y[1, :], sol.y[2, :])
     plt.plot(sol.y[0, -1], sol.y[1, -1], sol.y[2, -1], 'o')
 
-    fig2 = plt.figure()
-    plt.plot(sol.t, sol.y[1, :])
+    # fig2 = plt.figure()
+    # plt.plot(sol.t, sol.y[1, :])
+"""
+
+eqs = HillModel.find_equilibria(f, 10, hill, p)
 
 
+eqs = HillModel.find_equilibria(f, 10, 2, p)
+DF = jac(eqs[0], 2)
+eigs_i, eigenvectors = np.linalg.eig(DF)
+# print(eigs_i)
 
+eqs = HillModel.find_equilibria(f, 10, 20, p)
+DF = jac(eqs[0], 20)
+eigs_i, eigenvectors = np.linalg.eig(DF)
+# print(eigs_i)
+
+plt.figure()
+for hill in np.linspace(0.1, 2, 10):
+    eqs = HillModel.find_equilibria(f, 10, hill, p)
+    DF = jac(eqs[0], hill)
+    eigs_i, eigenvectors = np.linalg.eig(DF)
+    plt.plot(hill, np.min(np.abs(np.real(eigs_i))),'o')
 
 
 print('End of the game!')
