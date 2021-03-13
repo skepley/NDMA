@@ -12,8 +12,8 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 6
-n_second_sample = 10
+n_sample = 25
+n_second_sample = 25
 # a random parameter list
 u = np.linspace(0.5, 2.5, n_sample)#1 + np.random.uniform(-0.1, 1.1, n_sample)
 v = np.full(n_sample, 1.5)
@@ -60,20 +60,25 @@ for j in range(n_sample * n_second_sample):
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
         boring_y.append(u[np.mod(j, n_sample)])
 print('\n')
+plt.title('Hill coef VS x')
+
 
 average_hill = np.empty(n_sample)
 for i in range(n_sample):
     average_hill[i] = np.mean(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u[i])])
 plt.figure()
-plt.plot(u, average_hill)
+plt.plot(u, average_hill, 'o')
+plt.title('Average Hill coefficient')
 
-count_hill = []
+count_hill = np.empty(n_sample)
 number_saddles = []
 for i in range(n_sample):
-    count_hill.append(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u[i])])
-    number_saddles.append(len(count_hill[i]))
+    count_hill[i] = np.shape(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u[i])])[0]
+    #number_saddles.append(len(count_hill[i]))
 
-
+plt.figure()
+plt.plot(u, count_hill, 'o')
+plt.title('Number of saddles out of sample number ' + str(n_second_sample))
 
 """
 np.savez('data_center_region_small',

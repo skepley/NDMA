@@ -117,9 +117,9 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     # equilibria are stored as row vectors
 
     if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
-        warnings('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
+        print('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
     elif abs(equilibria_at_0.shape[0] - equilibria_at_1.shape[0]) > 2:
-        warnings('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
+        print('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
     if equilibria_at_0.shape[0] > equilibria_at_1.shape[0]:
         temp = equilibria_at_0
         equilibria_at_0 = equilibria_at_1
