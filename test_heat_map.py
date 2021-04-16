@@ -12,11 +12,12 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample_side = 10
-n_sample = n_sample_side**2
-n_second_sample = 10
+n_sample_side = 11
+n_sample = (n_sample_side*3)**2
+n_second_sample = 15*4
 # a random parameter list
-[u, v] = np.meshgrid(np.linspace(0.8, 2.2, n_sample_side), np.linspace(0.8, 2.2, n_sample_side))
+interpolation_array = np.array([np.linspace(0.85, 1.1, n_sample_side), np.linspace(1.1, 1.9, n_sample_side), np.linspace(1.9, 2.15, n_sample_side)])
+[u, v] = np.meshgrid(interpolation_array, interpolation_array)
 u = u.flatten()
 u = np.repeat(u, n_second_sample)
 v = v.flatten()
@@ -54,25 +55,36 @@ for j in range(n_sample):#range(n_sample):
         #print('boooring')
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
-np.savez('averaging_data',
+np.savez('boundary_averaging_data',
          u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
-         bad_candidates=bad_candidates, boring_parameters=boring_parameters)
-data = np.load('data_center_region_small.npz')
+         bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample)
+stopHere
+
+data = np.load('boundary_averaging_data.npz',allow_pickle=True)
+
+
+bad_candidates = data.f.bad_candidates
+boring_parameters = data.f.boring_parameters
+n_sample = data.f.n_sample
+parameter_full = data.f.parameter_full
+solutions = data.f.solutions
+
+
 
 print('\nNumber of bad candidates', len(bad_candidates), 'out of ', n_sample)
 print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)
 print('Number of saddles', len(parameter_full), 'out of ', n_sample)
 
-if bad_parameters is not None:
+"""if bad_candidates is not None:
     fig1 = plt.figure()
-    dsgrn_plot(bad_parameters, 10)
+    dsgrn_plot(bad_candidates, 10)
     plt.title('bad candidates')
 
 if boring_parameters is not None:
     fig1 = plt.figure()
     dsgrn_plot(boring_parameters, 10)
     plt.title('No saddle detected')
-
+"""
 
 parameter_DSGRN = parameter_to_DSGRN_coord(parameter_full, 10)
 parameter_DSGRN = np.array([parameter_DSGRN[0], parameter_DSGRN[1]])
@@ -84,7 +96,7 @@ for j in unique_DSGRN.T:
     index_solution_j = np.where(abs(parameter_DSGRN[0, :] - j[0]) < 5*10**-5)
     index_solution_loc = np.where(abs(parameter_DSGRN[1, :] - j[1]) < 5*10**-5)
     index_solution_j = np.intersect1d(index_solution_j, index_solution_loc)
-    if len(index_solution_j)>0:
+    if len(index_solution_j) > 0:
         average_sol = np.append(average_sol, np.mean(solutions[index_solution_j]))
         average_sol_long[index_solution_j] = np.mean(solutions[index_solution_j])
     else:
