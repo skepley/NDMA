@@ -57,14 +57,12 @@ delta2_fix = 1;
 % steps: 
 % find approx (x1, x2) for delta1 = 1 or 2 - DONE
 %     problem: needs to be the one undergoing a saddle node!
-% compute eigenvector associated to smallest eigenvalue 
+%     new problem: why do I consistently find *2* equilibria?
 % compute solution of saddle_problem with Newton starting at approximate
 % solution
 % wrap all in for loop for quite some values of delta2 and n
 % plot nicely
 % ----> conquer the world
-
-% STEP 1: approximate (x1, x2) given delta1 = 2, all rest fixed
 
 for i = -0.5:0.1:0.5
 
@@ -74,6 +72,14 @@ F_vector = @(X) F(delta1_fix, delta2_fix, X(1), X(2),n_fix);
 DF_vector = @(X) DF(delta1_fix, delta2_fix, X(1), X(2),n_fix); 
 
 X_sol = find_eqs(F_vector, DF_vector);
+
+% just a check
+for j=1:size(X_sol,2)
+    if (norm(F_vector(X_sol(:,j))))>10^-6
+        error('why?')
+    end
+end
+
 
 figure(1)
 plot(delta1_fix, X_sol(1,:), 'o')
@@ -128,6 +134,7 @@ end
 
 
 function X_sol = find_eqs(F, DF)
+% find all equilibria - as far as all is possible
 x1_start = meshgrid([0.1:0.2:3],[0.1:0.2:3]);
 x2_start = meshgrid([0.1:0.2:3],[0.1:0.2:3]).';
 X_start = [x1_start(:),x2_start(:)]';

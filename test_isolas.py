@@ -87,22 +87,61 @@ solutions = data.f.solutions
 
 c = parameter_to_DSGRN_coord(parameter_full, 10)
 out_of_center = [np.linalg.norm([c[0][j]-1.5, c[1][j]-1.5], np.inf) for j in range(np.size(c, 1))]
-out_parameters = [parameter_full[j, :] for j in range(10) if out_of_center[j]>0.5]
+out_parameters = [parameter_full[j, :] for j in range(len(out_of_center)) if out_of_center[j]>0.5]
+"""
+-------------------------
+theta1 = 1/2
+L1 = .26
+U1 = .49
 
-for j in []:#out_parameters:
+theta2 = 1/2
+L2 =.05
+U2 = .55
+-------------------------
+theta1 = 1/2
+L1 = .248
+U1 = .48
+
+theta2 = 1/2
+L2 =.1077
+U2 = .4923
+-------------------------
+theta1 = 1/2
+L1 = .05
+U1 = .55
+
+theta2 = 1/2
+L2 =.26
+U2 = .49
+-------------------------
+"""
+# out_parameters = [np.array([1, 1/2,.26,.49-.26,1,0.5,.05,.55-.05])]
+# out_parameters = [np.array([1,1/2,.248,.48-.248,1,1/2,0.1077,.4923-0.1077])]
+# out_parameters = [np.array([1,1/1,.05,.55-.05,1,1/2,.26,.49-.26])]
+counter = 1
+for j in out_parameters:
     a_j = j
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 50, 100, 300], a_j)
-    if len(SNParameters) > 1:
-        print('that is not what we were expecting')
-    if len(SNParameters) < 1:
-        print('that is also quite unexpected')
-    print(SNParameters)
-    interesting_hills = np.linspace(SNParameters[0][0]*1.3, SNParameters[1][0]*0.8, 100)
-    plt.figure()
-    for hill in interesting_hills:
-        equilibria = HillModel.find_equilibria(f, 5, hill, a_j)
-        plt.plot(equilibria[:, 0], np.repeat(hill, np.size(equilibria, 0)), 'b.')
+    if counter >=0:#== 2 or counter == 5 or counter == 29:
+        SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 50, 100, 200], a_j)
+        if len(SNParameters) > 1:
+            print('that is not what we were expecting')
+        if len(SNParameters) < 1:
+            print('that is also quite unexpected')
+        if len(SNParameters) != 2:
+            print('ONLY '+str(len(SNParameters))+' SADDLES FOUND\n' +str(counter) + ' p=' + str(a_j))
+            continue
+        print(SNParameters)
+        interesting_hills = np.linspace(SNParameters[0][0]*1.3, SNParameters[1][0]*0.8, 100)
+        plt.figure()
+        for hill in interesting_hills:
+            equilibria = HillModel.find_equilibria(f, 5, hill, a_j)
+            plt.plot(equilibria[:, 0], np.repeat(hill, np.size(equilibria, 0)), 'b.')
+        x, y = parameter_to_DSGRN_coord(np.array([a_j]), 10)
+        print(str(counter)+' p='+str(a_j)+', (x,y)'+str(x)+str(y))
+        plt.savefig('figure'+str(counter)+'.png')
+    counter = counter+1
 
+stopHere
 
 a_j = out_parameters[0]
 SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 50, 100, 300], a_j)
