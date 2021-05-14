@@ -13,12 +13,13 @@ import random
 from scipy.optimize import minimize
 from datetime import datetime
 import warnings
+from models import ToggleSwitch
 
 
 def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, file_name=None, boolAppend=False):
     if file_name is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-        file_name = f"{timestamp}"
+        file_name = f"{timestamp}"+'.npz'
     sampler_global = region_sampler()
 
     def sampler_score(fisher_coefficients):
@@ -48,15 +49,24 @@ def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, fil
         print('The convergence failed, but the ration between worst region and best region is', -optimal_coefs.fun+1,
               ', where this is 1 if they have the same number of samples')
     optimal_coef = optimal_coefs.x
+    # data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
+    # parameter_region = DSGRN_parameter_region(f, data)
+    # np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
+    generate_data_from_coefs(file_name, optimal_coef, sampler_global, f, size_dataset)
+    return file_name
+
+
+def generate_data_from_coefs(file_name, optimal_coef, sampler_global, f, size_dataset):
+    n_parameters = int(len(optimal_coef)/2)
     data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     parameter_region = DSGRN_parameter_region(f, data)
-    np.savez(file_name, data=data, parameter_region=parameter_region)
+    np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
     return file_name
 
 
 def load_dataset(file_name):
     dataset = np.load(file_name)
-    return dataset.data, dataset.parameter_region
+    return dataset.f.data, dataset.f.parameter_region, dataset.f.optimal_coef
 
 
 def region_sampler():
@@ -78,32 +88,15 @@ def create_dataset_ToggleSwitch(size_dataset, namefile=None, boolAppend=False):
     parameter_region = associate_parameter_regionTS(alpha, beta)
     if namefile is None:
         namefile = f"ToggleSwitchDataset"
-    with open(f"{namefile}", "w") as output_file:
-        output_file.write(write(alpha, beta, parameters, parameter_region))
+    np.savez(namefile, alpha=alpha, beta=beta, parameters=parameters, parameter_region=parameter_region)
+    return
 
 
-def readTS(namefile=None):
-    if namefile is None:
-        namefile = f"ToggleSwitchDataset"
-    with open(f"{namefile}") as input_file:
-        text = input_file.read()
-    lines = text.split("\n")
-    n_sample = int(lines[0])
-    alpha = np.empty(shape=n_sample)
-    beta = np.empty(shape=n_sample)
-    parameter =  np.empty(shape=[n_sample, 5])
-    parameter_region = np.empty(shape=n_sample)
-    for i, line in enumerate(lines[1:n_sample+1]):
-        [alpha_loc, beta_loc, _, p1, p2, p3, p4, p5, _, parameter_region_loc] = line.split()
-        alpha[i] = float(alpha_loc)
-        beta[i] = float(beta_loc)
-        parameter[i, 0] = float(p1)
-        parameter[i, 1] = float(p2)
-        parameter[i, 2] = float(p3)
-        parameter[i, 3] = float(p4)
-        parameter[i, 4] = float(p5)
-        parameter_region[i] = float(parameter_region_loc)
-    return alpha, beta, parameter, parameter_region
+def readTS(file_name=None):
+    if file_name is None:
+        file_name = f"ToggleSwitchDataset.npz"
+    dataset = np.load(file_name)
+    return dataset.f.alpha, dataset.f.beta, dataset.f.parameters, dataset.f.parameter_region
 
 
 def subsample_data_by_region(n_sample, region, alpha, beta, parameters, parameter_region):
@@ -128,13 +121,6 @@ def subsample_data_by_bounds(n_sample, alpha_min, alpha_max, beta_min, beta_max,
     loc_parameters = parameters[sample_idx, :]
     loc_parameter_region = parameter_region[sample_idx]
     return loc_alpha, loc_beta, loc_parameters, loc_parameter_region
-
-
-def write(alpha, beta, parameters, parameter_region) -> str:
-    output_lines = [f"{len(alpha)}"]
-    for i in range(len(alpha)):
-        output_lines.append(f"{alpha[i]} {beta[i]} [ {parameters[i,0]} {parameters[i,1]} {parameters[i,2]} {parameters[i,3]} {parameters[i,4]} ] {parameter_region[i]}")
-    return "\n".join(output_lines)
 
 
 def associate_parameter_regionTS(alpha, beta):
@@ -162,12 +148,49 @@ def associate_parameter_regionTS(alpha, beta):
 
 
 def DSGRN_parameter_region(_, parameter):
-    warnings.warn("This function is ONLY CODED FOR THE TOGGLE SWITCH")
+    # warnings.warn("This function is ONLY CODED FOR THE TOGGLE SWITCH")
     alpha, beta = parameter_to_DSGRN_coord(parameter.T)
     return associate_parameter_regionTS(alpha, beta) - 1
 
 
-create_dataset_ToggleSwitch(10)
-readTS()
-name = create_dataset(None, 9, 100) # create a new TS dataset
-data, regions = load_dataset(name)
+def subsample(file_name, size_subsample):
+    data, regions, coefs = load_dataset(file_name)
+    size_data = np.size(data, 1)
+    if size_subsample > size_data:
+        stopHere
+    index_random = np.random.randint(0, size_data, size_subsample)
+    data_subsample = data[:, index_random]
+    region_subsample = regions[index_random]
+    return data_subsample, region_subsample, coefs
+
+
+def region_subsample(file_name, region_number, size_subsample):
+    data, regions, coefs = load_dataset(file_name)
+    subindex_selection, = np.where(regions == region_number)
+    data = data[:, subindex_selection]
+    size_data = np.size(data, 1)
+    if size_subsample > size_data:
+        stopHere
+    index_random = np.random.randint(0, size_data, size_subsample)
+    data_subsample = data[:, index_random]
+    return data_subsample, coefs
+
+
+# create_dataset_ToggleSwitch(10)
+# readTS()
+
+name = create_dataset(None, 9, 100, 'TS_data.npz')
+# create a new TS dataset
+name = 'TS_data.npz'
+data_loc, regions_loc, coefs_optimal = load_dataset(name)
+
+# expand the dataset (actually, using the same coefs but rewriting the dataset
+sampler_TS = region_sampler()
+size_dataset = 300
+generate_data_from_coefs(name, coefs_optimal, sampler_TS, None, size_dataset)
+
+# subsampling methods: all regions or specific regions
+size_sample = 4
+subsample(name, size_sample)
+region_number = 5
+region_subsample(name, region_number, size_sample)
