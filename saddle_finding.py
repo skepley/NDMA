@@ -21,24 +21,25 @@ def count_eq(f, hill, p, gridDensity=10):
         countVector = np.zeros_like(hill)
         equilibria = []
         for j in range(len(countVector)):
-            countVector[j], equilibria[j] = count_eq(hill[j], p)
+            countVector[j], equilibria[j] = count_eq(f, hill[j], p)
         return countVector
     else:
-        eq = HillModel.find_equilibria(f,gridDensity, hill, p)
+        eq = HillModel.find_equilibria(f, gridDensity, hill, p)
         if eq is not None:
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
             return np.shape(eq)[0], eq  # number of columns is the number of equilibria found
         else:
             eq = HillModel.find_equilibria(f, gridDensity * 2, hill, p)
-
+            if eq is None:
+                eq = np.array([])
             
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
             return np.shape(eq)[0], eq
 
 
-def estimate_saddle_node(f, hill, p, gridDensity=10):
+def estimate_saddle_node(f, hill, p, gridDensity=3):
     """Attempt to predict whether p admits any saddle-node points by counting equilibria at each value in the hill vector.
     If any values return multiple equilibria, attempt to bound the hill parameters for which these occur. Otherwise,
     return an empty interval."""
@@ -53,7 +54,7 @@ def estimate_saddle_node(f, hill, p, gridDensity=10):
     hill_for_saddle = []
     equilibria_for_saddle = []
 
-    if numEquilibriaInf > 1:
+    if numEquilibriaInf > 1 and 0 > 1: # NOW TAKEN AWAY
         n_steps = int(np.ceil((hill[-1] - hill[0]) / 5))
         # try:
         hill_SN, eqs = bisection(f, hill[0], hill[-1], p, n_steps)
@@ -116,9 +117,9 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     # equilibria are stored as row vectors
 
     if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
-        warnings('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
+        print('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
     elif abs(equilibria_at_0.shape[0] - equilibria_at_1.shape[0]) > 2:
-        warnings('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
+        print('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
     if equilibria_at_0.shape[0] > equilibria_at_1.shape[0]:
         temp = equilibria_at_0
         equilibria_at_0 = equilibria_at_1
@@ -174,6 +175,9 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
         return 0, 0
         # signature of monostability
     else:
+        #print('we found possible saddles')
+        if len(hill_for_saddle) > 1:
+            print('we found possible isolas')
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())

@@ -156,6 +156,26 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=
     if gridLines:
         grid_lines(ax)
 
+
+
+def dsgrn_contour_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=True):
+    if ax is None:
+        fig = plt.gcf()
+        ax = fig.gca()
+
+    x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
+    z = colorData
+
+    # define grid.
+    xGrid = np.linspace(0, 3, 100)
+    yGrid = np.linspace(0, 3, 100)
+    # grid the data.
+    zGrid = griddata((x, y), z, (xGrid[None, :], yGrid[:, None]), method='linear')
+
+    CS = ax.contour(xGrid,yGrid,zGrid)
+    ax.clabel(CS, inline=True, fontsize=10)
+    ax.set_title('Simplest default with labels')
+
 """
 plt.close('all')
 n_sample = 500
