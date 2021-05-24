@@ -1391,6 +1391,9 @@ class HillModel:
         if solns:
             equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
+            equilibria = np.unique(np.round(equilibria/10**np.floor(log(equilibria)),
+                                            uniqueRootDigits)*10**np.floor(log(equilibria)), axis=0)
+            # equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None

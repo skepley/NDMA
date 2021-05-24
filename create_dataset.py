@@ -179,6 +179,7 @@ def region_subsample(file_name, region_number, size_subsample):
 # create_dataset_ToggleSwitch(10)
 # readTS()
 
+"""
 name = create_dataset(None, 9, 100, 'TS_data.npz')
 # create a new TS dataset
 name = 'TS_data.npz'
@@ -186,11 +187,11 @@ data_loc, regions_loc, coefs_optimal = load_dataset(name)
 
 # expand the dataset (actually, using the same coefs but rewriting the dataset
 sampler_TS = region_sampler()
-size_dataset = 300
+size_dataset = 100000
 generate_data_from_coefs(name, coefs_optimal, sampler_TS, None, size_dataset)
-
+"""
 # subsampling methods: all regions or specific regions
-size_sample = 4
-subsample(name, size_sample)
-region_number = 5
-region_subsample(name, region_number, size_sample)
+# size_sample = 4
+# subsample(name, size_sample)
+# region_number = 5
+# region_subsample(name, region_number, size_sample)
