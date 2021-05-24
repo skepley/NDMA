@@ -116,8 +116,8 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     # likely undergoing saddle node bifurcation
     # equilibria are stored as row vectors
 
-    if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
-        print('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
+    #if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
+        #print('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
     # elif abs(equilibria_at_0.shape[0] - equilibria_at_1.shape[0]) > 2:
         #print('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
     if equilibria_at_0.shape[0] > equilibria_at_1.shape[0]:
@@ -176,8 +176,8 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
         # signature of monostability
     else:
         #print('we found possible saddles')
-        if len(hill_for_saddle) > 1:
-            print('we found possible isolas')
+        # if len(hill_for_saddle) > 1:
+        #    print('we found possible isolas')
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())

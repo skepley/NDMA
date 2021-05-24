@@ -15,19 +15,22 @@ SN = SaddleNode(f)
 # size of the sample
 n_sample = 10**3
 file_name = 'TS_data_100000.npz'
-file_storing = 'chi_test_data.npz'
+file_storing = 'chi_test_data_second_try.npz'
 
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = data_subsample
 
 n_center_region = 0
 n_center_with_saddle = 0
+wrong_parity_center = 0
 n_center_without_saddle = 0
 n_center_bad_candidate = 0
 n_donut = 0
 n_donut_with_saddle = 0
+wrong_parity_donut = 0
 n_donut_without_saddle = 0
 n_donut_bad_candidate = 0
+
 
 for j in range(n_sample):#range(n_sample):
     a_j = a[:, j]
@@ -36,12 +39,18 @@ for j in range(n_sample):#range(n_sample):
         n_center_region = n_center_region + 1
     else:
         n_donut = n_donut + 1
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 50], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
     if SNParameters and SNParameters is not 0:
         if region_j is 5:
-            n_center_with_saddle = n_center_with_saddle + 1
+            if len(SNParameters) == 1 or len(SNParameters) == 3:
+                n_center_with_saddle = n_center_with_saddle + 1
+            else:
+                wrong_parity_center = wrong_parity_center + 1
         else:
-            n_donut_with_saddle = n_donut_with_saddle + 1
+            if len(SNParameters) == 2:
+                n_donut_with_saddle = n_donut_with_saddle + 1
+            else:
+                wrong_parity_donut = wrong_parity_donut + 1
     elif badCandidates and badCandidates is not 0:
         if region_j is 5:
             n_center_bad_candidate = n_center_bad_candidate + 1
@@ -67,29 +76,35 @@ try:
     v_center_with_saddle = data.f.v_center_with_saddle
     v_center_without_saddle = data.f.v_center_without_saddle
     v_center_bad_candidate = data.f.v_center_bad_candidate
+    v_wrong_parity_center = data.f.v_wrong_parity_center
     v_donut = data.f.v_donut
     v_donut_with_saddle = data.f.v_donut_with_saddle
     v_donut_without_saddle = data.f.v_donut_without_saddle
     v_donut_bad_candidate = data.f.v_donut_bad_candidate
     v_sample = data.f.v_sample
+    v_wrong_parity_donut = data.f.v_wrong_parity_donut
 
     v_center_region = np.append(v_center_region, np.array([n_center_region]))
     v_center_with_saddle = np.append(v_center_with_saddle, np.array([n_center_with_saddle]))
+    v_wrong_parity_center = np.append(v_wrong_parity_center, np.array([wrong_parity_center]))
     v_center_without_saddle = np.append(v_center_without_saddle, np.array([n_center_without_saddle]))
     v_center_bad_candidate = np.append(v_center_bad_candidate, np.array([n_center_bad_candidate]))
     v_donut = np.append(v_donut, np.array([n_donut]))
     v_donut_with_saddle = np.append(v_donut_with_saddle, np.array([n_donut_with_saddle]))
     v_donut_without_saddle = np.append(v_donut_without_saddle, np.array([n_donut_without_saddle]))
     v_donut_bad_candidate = np.append(v_donut_bad_candidate, np.array([n_donut_bad_candidate]))
+    v_wrong_parity_donut = np.append(v_wrong_parity_donut, np.array([wrong_parity_donut]))
     v_sample = np.append(v_sample, np.array([n_sample]))
 
 except:
     v_center_region = np.array([n_center_region])
     v_center_with_saddle =  np.array([n_center_with_saddle])
+    v_wrong_parity_center =  np.array([wrong_parity_center])
     v_center_without_saddle = np.array([n_center_without_saddle])
     v_center_bad_candidate = np.array([n_center_bad_candidate])
     v_donut = np.array([n_donut])
     v_donut_with_saddle = np.array([n_donut_with_saddle])
+    v_wrong_parity_donut = np.array([wrong_parity_donut])
     v_donut_without_saddle = np.array([n_donut_without_saddle])
     v_donut_bad_candidate = np.array([n_donut_bad_candidate])
     v_sample = np.array([n_sample])
