@@ -14,9 +14,33 @@ from scipy.optimize import minimize
 from datetime import datetime
 import warnings
 from models import ToggleSwitch
+import matplotlib.pyplot as plt
 
 
-def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, file_name=None, boolAppend=False):
+def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None):
+    """
+    create_dataset uses the information concerning a Hill model and its number of parameter regions to create a Fisher
+    distribution spanning the parameter space such that all parameter regions are similarly sampled.
+    Once the Fisher distribution is found, a sample of the distribution is taken. All information is then stored in a
+    npz file.
+
+    At the moment it ony works for the Toggle Switch
+
+    INPUT
+    n_parametes         interger, number of parameters of the semi-algebraic set
+    assign_region       function, takes as input a parameter of an array of parameters and returns (an array of) region(s)
+    n_parameter_region  integer, how many parameter regions are associated to the model
+    size_dataset        integer, size of the output dataset
+    file_name           string, name of the saved file
+
+    OUTPUT
+    file_name           name of the saved file
+
+    helper functions:
+    region_sampler
+    DSGRN_parameter_region
+    generate_data_from_coefs
+    """
     if file_name is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
         file_name = f"{timestamp}"+'.npz'
@@ -24,25 +48,25 @@ def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, fil
 
     def sampler_score(fisher_coefficients):
 
-        data_sample = sampler_global(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 10**3)
-        data_region = DSGRN_parameter_region(f, data_sample)
+        data_sample = sampler_global(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 5*10**3)
+        data_region = assign_region(data_sample)
         # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
-        # vector data_region[1:size_sample], such that daa_region[i] tells us which region par[:, i] belongs to
+        # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
         # data_region goes from 0 to n_parameter_region -1
         counter = np.zeros(n_parameter_region)
-        for i in range(n_parameter_region):
-            counter[i] = np.count_nonzero(data_region == i)
+        for iter_loc in range(n_parameter_region):
+            counter[iter_loc] = np.count_nonzero(data_region == iter_loc)
         score = 1 - np.min(counter)/np.max(counter)
         # print(score) # lowest score is best score!
         return score  # score must be minimized
 
-    n_parameters = 5 # f.nVariableParameter
-    coefficients = np.abs(np.random.normal(size=2*n_parameters)/5)
+    coefficients = np.abs(np.random.normal(size=2*n_parameters))
     for i in range(100):
-        other_random_coefs = np.abs(np.random.normal(size=2*n_parameters)/5)
+        other_random_coefs = np.abs(np.random.normal(size=2*n_parameters))
         if sampler_score(other_random_coefs) < sampler_score(coefficients):
             coefficients = other_random_coefs
     print('Random initial condition chosen to the best of what random can give us')
+    print('Initial score', -sampler_score(coefficients) + 1)
     optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
     print(optimal_coefs.message)
     if optimal_coefs.success is False:
@@ -52,24 +76,47 @@ def create_dataset(f: HillModel, n_parameter_region: int, size_dataset: int, fil
     # data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     # parameter_region = DSGRN_parameter_region(f, data)
     # np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
-    generate_data_from_coefs(file_name, optimal_coef, sampler_global, f, size_dataset)
+    generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset)
     return file_name
 
 
-def generate_data_from_coefs(file_name, optimal_coef, sampler_global, f, size_dataset):
+def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset):
+    """
+    Takes the optimal coefficients and create a dataset out of them
+
+    INPUT
+    file_name       name of output file
+    optimal_coef    optimal coefficients for the Fisher distribution
+    sampler_global  way to sample from the correct distribution given the optimal parameters
+    size_dataset    integer, size of the wanted dataset
+    """
     n_parameters = int(len(optimal_coef)/2)
     data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
-    parameter_region = DSGRN_parameter_region(f, data)
+    parameter_region = assign_region(data)
     np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
     return file_name
 
 
 def load_dataset(file_name):
+    """
+    Takes as input the name of the file with a parameter dataset and returns the infomration within
+
+    OUTPUT
+    data                parameter values
+    parameter_region    number of the parameter region each parameter belongs to
+    optimal_coef        coefficients of the appropriate distribution that have been used to create the dataset
+    """
     dataset = np.load(file_name)
     return dataset.f.data, dataset.f.parameter_region, dataset.f.optimal_coef
 
 
 def region_sampler():
+    """
+    Creates a sample from the appropriate distribution based on the coefficients given
+
+    Returns a function that takes as input 2 coefficient vectors and the size of the requested sample and that has as
+    output a sample
+    """
     def fisher_distribution(c1, c2, size):
         return np.random.f(c1, c2, size)
 
@@ -124,33 +171,25 @@ def subsample_data_by_bounds(n_sample, alpha_min, alpha_max, beta_min, beta_max,
 
 
 def associate_parameter_regionTS(alpha, beta):
-    if is_vector(alpha):
-        parameter_region = np.zeros_like(alpha)
-        for j in range(len(parameter_region)):
-            parameter_region[j] = associate_parameter_regionTS(alpha[j], beta[j])
-        return parameter_region
-    if alpha < 2:
-        if alpha < 1:
-            axes_1 = 0
-        else:
-            axes_1 = 1
-    else:
-        axes_1 = 2
-    if beta < 2:
-        if beta < 1:
-            axes_2 = 0
-        else:
-            axes_2 = 1
-    else:
-        axes_2 = 2
-    matrix_region = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    return matrix_region[axes_1, axes_2]
+    axes_1 = np.zeros_like(alpha)
+    axes_2 = np.zeros_like(alpha)
+
+    axes_1[alpha < 1] = 0
+    axes_1[np.logical_and(alpha >= 1, alpha < 2)] = 1
+    axes_1[alpha >= 2] = 2
+
+    axes_2[beta < 1] = 0
+    axes_2[np.logical_and(beta >= 1, beta < 2)] = 1
+    axes_2[beta >= 2] = 2
+
+    matrix_region = axes_1 * 3 + axes_2
+    return matrix_region
 
 
-def DSGRN_parameter_region(_, parameter):
+def DSGRN_parameter_regionTS(parameter):
     # warnings.warn("This function is ONLY CODED FOR THE TOGGLE SWITCH")
     alpha, beta = parameter_to_DSGRN_coord(parameter.T)
-    return associate_parameter_regionTS(alpha, beta) - 1
+    return associate_parameter_regionTS(alpha, beta)
 
 
 def subsample(file_name, size_subsample):
@@ -160,8 +199,8 @@ def subsample(file_name, size_subsample):
         stopHere
     index_random = np.random.randint(0, size_data, size_subsample)
     data_subsample = data[:, index_random]
-    region_subsample = regions[index_random]
-    return data_subsample, region_subsample, coefs
+    region_Subsample = regions[index_random]
+    return data_subsample, region_Subsample, coefs
 
 
 def region_subsample(file_name, region_number, size_subsample):
@@ -175,23 +214,110 @@ def region_subsample(file_name, region_number, size_subsample):
     data_subsample = data[:, index_random]
     return data_subsample, coefs
 
-
+# costum specific for Toggle Switch
 # create_dataset_ToggleSwitch(10)
 # readTS()
 
-"""
-name = create_dataset(None, 9, 100, 'TS_data.npz')
-# create a new TS dataset
-name = 'TS_data.npz'
-data_loc, regions_loc, coefs_optimal = load_dataset(name)
 
-# expand the dataset (actually, using the same coefs but rewriting the dataset
+def simple_region(x):
+    x1 = x[0]
+    x2 = x[1]
+    assigned_region = np.zeros_like(x1)
+    assigned_region[x1 > x2] = 1
+    return assigned_region
+
+
+def second_simple_region(x):
+    x1 = x[0]
+    x2 = x[1]
+    x3 = x[2]
+    assigned_region = np.zeros_like(x1) + 1
+    assigned_region[x3 < x1 - x2] = 0
+    assigned_region[x3 > x1 + x2] = 2
+    return assigned_region
+
+
+def third_simple_region(x):
+    a = x[0]
+    b = x[1]
+    c = x[2]
+    d = x[3]
+    assigned_region1 = np.zeros_like(a) + 1
+    assigned_region1[c+d < a * b] = 0
+    assigned_region1[a * b < c-d] = 2
+
+    assigned_region2 = np.zeros_like(a)
+    assigned_region2[a > b] = 1
+
+    assigned_region = assigned_region1 + 3*assigned_region2
+    return assigned_region
+
+
+test_case = 2
+if test_case == 0 :
+    # a < b  ,  a > b
+    name = 'simple_test.npz'
+    n_parameters_simple = 2
+    n_regions_simple = 2
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    plt.plot(data_loc[0], data_loc[1], '.')
+    stopHere
+
+if test_case == 1:
+    # c < a - b , a-b < c < a+b , a+b < c
+    name = 'second_simple_test.npz'
+    n_parameters_simple = 3
+    n_regions_simple = 3
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, second_simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
+    region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
+    region_2 = requested_size - region_1 - region_3
+    stopHere
+
+if test_case == 2:
+    # c + d < ab , c-d < ab < c+d , ab < c-d
+    # AND a<b, b<a     (6 regions)
+    name = 'third_simple_test.npz'
+    n_parameters_simple = 4
+    n_regions_simple = 6
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, third_simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    counter = np.zeros(n_regions_simple)
+    for i in range(n_regions_simple):
+        counter[i] = np.count_nonzero(regions_loc == i)
+    stopHere
+
+
+
+region = associate_parameter_regionTS(np.array([0.5, 0.5, 1.2]), np.array([1.2, 2.4, 0.5]))
+# region should be [1,2,3]
+
+decay = np.array([1, 1], dtype=float)
+p1 = np.array([1, 5, 3], dtype=float)
+p2 = np.array([1, 6, 3], dtype=float)
+
+f = ToggleSwitch(decay, [p1, p2])
+
+name = 'TS_data_test.npz'
+n_parameters_TS = 5
+n_regions_TS = 9
+name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, 100, name) # TODO: only works for Toggle Switch!
+# create a new TS dataset
+
+
+# expand the dataset (actually, using the same coefs but rewriting the dataset)
 sampler_TS = region_sampler()
 size_dataset = 100000
-generate_data_from_coefs(name, coefs_optimal, sampler_TS, None, size_dataset)
-"""
+generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset)
+
+
 # subsampling methods: all regions or specific regions
-# size_sample = 4
-# subsample(name, size_sample)
-# region_number = 5
-# region_subsample(name, region_number, size_sample)
+size_sample = 4
+subsample(name, size_sample)
+region_number = 5
+region_subsample(name, region_number, size_sample)
