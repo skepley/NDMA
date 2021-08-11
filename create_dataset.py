@@ -10,6 +10,7 @@ from hill_model import *
 import numpy as np
 from toggle_switch_heat_functionalities import *
 import random
+from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from datetime import datetime
 import warnings
@@ -44,11 +45,12 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     if file_name is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
         file_name = f"{timestamp}"+'.npz'
+
     sampler_global = region_sampler()
+    sampler_fisher = region_sampler_fisher()
+    def sampler_score_fisher(fisher_coefficients):
 
-    def sampler_score(fisher_coefficients):
-
-        data_sample = sampler_global(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 5*10**3)
+        data_sample = sampler_fisher(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 5*10**3)
         data_region = assign_region(data_sample)
         # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
         # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
@@ -60,9 +62,25 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
         # print(score) # lowest score is best score!
         return score  # score must be minimized
 
-    coefficients = np.abs(np.random.normal(size=2*n_parameters))
+    def sampler_score(normal_coefficients):
+
+        data_sample = sampler_global(normal_coefficients[:n_parameters], normal_coefficients[n_parameters:], 5*10**3)
+        data_region = assign_region(data_sample)
+        # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
+        # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
+        # data_region goes from 0 to n_parameter_region -1
+        counter = np.zeros(n_parameter_region)
+        for iter_loc in range(n_parameter_region):
+            counter[iter_loc] = np.count_nonzero(data_region == iter_loc)
+        score = 1 - np.min(counter)/np.max(counter)
+        # print(score) # lowest score is best score!
+        return score  # score must be minimized
+
+    size_coef = n_parameters*(1+n_parameters)
+    # for fisher  size_coef = 2*n_parameters
+    coefficients = np.abs(np.random.normal(size=size_coef))
     for i in range(100):
-        other_random_coefs = np.abs(np.random.normal(size=2*n_parameters))
+        other_random_coefs = np.abs(np.random.normal(size=size_coef))
         if sampler_score(other_random_coefs) < sampler_score(coefficients):
             coefficients = other_random_coefs
     print('Random initial condition chosen to the best of what random can give us')
@@ -76,11 +94,11 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     # data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     # parameter_region = DSGRN_parameter_region(f, data)
     # np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
-    generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset)
+    generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters)
     return file_name
 
 
-def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset):
+def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters):
     """
     Takes the optimal coefficients and create a dataset out of them
 
@@ -90,7 +108,7 @@ def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_reg
     sampler_global  way to sample from the correct distribution given the optimal parameters
     size_dataset    integer, size of the wanted dataset
     """
-    n_parameters = int(len(optimal_coef)/2)
+
     data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     parameter_region = assign_region(data)
     np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
@@ -110,7 +128,7 @@ def load_dataset(file_name):
     return dataset.f.data, dataset.f.parameter_region, dataset.f.optimal_coef
 
 
-def region_sampler():
+def region_sampler_fisher():
     """
     Creates a sample from the appropriate distribution based on the coefficients given
 
@@ -126,6 +144,26 @@ def region_sampler():
             par[i, :] = fisher_distribution(c1_vec[i], c2_vec[i], size)
         return par
     return many_fisher_distributions
+
+
+def region_sampler():
+    """
+    Creates a sample from the appropriate normal multivariate distribution based on the coefficients given
+
+    Returns a function that takes as input 2 coefficient vectors and the size of the requested sample and that has as
+    output a sample
+    """
+
+    def multivariate_normal_distributions(c1_vec, c2_vec, size):
+        # par = np.zeros([len(c1_vec), size])
+        mean = c1_vec
+        dim = len(mean)
+        cov = np.reshape(c2_vec, (dim, dim))
+        x = np.random.multivariate_normal(mean, cov, size)
+        par = np.square(x).T
+        # square ensures it's positive
+        return par
+    return multivariate_normal_distributions
 
 
 def create_dataset_ToggleSwitch(size_dataset, namefile=None, boolAppend=False):
@@ -254,7 +292,7 @@ def third_simple_region(x):
 
 
 test_case = 2
-if test_case == 0 :
+if test_case == 0:
     # a < b  ,  a > b
     name = 'simple_test.npz'
     n_parameters_simple = 2
@@ -313,7 +351,7 @@ name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, 1
 # expand the dataset (actually, using the same coefs but rewriting the dataset)
 sampler_TS = region_sampler()
 size_dataset = 100000
-generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset)
+generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
 
 
 # subsampling methods: all regions or specific regions
