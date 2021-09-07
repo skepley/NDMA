@@ -1,5 +1,6 @@
-from HillModels import parameter_to_DSGRN_coord, fiber_sampler, dsgrn_heat_plot, find_saddle_coef, SaddleNode, \
-    dsgrn_contour_plot, dsgrn_plot
+from hill_model import *
+from saddle_finding_functionalities import *
+from toggle_switch_heat_functionalities import *
 import numpy as np
 import matplotlib.pyplot as plt
 from models.TS_model import ToggleSwitch
