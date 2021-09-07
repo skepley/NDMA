@@ -8,7 +8,7 @@ Function and design testing for the SaddleNode class
     email: shane.kepley@rutgers.edu
     Date: 4/13/20; Last revision: 4/13/20
 """
-from hill_model import HillComponent, HillCoordinate,  HillModel, SaddleNode
+from hill_model import SaddleNode
 from test_HillModel import ToggleSwitch
 
 

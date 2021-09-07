@@ -3,6 +3,7 @@ from saddle_finding import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
 import sys
+from os.path import isfile
 from create_dataset import *
 
 # define the saddle node problem for the toggle switch
@@ -15,7 +16,10 @@ SN = SaddleNode(f)
 # size of the sample
 n_sample = 10**3
 file_name = 'TS_data_100000.npz'
-file_storing = 'chi_test_data_second_try.npz'
+if ~isfile(file_name):
+    create_dataset_TS(100000)
+
+file_storing = 'chi_test_data_100000.npz'
 
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = data_subsample
@@ -113,6 +117,5 @@ np.savez(file_storing,
          v_center_region=v_center_region, v_center_with_saddle=v_center_with_saddle, v_center_without_saddle=v_center_without_saddle,
          v_center_bad_candidate=v_center_bad_candidate, v_donut=v_donut, v_donut_with_saddle=v_donut_with_saddle,
          v_donut_without_saddle=v_donut_without_saddle, v_donut_bad_candidate=v_donut_bad_candidate, v_sample=v_sample)
-
 
 print('It is the end!')

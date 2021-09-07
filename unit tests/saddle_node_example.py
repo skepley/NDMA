@@ -61,8 +61,6 @@ for j in range(9):
         f.plot_nullcline(pSol)
     plt.title('parameter: {0}'.format(j))
 
-stopHere
-
 plt.close('all')
 plt.figure()
 for hillC in np.linspace(1, 3, 5):
@@ -88,7 +86,7 @@ plt.figure()
 f.plot_nullcline(n1Sol, p1)
 plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
 
-stopHere
+
 # ==== Animation of continuation in N
 # create a an array of Hill coefficients to plot
 nFrame = 25
