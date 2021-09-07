@@ -6,13 +6,7 @@ Input:
 
 """
 
-import numpy as np
-import time
-import matplotlib.pyplot as plt
-from hill_model import *
 from saddle_node import *
-from models import ToggleSwitch
-from scipy.interpolate import griddata
 
 
 def count_eq(f, hill, p, gridDensity=10):

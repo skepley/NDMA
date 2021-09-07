@@ -8,9 +8,8 @@ Testing and analysis of the ToggleSwitch model
     Date: 6/9/20; Last revision: 6/24/20
 """
 
-import numpy as np
 from hill_model import *
-from models import ToggleSwitch
+from models.TS_model import ToggleSwitch
 
 # TESTING FOR TOGGLE SWITCH
 # ============= set up the toggle switch example to test on =============

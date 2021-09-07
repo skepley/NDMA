@@ -9,7 +9,7 @@ Testing functionality for the ToggleSwitch with self edges allowed.
     Date: 7/9/20; Last revision: 7/9/20
 """
 from hill_model import *
-from models import ToggleSwitchPlus
+from models.TSPlus_model import ToggleSwitchPlus
 
 # TESTING FOR TOGGLE SWITCH PLUS
 # ============= set up the toggle switch example to test on =============

@@ -7,11 +7,9 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     email: shane.kepley@rutgers.edu
     Date: 4/24/20; Last revision: 6/24/20
 """
-import numpy as np
-import matplotlib.pyplot as plt
 from hill_model import *
 from saddle_node import SaddleNode
-from models import ToggleSwitch
+from models.TS_model import ToggleSwitch
 
 np.set_printoptions(precision=2, floatmode='maxprec_equal')
 

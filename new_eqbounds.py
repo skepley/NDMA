@@ -14,12 +14,8 @@ Optional file header info (to give more details about the function than in the H
     Date: 7/6/20; Last revision: 7/6/20
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import time
 from hill_model import *
-from saddle_node import SaddleNode
-from models import ToggleSwitch
+from models.TS_model import ToggleSwitch
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 # decay = np.array([np.nan, np.nan], dtype=float)  # gamma

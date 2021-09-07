@@ -14,7 +14,7 @@ Optional file header info (to give more details about the function than in the H
     Date: 7/20/20; Last revision: 7/20/20
 """
 from hill_model import *
-from models import Network12
+from models.Network12_model import Network12
 
 # ============= set up the a Network12 instance =============
 nCoordinate = 3
