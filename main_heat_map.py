@@ -2,7 +2,9 @@ from hill_model import *
 from saddle_finding import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
+from models.TS_model import ToggleSwitch
 import sys
+
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
