@@ -1,6 +1,6 @@
-from hill_model import *
-from saddle_finding import *
-from toggle_switch_heat_functionalities import *
+from HillModels import parameter_to_DSGRN_coord, fiber_sampler, dsgrn_heat_plot, find_saddle_coef, SaddleNode, \
+    dsgrn_contour_plot, dsgrn_plot
+import numpy as np
 import matplotlib.pyplot as plt
 from models.TS_model import ToggleSwitch
 import sys
@@ -24,7 +24,8 @@ u = u.flatten()
 u = np.repeat(u, n_second_sample)
 v = v.flatten()
 v = np.repeat(v, n_second_sample)
-a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample*n_second_sample)])
+a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample * n_second_sample)])
+# TODO: decide if we want to keep the fiber sampling or move to dataset creation
 
 n_sample = n_sample * n_second_sample
 
@@ -60,7 +61,6 @@ for j in range(n_sample):#range(n_sample):
 np.savez('boundary_averaging_data',
          u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
          bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample)
-stopHere
 
 data = np.load('boundary_averaging_data.npz',allow_pickle=True)
 

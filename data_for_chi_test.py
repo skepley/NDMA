@@ -1,5 +1,5 @@
 from hill_model import *
-from saddle_finding import *
+from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
 import sys

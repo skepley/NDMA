@@ -1,13 +1,18 @@
+"""
+Functionalities for plotting heat maps and contour plots for the Toggle Switch
+"""
+
 from hill_model import *
 from scipy.interpolate import griddata
 
-
+# EQ: I don't think we should ever use the sampler, and if we do we should change it to create_dataset
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
      so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:
      (ell_1, delta_1, gamma_1, ell_2, delta_2).
      Takes a sample anywhere."""
 
+    raise TypeError('This functionality should not be used anymore! Use create_dataset instead')
     # pick ell_2, delta_2
     ell_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
     delta_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
