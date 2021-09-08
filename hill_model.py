@@ -1408,16 +1408,26 @@ class HillModel:
             #equilibria = np.unique(np.round(equilibria/10**np.ceil(log(equilibria)),
             #                                uniqueRootDigits)*10**np.ceil(log(equilibria)), axis=0)
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
-            all_equilibria = equilibria
-            unique_equilibria = np.array(all_equilibria(0))
-            for equilibrium in all_equilibria:
-                for center_equilibium in unique_equilibria:
-                    max_rad, min_rad = radii_uniqueness_existence(center_equilibium)
-                    if np.linalg.norm(equilibrium - center_equilibium) < max_rad:
-                        break
-                if np.linalg.norm(equilibrium - center_equilibium) > max_rad:
-                    unique_equilibria = np.append(unique_equilibria, equilibrium)
-
+            if len(equilibria)>1:
+                all_equilibria = equilibria
+                radii = np.array([1,len(all_equilibria)])
+                unique_equilibria = all_equilibria
+                for i in range(len(all_equilibria)):
+                    equilibrium = all_equilibria[i]
+                    max_rad, min_rad = radii_uniqueness_existence(equilibrium)
+                    radii[i] = max_rad
+                for i in range(len(all_equilibria)):
+                    equilibrium1 = all_equilibria[i]
+                    radius1 = radii[i]
+                    j = 0
+                    while j < len(all_equilibria):
+                        equilibrium2 = all_equilibria[j]
+                        radius2 = radii[j]
+                        if np.norm(equilibrium1-equilibrium2)<max(radius1, radius2):
+                            # remove one of the two from
+                            unique_equilibria = np.delete(unique_equilibria,j)
+                        else:
+                            j = j+1
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None
