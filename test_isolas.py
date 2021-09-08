@@ -1,3 +1,11 @@
+"""
+Example function finding both isolas and hysteress with respect to the Hill coefficient
+
+After a saddle search, parameters with multiple saddle nodes are additionally investigated, plotting the behaviour of
+their equilibria w.r.t the Hill coefficient
+"""
+
+
 from hill_model import *
 from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *

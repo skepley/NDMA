@@ -1424,7 +1424,6 @@ class HillModel:
                     j = i+1
                     while j < len(radii2):
                         equilibrium2 = unique_equilibria[j]
-                        print(j,radii2, radii, all_equilibria)
                         radius2 = radii2[j]
                         if np.linalg.norm(equilibrium1-equilibrium2)<np.maximum(radius1, radius2):
                             # remove one of the two from

@@ -1,3 +1,7 @@
+"""
+Slight difference from main_heat_map: here we first select the values of the Hill coefficients we are itnerested in,
+the search for saddle nodes in the other parameters (I think)
+"""
 from hill_model import *
 from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *

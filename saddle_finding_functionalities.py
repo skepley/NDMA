@@ -2,7 +2,6 @@
 Helper functions to find saddle nodes reliably
 
 Main function: find_saddle_coef
-Input:
 
 """
 

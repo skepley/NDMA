@@ -21,9 +21,14 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
+# # # LONG RUN
 n_sample_side = 11
 n_sample = (n_sample_side*3)**2
 n_second_sample = 15*4
+# # # SHORT RUN
+n_sample_side = 3
+n_sample = (n_sample_side*3)**2
+n_second_sample = 3*4
 # a random parameter list
 interpolation_array = np.array([np.linspace(0.85, 1.1, n_sample_side), np.linspace(1.1, 1.9, n_sample_side), np.linspace(1.9, 2.15, n_sample_side)])
 [u, v] = np.meshgrid(interpolation_array, interpolation_array)
