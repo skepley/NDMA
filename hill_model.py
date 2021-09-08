@@ -1386,7 +1386,7 @@ class HillModel:
             Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
             delta = 1 - 4*(Z0_bound + Y_bound) * Z2_bound
             if delta<0:
-                return -np.infty, -np.infty
+                return 0,0
             max_rad = (1 + np.sqrt(delta))/(2*Z2_bound)
             min_rad = (1 - np.sqrt(delta))/(2*Z2_bound)
             return max_rad, min_rad
@@ -1410,22 +1410,26 @@ class HillModel:
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
             if len(equilibria)>1:
                 all_equilibria = equilibria
-                radii = np.array([1,len(all_equilibria)])
+                radii = np.zeros(len(all_equilibria))
                 unique_equilibria = all_equilibria
                 for i in range(len(all_equilibria)):
                     equilibrium = all_equilibria[i]
                     max_rad, min_rad = radii_uniqueness_existence(equilibrium)
                     radii[i] = max_rad
+
+                radii2 = radii
                 for i in range(len(all_equilibria)):
                     equilibrium1 = all_equilibria[i]
                     radius1 = radii[i]
-                    j = 0
-                    while j < len(all_equilibria):
-                        equilibrium2 = all_equilibria[j]
-                        radius2 = radii[j]
-                        if np.norm(equilibrium1-equilibrium2)<max(radius1, radius2):
+                    j = i+1
+                    while j < len(radii2):
+                        equilibrium2 = unique_equilibria[j]
+                        print(j,radii2, radii, all_equilibria)
+                        radius2 = radii2[j]
+                        if np.linalg.norm(equilibrium1-equilibrium2)<np.maximum(radius1, radius2):
                             # remove one of the two from
                             unique_equilibria = np.delete(unique_equilibria,j)
+                            radii2 = np.delete(radii2,j)
                         else:
                             j = j+1
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
