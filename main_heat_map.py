@@ -1,3 +1,9 @@
+"""
+This code creates the heat map, as presented in the article.
+The heat map indicates the value of the Hill coefficient in which a saddle node is taking place depending on the parameter.
+It also consider the parameter projection into [0,3]x[0,3] thanks to the DSGRN region definition
+"""
+
 from hill_model import *
 from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *
