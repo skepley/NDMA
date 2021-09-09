@@ -1,4 +1,9 @@
-from hill_model import *
+"""
+Fixing a slice of parameters, we see the behaviour of the saddle nodes when changing a single parameter (gamma) with
+respect to which we have hysteresis
+"""
+
+from models.TS_model import ToggleSwitch
 from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
