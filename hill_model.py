@@ -1381,8 +1381,8 @@ class HillModel:
             DF_x = DF(equilibrium)
             D2F_x = self.dx2(equilibrium, *parameter)
             A = np.linalg.inv(DF_x)
-            Y_bound = np.linalg.norm(A*F(equilibrium))
-            Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A * DF_x)
+            Y_bound = np.linalg.norm(A @ F(equilibrium))
+            Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
             Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
             delta = 1 - 4*(Z0_bound + Y_bound) * Z2_bound
             if delta<0:
