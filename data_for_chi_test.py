@@ -67,7 +67,7 @@ for j in range(n_sample):  # range(n_sample):
             n_center_without_saddle = n_center_without_saddle + 1
         else:
             n_donut_without_saddle = n_donut_without_saddle + 1
-    printing_statement = 'Completion: ' + str(j) + ' out of ' + str(n_sample)
+    printing_statement = 'Completion: ' + str(j+1) + ' out of ' + str(n_sample)
     sys.stdout.write('\r' + printing_statement)
     sys.stdout.flush()
 
