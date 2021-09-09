@@ -248,7 +248,7 @@ def region_subsample(file_name, region_number, size_subsample):
 
 def create_dataset_TS(size_dataset_TS: int, name_TS=None):
     if name_TS is None:
-        name_TS = 'TS_data_' + str(size_dataset)+ '.npz'
+        name_TS = 'TS_data_' + str(size_dataset_TS)+ '.npz'
     n_parameters_TS = 5
     n_regions_TS = 9
     name_TS = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, size_dataset_TS, name_TS)

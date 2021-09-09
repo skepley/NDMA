@@ -1,4 +1,5 @@
 from hill_model import *
+from models.TS_model import ToggleSwitch
 from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *
 import matplotlib.pyplot as plt
@@ -14,9 +15,11 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10**3
+n_sample = 10 ** 3
 file_name = 'TS_data_100000.npz'
-if ~isfile(file_name):
+try:
+    np.load(file_name)
+except FileNotFoundError:
     create_dataset_TS(100000)
 
 file_storing = 'chi_test_data_100000.npz'
@@ -35,17 +38,16 @@ wrong_parity_donut = 0
 n_donut_without_saddle = 0
 n_donut_bad_candidate = 0
 
-
-for j in range(n_sample):#range(n_sample):
+for j in range(n_sample):  # range(n_sample):
     a_j = a[:, j]
     region_j = region_subsample[j]
-    if region_j is 5:
+    if region_j == 5:
         n_center_region = n_center_region + 1
     else:
         n_donut = n_donut + 1
     SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
-    if SNParameters and SNParameters is not 0:
-        if region_j is 5:
+    if SNParameters and SNParameters != 0:
+        if region_j == 5:
             if len(SNParameters) == 1 or len(SNParameters) == 3:
                 n_center_with_saddle = n_center_with_saddle + 1
             else:
@@ -55,13 +57,13 @@ for j in range(n_sample):#range(n_sample):
                 n_donut_with_saddle = n_donut_with_saddle + 1
             else:
                 wrong_parity_donut = wrong_parity_donut + 1
-    elif badCandidates and badCandidates is not 0:
-        if region_j is 5:
+    elif badCandidates and badCandidates != 0:
+        if region_j == 5:
             n_center_bad_candidate = n_center_bad_candidate + 1
         else:
             n_donut_bad_candidate = n_donut_bad_candidate + 1
     else:
-        if region_j is 5:
+        if region_j == 5:
             n_center_without_saddle = n_center_without_saddle + 1
         else:
             n_donut_without_saddle = n_donut_without_saddle + 1
@@ -102,8 +104,8 @@ try:
 
 except:
     v_center_region = np.array([n_center_region])
-    v_center_with_saddle =  np.array([n_center_with_saddle])
-    v_wrong_parity_center =  np.array([wrong_parity_center])
+    v_center_with_saddle = np.array([n_center_with_saddle])
+    v_wrong_parity_center = np.array([wrong_parity_center])
     v_center_without_saddle = np.array([n_center_without_saddle])
     v_center_bad_candidate = np.array([n_center_bad_candidate])
     v_donut = np.array([n_donut])
@@ -114,8 +116,9 @@ except:
     v_sample = np.array([n_sample])
 
 np.savez(file_storing,
-         v_center_region=v_center_region, v_center_with_saddle=v_center_with_saddle, v_center_without_saddle=v_center_without_saddle,
+         v_center_region=v_center_region, v_center_with_saddle=v_center_with_saddle,
+         v_center_without_saddle=v_center_without_saddle,
          v_center_bad_candidate=v_center_bad_candidate, v_donut=v_donut, v_donut_with_saddle=v_donut_with_saddle,
          v_donut_without_saddle=v_donut_without_saddle, v_donut_bad_candidate=v_donut_bad_candidate, v_sample=v_sample)
 
-print('It is the end!')
+print('It==the end!')
