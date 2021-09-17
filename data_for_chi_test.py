@@ -1,9 +1,11 @@
 from hill_model import *
 from saddle_finding import *
 from toggle_switch_heat_functionalities import *
-import matplotlib.pyplot as plt
 import sys
 from create_dataset import *
+from scipy import stats
+
+file_storing = 'chi_test_data.npz'
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -18,7 +20,8 @@ file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
-    create_dataset_TS(100000)
+    n = 100000
+    TS_region(100000, file_name)
 
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = data_subsample
@@ -117,5 +120,16 @@ np.savez(file_storing,
          v_center_bad_candidate=v_center_bad_candidate, v_donut=v_donut, v_donut_with_saddle=v_donut_with_saddle,
          v_donut_without_saddle=v_donut_without_saddle, v_donut_bad_candidate=v_donut_bad_candidate, v_sample=v_sample)
 
+data = np.load(file_storing)
+
+mat_for_chi_test = [[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate)], ...
+    [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate)]]
+
+unused, p = stats.contingency(mat_for_chi_test)
+
+if p <= 0.05:
+    print('We reject the null hypothesis: there is correlation between saddles and center region')
+else:
+    print('We cannot reject the null hypothesis: there is NO proven correlation between saddles and center region')
 
 print('It is the end!')

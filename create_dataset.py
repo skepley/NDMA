@@ -291,7 +291,14 @@ def third_simple_region(x):
     return assigned_region
 
 
-test_case = 3
+def TS_region(n, name_input):
+    n_parameters_TS = 5
+    n_regions_TS = 9
+    name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, n, name_input)
+    return name
+
+
+test_case = np.infty
 if test_case == 0:
     # a < b  ,  a > b
     name = 'simple_test.npz'
