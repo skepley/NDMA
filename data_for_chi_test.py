@@ -3,7 +3,7 @@ from saddle_finding import *
 from toggle_switch_heat_functionalities import *
 import sys
 from create_dataset import *
-from scipy import stats
+from scipy import stats.contingency
 
 file_storing = 'chi_test_data.npz'
 
@@ -46,7 +46,7 @@ for j in range(n_sample):  # range(n_sample):
         n_donut = n_donut + 1
     SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
     if SNParameters and SNParameters != 0:
-        if region_j == 5:
+        if region_j == 4:
             if len(SNParameters) == 1 or len(SNParameters) == 3:
                 n_center_with_saddle = n_center_with_saddle + 1
             else:
@@ -57,12 +57,12 @@ for j in range(n_sample):  # range(n_sample):
             else:
                 wrong_parity_donut = wrong_parity_donut + 1
     elif badCandidates and badCandidates != 0:
-        if region_j == 5:
+        if region_j == 4:
             n_center_bad_candidate = n_center_bad_candidate + 1
         else:
             n_donut_bad_candidate = n_donut_bad_candidate + 1
     else:
-        if region_j == 5:
+        if region_j == 4:
             n_center_without_saddle = n_center_without_saddle + 1
         else:
             n_donut_without_saddle = n_donut_without_saddle + 1
@@ -122,8 +122,7 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = [[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate)], ...
-    [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate)]]
+mat_for_chi_test = [[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate), np.sum(v_wrong_parity_center)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate),np.sum(v_wrong_parity_donut)]]
 
 unused, p = stats.contingency(mat_for_chi_test)
 
