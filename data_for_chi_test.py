@@ -3,7 +3,7 @@ from saddle_finding import *
 from toggle_switch_heat_functionalities import *
 import sys
 from create_dataset import *
-from scipy import stats.contingency
+from scipy.stats import chi2_contingency
 
 file_storing = 'chi_test_data.npz'
 
@@ -15,7 +15,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10 ** 3
+n_sample = 10 ** 2
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -124,7 +124,7 @@ data = np.load(file_storing)
 
 mat_for_chi_test = [[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate), np.sum(v_wrong_parity_center)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate),np.sum(v_wrong_parity_donut)]]
 
-unused, p = stats.contingency(mat_for_chi_test)
+unused, p = chi2_contingency(mat_for_chi_test)
 
 if p <= 0.05:
     print('We reject the null hypothesis: there is correlation between saddles and center region')
