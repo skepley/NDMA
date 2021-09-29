@@ -52,8 +52,9 @@ def estimate_saddle_node(f, hill, p, gridDensity=4):
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
             hill_SN, equilibria = bisection(f, hillMin, hillMax, p, n_steps, gridDensity)
-            hill_for_saddle.append(hill_SN)
-            equilibria_for_saddle.append(equilibria)
+            if len(hill_for_saddle) > 1 and np.abs(hill_SN - hill_for_saddle[-1]) > 0.1:
+                hill_for_saddle.append(hill_SN)
+                equilibria_for_saddle.append(equilibria)
 
     return hill_for_saddle, equilibria_for_saddle
 

@@ -44,7 +44,7 @@ boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 3, 5, 10, 20, 40, 100, 200, 500], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 5, 10, 40, 100, 500], a_j)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
@@ -93,7 +93,7 @@ if boring_parameters is not None:
     plt.title('No saddle detected')
 """
 
-parameter_DSGRN = parameter_to_DSGRN_coord(parameter_full, 10)
+parameter_DSGRN = parameter_to_DSGRN_coord(parameter_full)
 parameter_DSGRN = np.array([parameter_DSGRN[0], parameter_DSGRN[1]])
 unique_DSGRN = np.unique(parameter_DSGRN.round(decimals=5), axis=1)
 average_sol = np.empty(0)
