@@ -32,32 +32,16 @@ def count_eq(f, hill, p, gridDensity=10):
             return np.shape(eq)[0], eq
 
 
-def estimate_saddle_node(f, hill, p, gridDensity=3):
+def estimate_saddle_node(f, hill, p, gridDensity=4):
     """Attempt to predict whether p admits any saddle-node points by counting equilibria at each value in the hill vector.
     If any values return multiple equilibria, attempt to bound the hill parameters for which these occur. Otherwise,
     return an empty interval."""
 
     hillIdx = 0
-    # hill = ezcat(hill[0], hill)  # append 1 to the front of the hill vector
-    # UPDATE: expect hill to already have at least two elements
-
     numEquilibria, Eq = count_eq(f, hill[0], p, gridDensity)
-    numEquilibriaInf, Eqs = count_eq(f, hill[-1], p, gridDensity)
 
     hill_for_saddle = []
     equilibria_for_saddle = []
-
-    if numEquilibriaInf > 1 and 0 > 1: # NOW TAKEN AWAY
-        n_steps = int(np.ceil((hill[-1] - hill[0]) / 5))
-        # try:
-        hill_SN, eqs = bisection(f, hill[0], hill[-1], p, n_steps)
-
-        # except TypeError:
-        #    print(hill[0], hill[-1], p, n_steps)
-
-        hill_for_saddle.append(hill_SN)
-        equilibria_for_saddle.append(eqs)
-        return hill_for_saddle, equilibria_for_saddle
 
     while hillIdx < len(hill) - 1:
         hillMin = hill[hillIdx]  # update lower hill coefficient bound
@@ -67,23 +51,24 @@ def estimate_saddle_node(f, hill, p, gridDensity=3):
         hillIdx += 1  # increment hill index counter
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
-            hill_SN, equilibria = bisection(f, hillMin, hillMax, p, n_steps)
+            hill_SN, equilibria = bisection(f, hillMin, hillMax, p, n_steps, gridDensity)
             hill_for_saddle.append(hill_SN)
             equilibria_for_saddle.append(equilibria)
 
     return hill_for_saddle, equilibria_for_saddle
 
 
-def bisection(f, hill0, hill1, p, n_steps):
+def bisection(f, hill0, hill1, p, n_steps, gridDensity):
     if n_steps == 0:
         n_steps = 1
-    nEq0, Eq0 = count_eq(f, hill0, p)
-    nEq1, Eq1 = count_eq(f, hill1, p)
+    nEq0, Eq0 = count_eq(f, hill0, p, gridDensity)
+    nEq1, Eq1 = count_eq(f, hill1, p, gridDensity)
+    if nEq0 == nEq1:
+        print('problem')
     for i in range(n_steps):
         if hill1 - hill0 > 1:
             hill_middle = (hill0 + hill1) / 2
             nEqmiddle, EqMiddle = count_eq(f, hill_middle, p)
-
             if nEqmiddle == nEq0:
                 hill0 = hill_middle
                 nEq0 = nEqmiddle
@@ -93,7 +78,6 @@ def bisection(f, hill0, hill1, p, n_steps):
                 nEq1 = nEqmiddle
                 Eq1 = EqMiddle
             else:
-                #return hill_middle, EqMiddle
                 return hill_middle, from_eqs_select_saddle_eq(Eq0, EqMiddle)
         else:
             break
@@ -174,6 +158,9 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
             equilibria = np.array(equilibria_for_saddle.pop())
+            if np.any(np.isnan(equilibria)):
+                # something went weird, and the "equilibria" are not really there
+                continue
             SN_candidate_eq = SN_candidates_from_bisection(equilibria)
             jkSols = SN.find_saddle_node(freeParameter, candidateHill, p, equilibria=SN_candidate_eq)
             jSols = ezcat(jkSols)

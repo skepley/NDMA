@@ -44,7 +44,7 @@ boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 2, 3, 4, 5, 10, 15, 20, 30, 40, 50, 100, 200, 300, 500], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 3, 5, 10, 20, 40, 100, 200, 500], a_j)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
