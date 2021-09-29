@@ -23,7 +23,7 @@ try:
     np.load(file_name)
 except FileNotFoundError:
     n = 100000
-    TS_region(100000, file_name)
+    create_dataset_TS(100000, file_name)
 
 file_storing = 'chi_test_data_100000.npz'
 
