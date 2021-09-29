@@ -1384,11 +1384,11 @@ class HillModel:
             Y_bound = np.linalg.norm(A @ F(equilibrium))
             Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
             Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
-            if Z2_bound<10^-16:
-                Z2_bound = 10^-8 # in case the Z2 bound is too close to zero, we increase it a bit
+            if Z2_bound < 1e-16:
+                Z2_bound = 1e-8 # in case the Z2 bound is too close to zero, we increase it a bit
             delta = 1 - 4*(Z0_bound + Y_bound) * Z2_bound
-            if delta<0:
-                return 0,0
+            if delta < 0:
+                return 0, 0
             max_rad = (1 + np.sqrt(delta))/(2*Z2_bound)
             min_rad = (1 - np.sqrt(delta))/(2*Z2_bound)
             return max_rad, min_rad
