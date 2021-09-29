@@ -17,12 +17,21 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 51
-n_second_sample = 25
+n_sample = 100
+n_second_sample = 50
 # a random parameter list
 u_short = np.linspace(0.5, 2.5, n_sample)#1 + np.random.uniform(-0.1, 1.1, n_sample)
 u = np.repeat(u_short, n_second_sample)
-v = np.full(n_sample*n_second_sample, 1.5)
+test = input("To compute along DSGRN downwards diagonal press D then return, to compute along the horizontal line "
+             "with gamma = 1.5 press anything then return (DEFAULT)")
+if test != 'D':
+    v = np.full(n_sample*n_second_sample, 1.5)
+    filename = 'data_n_wrt_gamma'
+    # creates horizontal line
+else:
+    filename = 'data_n_wrt_gamma_diag'
+    v = 3 - u
+    # create downwards diagonal
 a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample*n_second_sample)])
 
 parameter_full = np.empty(shape=[0, 5])
@@ -39,7 +48,7 @@ n_info_n_vs_gamma = np.empty(0)
 for j in range(n_sample * n_second_sample):
     a_j = a[j, :]
     SNParameters, badCandidates = find_saddle_coef(f, [1, 50], a_j)
-    if SNParameters and SNParameters is not 0:
+    if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             #print('Saddle detected')
 
@@ -53,7 +62,7 @@ for j in range(n_sample * n_second_sample):
             if k > 0:
                 print('More than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
-    if badCandidates and badCandidates is not 0:
+    if badCandidates and badCandidates != 0:
         # print('\nA bad parameter')
         bad_parameters = np.append(bad_parameters, [a_j], axis=0)
         bad_candidates.append(badCandidates)
@@ -62,7 +71,7 @@ for j in range(n_sample * n_second_sample):
     sys.stdout.write('\r' + printing_statement)
     sys.stdout.flush()
 
-    if SNParameters is 0 and badCandidates is 0:
+    if SNParameters == 0 and badCandidates == 0:
         #print('boooring')
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
         boring_y.append(u[np.mod(j, n_sample)])
@@ -79,7 +88,7 @@ for i in range(n_sample):
     count_hill[i] = np.shape(n_info_n_vs_gamma[np.where(u_info_n_vs_gamma == u_short[i])])[0]
     #number_saddles.append(len(count_hill[i]))
 
-np.savez('data_n_wrt_gamma',
+np.savez(filename,
          u=u, v=v, a=a, u_info_n_vs_gamma=u_info_n_vs_gamma, n_info_n_vs_gamma=n_info_n_vs_gamma, average_hill=average_hill,
          count_hill=count_hill)
 data = np.load('data_n_wrt_gamma.npz')
@@ -87,16 +96,17 @@ data = np.load('data_n_wrt_gamma.npz')
 plt.figure()
 plt.title('Hill coef VS x')
 plt.plot(data.f.u_info_n_vs_gamma, data.f.n_info_n_vs_gamma, 'ro')
-
+plt.savefig('n_wrt_gamma__hVSx.pdf')
 
 plt.figure()
 plt.plot(np.unique(data.f.u), data.f.average_hill, 'o')
 plt.title('Average Hill coefficient')
+plt.savefig('n_wrt_gamma__mean_hVSx.pdf')
 
 plt.figure()
 plt.plot(np.unique(data.f.u), data.f.count_hill, 'o')
 plt.title('Number of saddles out of sample number ' + str(n_second_sample))
-
+plt.savefig('n_wrt_gamma__n_saddles.pdf')
 
 #print('\nNumber of bad candidates', len(bad_candidates), 'out of ', n_sample)
 #print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)

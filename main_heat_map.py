@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from models.TS_model import ToggleSwitch
 import sys
+from create_dataset import *
 
 
 # define the saddle node problem for the toggle switch
@@ -20,26 +21,21 @@ p2 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_2, delta_2, theta_2)
 f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
+# use dataset creation
 # size of the sample
-# # # LONG RUN
-n_sample_side = 11
-n_sample = (n_sample_side*3)**2
-n_second_sample = 15*4
-# # # SHORT RUN
-n_sample_side = 3
-n_sample = (n_sample_side*3)**2
-n_second_sample = 3*4
-# a random parameter list
-interpolation_array = np.array([np.linspace(0.85, 1.1, n_sample_side), np.linspace(1.1, 1.9, n_sample_side), np.linspace(1.9, 2.15, n_sample_side)])
-[u, v] = np.meshgrid(interpolation_array, interpolation_array)
-u = u.flatten()
-u = np.repeat(u, n_second_sample)
-v = v.flatten()
-v = np.repeat(v, n_second_sample)
-a = np.array([fiber_sampler(u[j], v[j]) for j in range(n_sample * n_second_sample)])
-# TODO: decide if we want to keep the fiber sampling or move to dataset creation
+n_sample = 10 ** 4
+file_name = 'TS_data_100000.npz'
+try:
+    np.load(file_name)
+except FileNotFoundError:
+    n = 100000
+    create_dataset_TS(100000, file_name)
 
-n_sample = n_sample * n_second_sample
+file_storing = 'heat_map.npz'
+
+data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
+a = np.transpose(data_subsample)
+u, v = parameter_to_DSGRN_coord(a)
 
 parameter_full = np.empty(shape=[0, 5])
 solutions = np.empty(0)
@@ -59,7 +55,7 @@ for j in range(n_sample):#range(n_sample):
                 print('More than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
     if badCandidates and badCandidates != 0:
-        print('\nA bad parameter')
+        # print('\nA bad parameter')
         bad_parameters = np.append(bad_parameters, [a_j], axis=0)
         bad_candidates.append(badCandidates)
     printing_statement = 'Completion: ' + str(j) + ' out of ' + str(n_sample)
@@ -67,14 +63,13 @@ for j in range(n_sample):#range(n_sample):
     sys.stdout.flush()
 
     if SNParameters == 0 and badCandidates == 0:
-        #print('boooring')
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
-np.savez('boundary_averaging_data',
+np.savez('heat_map_data',
          u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
-         bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample)
+         bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample, multiple_saddles=multiple_saddles)
 
-data = np.load('boundary_averaging_data.npz',allow_pickle=True)
+data = np.load('heat_map_data.npz', allow_pickle=True)
 
 
 bad_candidates = data.f.bad_candidates
@@ -82,7 +77,7 @@ boring_parameters = data.f.boring_parameters
 n_sample = data.f.n_sample
 parameter_full = data.f.parameter_full
 solutions = data.f.solutions
-
+multiple_saddles = data.f.multiple_saddles
 
 
 print('\nNumber of bad candidates', len(bad_candidates), 'out of ', n_sample)
@@ -117,12 +112,24 @@ for j in unique_DSGRN.T:
         print('wrong')
 
 fig1 = plt.figure()
-dsgrn_heat_plot(parameter_full, average_sol_long, 10)
+dsgrn_heat_plot(parameter_full, average_sol_long)
+plt.title('dsgrn_heat_plot')
+plt.savefig('dsgrn_heat_plot.pdf')
 
 fig1 = plt.figure()
-dsgrn_contour_plot(parameter_full, average_sol_long, 10)
+dsgrn_contour_plot(parameter_full, average_sol_long)
+plt.title('dsgrn_contour_plot')
+plt.savefig('dsgrn_contour_plot.pdf')
 
 plt.figure()
-dsgrn_plot(parameter_full, 10)
+dsgrn_plot(parameter_full)
+plt.title('dsgrn_plot')
+plt.savefig('dsgrn_plot.pdf')
+
+plt.figure()
+dsgrn_plot(multiple_saddles)
+plt.title('multiple_saddles')
+plt.savefig('multiple_saddles.pdf')
+
 
 print('It is the end!')

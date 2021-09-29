@@ -72,7 +72,7 @@ for j in []:#range(n_sample):#range(n_sample):
     #        u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, multiple_saddles=multiple_saddles)
 # stopHere
 
-data = np.load('boundary_averaging_data.npz', allow_pickle=True)
+data = np.load('test_isolas.npz', allow_pickle=True)
 
 #multiple_saddles = data.f.multiple_saddles
 parameter_full = data.f.parameter_full
