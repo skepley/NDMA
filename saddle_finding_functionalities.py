@@ -75,7 +75,7 @@ def estimate_saddle_node(f, hill, p, gridDensity=3):
 
 
 def bisection(f, hill0, hill1, p, n_steps):
-    if n_steps is 0:
+    if n_steps == 0:
         n_steps = 1
     nEq0, Eq0 = count_eq(f, hill0, p)
     nEq1, Eq1 = count_eq(f, hill1, p)
