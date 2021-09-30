@@ -235,7 +235,7 @@ def subsample(file_name, size_subsample):
     size_data = np.size(data, 1)
     if size_subsample > size_data:
         stopHere
-    index_random = np.random.randint(0, size_data, size_subsample)
+    index_random = np.random.choice(size_data, size=size_subsample, replace=False)
     data_subsample = data[:, index_random]
     region_Subsample = regions[index_random]
     return data_subsample, region_Subsample, coefs
