@@ -166,9 +166,14 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
             jSols = ezcat(jkSols)
             if len(jSols) > 0:
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
-                SNParameters.append(jSols)
-                SNParameters = np.unique(np.round(SNParameters, 10))
                 # you might have found the same saddles multiple times
+                append_bool = 1
+                for i in range(len(SNParameters)):
+                    if np.linalg.norm(jSols - SNParameters[i])<0.1:
+                        append_bool = 0
+                        break
+                if append_bool:
+                    SNParameters.append(jSols)
             else:
                 badCandidates.append((candidateHill,
                                       equilibria))  # error in computation : there is a saddle node but we could not find it
