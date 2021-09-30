@@ -44,17 +44,17 @@ boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 5, 10, 40, 100, 500], a_j)
+    SNParameters, badCandidates = find_saddle_coef(f, [1, 5, 10, 40, 100], a_j)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
             parameter_full = np.append(parameter_full, [a_j], axis=0)
             solutions = np.append(solutions, SNParameters[k])
             if k > 0:
-                print('More than one saddle detected!')
+                print('\nMore than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
     if badCandidates and badCandidates != 0:
-        # print('\nA bad parameter')
+        print('\nA bad parameter')
         bad_parameters = np.append(bad_parameters, [a_j], axis=0)
         bad_candidates.append(badCandidates)
     printing_statement = 'Completion: ' + str(j) + ' out of ' + str(n_sample)
@@ -81,6 +81,7 @@ multiple_saddles = data.f.multiple_saddles
 print('\nNumber of bad candidates', len(bad_parameters), 'out of ', n_sample)
 print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)
 print('Number of saddles', len(parameter_full), 'out of ', n_sample)
+print('Number of parameters with multiple saddles', len(multiple_saddles), 'out of ', n_sample)
 
 """if bad_candidates is not None:
     fig1 = plt.figure()
@@ -92,7 +93,7 @@ if boring_parameters is not None:
     dsgrn_plot(boring_parameters, 10)
     plt.title('No saddle detected')
 """
-
+"""
 parameter_DSGRN = parameter_to_DSGRN_coord(parameter_full)
 parameter_DSGRN = np.array([parameter_DSGRN[0], parameter_DSGRN[1]])
 unique_DSGRN = np.unique(parameter_DSGRN.round(decimals=5), axis=1)
@@ -108,14 +109,15 @@ for j in unique_DSGRN.T:
         average_sol_long[index_solution_j] = np.mean(solutions[index_solution_j])
     else:
         print('wrong')
+"""
 
 plt.figure()
-dsgrn_heat_plot(parameter_full, average_sol_long)
+dsgrn_heat_plot(parameter_full, solutions)
 plt.title('dsgrn_heat_plot')
 plt.savefig('dsgrn_heat_plot.pdf')
 
 plt.figure()
-dsgrn_contour_plot(parameter_full, average_sol_long)
+dsgrn_contour_plot(parameter_full, solutions)
 plt.title('dsgrn_contour_plot')
 plt.savefig('dsgrn_contour_plot.pdf')
 

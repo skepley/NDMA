@@ -29,10 +29,11 @@ def count_eq(f, hill, p, gridDensity=10):
             
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
+
             return np.shape(eq)[0], eq
 
 
-def estimate_saddle_node(f, hill, p, gridDensity=4):
+def estimate_saddle_node(f, hill, p, gridDensity=10):
     """Attempt to predict whether p admits any saddle-node points by counting equilibria at each value in the hill vector.
     If any values return multiple equilibria, attempt to bound the hill parameters for which these occur. Otherwise,
     return an empty interval."""
@@ -43,18 +44,16 @@ def estimate_saddle_node(f, hill, p, gridDensity=4):
     hill_for_saddle = []
     equilibria_for_saddle = []
 
-    while hillIdx < len(hill) - 1:
+    for hillIdx in range(len(hill) - 1):
         hillMin = hill[hillIdx]  # update lower hill coefficient bound
         hillMax = hill[hillIdx + 1]  # update upper hill coefficient bound
         numEquilibriaOld = numEquilibria
         numEquilibria, eq = count_eq(f, hillMax, p, gridDensity)
-        hillIdx += 1  # increment hill index counter
         if numEquilibria - numEquilibriaOld != 0:
-            n_steps = int(np.ceil(log((hillMax - hillMin) / 5)))
+            n_steps = int(np.ceil(log((hillMax - hillMin) * 5)))
             hill_SN, equilibria = bisection(f, hillMin, hillMax, p, n_steps, gridDensity)
-            if len(hill_for_saddle) > 1 and np.abs(hill_SN - hill_for_saddle[-1]) > 0.1:
-                hill_for_saddle.append(hill_SN)
-                equilibria_for_saddle.append(equilibria)
+            hill_for_saddle.append(hill_SN)
+            equilibria_for_saddle.append(equilibria)
 
     return hill_for_saddle, equilibria_for_saddle
 
@@ -69,7 +68,7 @@ def bisection(f, hill0, hill1, p, n_steps, gridDensity):
     for i in range(n_steps):
         if hill1 - hill0 > 1:
             hill_middle = (hill0 + hill1) / 2
-            nEqmiddle, EqMiddle = count_eq(f, hill_middle, p)
+            nEqmiddle, EqMiddle = count_eq(f, hill_middle, p, gridDensity)
             if nEqmiddle == nEq0:
                 hill0 = hill_middle
                 nEq0 = nEqmiddle
@@ -168,6 +167,8 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
             if len(jSols) > 0:
                 jSols = np.unique(np.round(jSols, 10))  # uniquify solutions
                 SNParameters.append(jSols)
+                SNParameters = np.unique(np.round(SNParameters, 10))
+                # you might have found the same saddles multiple times
             else:
                 badCandidates.append((candidateHill,
                                       equilibria))  # error in computation : there is a saddle node but we could not find it
