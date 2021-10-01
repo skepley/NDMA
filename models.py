@@ -185,8 +185,8 @@ class ToggleSwitch(HillModel):
         g1, p1 = self.coordinates[1].parse_parameters(P1)
         H0 = self.coordinates[0].components[0]
         H1 = self.coordinates[1].components[0]
-        x0Bounds = H0.image(p0[0])
-        x1Bounds = H1.image(p1[0])
+        x0Bounds = (1 / g0) * H0.image(p0[0])
+        x1Bounds = (1 / g1) * H1.image(p1[0])
         u0 = np.array(list(zip(x0Bounds, x1Bounds))).flatten()  # zip initial bounds
 
         # iterate the bootstrap map to obtain an enclosure
@@ -207,6 +207,7 @@ class ToggleSwitch(HillModel):
 
         if nIter == maxIter:
             print('Uh oh. The bootstrap map failed to converge')
+            return u0, None
 
         # unzip i.e. (alpha, beta) ---> (a1, b1)x(a2, b2)
         alpha, beta = np.split(u, 2)
