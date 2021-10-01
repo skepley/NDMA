@@ -1155,7 +1155,6 @@ class HillCoordinate:
 
         return [minInteraction, maxInteraction]
 
-
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and its incoming interactions, {X_1,...,X_{K_i}}.
@@ -1353,6 +1352,37 @@ class HillModel:
         else:
             raise ValueError  # this isn't implemented yet
 
+    def radii_uniqueness_existence(self, equilibrium, *parameter):
+        """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
+        INPUT:
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            gridDensity - density to sample in each dimension.
+            uniqueRootDigits - Number of digits to use for distinguishing between floats.
+            eqBound - N-by-2 array of intervals defining a search rectangle. Initial data will be chosen uniformly here. """
+
+        def F(x):
+            """Fix parameter values in the zero finding map"""
+            return self.__call__(x, *parameter)
+
+        def DF(x):
+            """Fix parameter values in the zero finding map derivative"""
+            return self.dx(x, *parameter)
+
+        DF_x = DF(equilibrium)
+        D2F_x = self.dx2(equilibrium, *parameter)
+        A = np.linalg.inv(DF_x)
+        Y_bound = np.linalg.norm(A @ F(equilibrium))
+        Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
+        Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
+        if Z2_bound < 1e-16:
+            Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
+        delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
+        if delta < 0:
+            return 0, 0
+        max_rad = (1 + np.sqrt(delta)) / (2 * Z2_bound)
+        min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
+        return max_rad, min_rad
+
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
@@ -1377,25 +1407,10 @@ class HillModel:
             """Return true if and only if an equlibrium is positive"""
             return np.all(equilibrium > 0)
 
-        def radii_uniqueness_existence(equilibrium):
-            DF_x = DF(equilibrium)
-            D2F_x = self.dx2(equilibrium, *parameter)
-            A = np.linalg.inv(DF_x)
-            Y_bound = np.linalg.norm(A @ F(equilibrium))
-            Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
-            Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
-            if Z2_bound < 1e-16:
-                Z2_bound = 1e-8 # in case the Z2 bound is too close to zero, we increase it a bit
-            delta = 1 - 4*(Z0_bound + Y_bound) * Z2_bound
-            if delta < 0:
-                return 0, 0
-            max_rad = (1 + np.sqrt(delta))/(2*Z2_bound)
-            min_rad = (1 - np.sqrt(delta))/(2*Z2_bound)
-            return max_rad, min_rad
-
         # build a grid of initial data for Newton algorithm
         if eqBound is None:  # use the trivial equilibrium bounds
-            eqBound = np.array(list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
+            eqBound = np.array(
+                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
         coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
         evalGrid = np.meshgrid(*coordinateIntervals)
         X = np.column_stack([G_i.flatten() for G_i in evalGrid])
@@ -1403,36 +1418,39 @@ class HillModel:
         # Apply rootfinding algorithm to each initial condition
         solns = list(
             filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
-                                                                          for x in X]))  # return equilibria which converged
+                                                                          for x in
+                                                                          X]))  # return equilibria which converged
         if solns:
             equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
-            #equilibria = np.unique(np.round(equilibria/10**np.ceil(log(equilibria)),
+            # equilibria = np.unique(np.round(equilibria/10**np.ceil(log(equilibria)),
             #                                uniqueRootDigits)*10**np.ceil(log(equilibria)), axis=0)
             equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
-            if len(equilibria)>1:
+            if len(equilibria) > 1:
                 all_equilibria = equilibria
                 radii = np.zeros(len(all_equilibria))
                 unique_equilibria = all_equilibria
                 for i in range(len(all_equilibria)):
                     equilibrium = all_equilibria[i]
-                    max_rad, min_rad = radii_uniqueness_existence(equilibrium)
+                    max_rad, min_rad = self.radii_uniqueness_existence(equilibrium, *parameter)
                     radii[i] = max_rad
 
                 radii2 = radii
                 for i in range(len(all_equilibria)):
                     equilibrium1 = all_equilibria[i]
                     radius1 = radii[i]
-                    j = i+1
+                    j = i + 1
                     while j < len(radii2):
                         equilibrium2 = unique_equilibria[j]
                         radius2 = radii2[j]
-                        if np.linalg.norm(equilibrium1-equilibrium2)<np.maximum(radius1, radius2):
+                        if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
                             # remove one of the two from
-                            unique_equilibria = np.delete(unique_equilibria,j)
-                            radii2 = np.delete(radii2,j)
+                            unique_equilibria = np.delete(unique_equilibria, j)
+                            radii2 = np.delete(radii2, j)
                         else:
-                            j = j+1
+                            j = j + 1
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None
+
+
