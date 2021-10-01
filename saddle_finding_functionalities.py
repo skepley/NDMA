@@ -18,22 +18,13 @@ def count_eq(f, hill, p, gridDensity=5):
         return countVector
     else:
         eqBound = f.bootstrap_enclosure(hill, p)[1]
-        if eq is not None:
-            if is_vector(eq):
-                eq = eq[np.newaxis, :]
-            return np.shape(eq)[0], eq  # number of columns is the number of equilibria found
+        if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
+            return 1, eqBound
         else:
-            eq = HillModel.find_equilibria(f, gridDensity * 2, hill, p)
-            if eq is None:
-                eq = np.array([])
-            
-            if is_vector(eq):
-                eq = eq[np.newaxis, :]
-
-            return np.shape(eq)[0], eq
+            return 3, eqBound
 
 
-def estimate_saddle_node(f, hill, p, gridDensity=10):
+def estimate_saddle_node(f, hill, p, gridDensity=5):
     """Attempt to predict whether p admits any saddle-node points by counting equilibria at each value in the hill vector.
     If any values return multiple equilibria, attempt to bound the hill parameters for which these occur. Otherwise,
     return an empty interval."""
@@ -66,21 +57,18 @@ def bisection(f, hill0, hill1, p, n_steps, gridDensity):
     if nEq0 == nEq1:
         print('problem')
     for i in range(n_steps):
-        if hill1 - hill0 > 1:
-            hill_middle = (hill0 + hill1) / 2
-            nEqmiddle, EqMiddle = count_eq(f, hill_middle, p, gridDensity)
-            if nEqmiddle == nEq0:
-                hill0 = hill_middle
-                nEq0 = nEqmiddle
-                Eq0 = EqMiddle
-            elif nEqmiddle == nEq1:
-                hill1 = hill_middle
-                nEq1 = nEqmiddle
-                Eq1 = EqMiddle
-            else:
-                return hill_middle, from_eqs_select_saddle_eq(Eq0, EqMiddle)
+        hill_middle = (hill0 + hill1) / 2
+        nEqmiddle, EqMiddle = count_eq(f, hill_middle, p, gridDensity)
+        if nEqmiddle == nEq0:
+            hill0 = hill_middle
+            nEq0 = nEqmiddle
+            Eq0 = EqMiddle
+        elif nEqmiddle == nEq1:
+            hill1 = hill_middle
+            nEq1 = nEqmiddle
+            Eq1 = EqMiddle
         else:
-            break
+            return hill_middle, from_eqs_select_saddle_eq(Eq0, EqMiddle)
     if nEq0 > nEq1:
         hill = hill0
     else:
@@ -93,26 +81,18 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     # likely undergoing saddle node bifurcation
     # equilibria are stored as row vectors
 
-    #if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
-        #print('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
-    # elif abs(equilibria_at_0.shape[0] - equilibria_at_1.shape[0]) > 2:
-        #print('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
-    if equilibria_at_0.shape[0] > equilibria_at_1.shape[0]:
+    if is_vector(equilibria_at_1):
         temp = equilibria_at_0
         equilibria_at_0 = equilibria_at_1
         equilibria_at_1 = temp
-    #print('Choosing the equilibirum from')
-    #print(equilibria_at_1,equilibria_at_0)
+
     # 0 has less equilibria than 1
-    for i in range(equilibria_at_0.shape[0]):
-        idx = find_nearest_row(equilibria_at_1, equilibria_at_0[i, :])
-        equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
+    idx = find_nearest_row(equilibria_at_1, equilibria_at_0)
+    equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
     if equilibria_at_1.shape[0] == 1:
         return equilibria_at_1[0]
-        #print(equilibria_at_1)
     else:
         equilibrium = np.mean(equilibria_at_1, axis=1)
-        #print(equilibrium)
         return equilibrium
 
 
@@ -156,8 +136,8 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
         #    print('we found possible isolas')
         while hill_for_saddle:  # p should have at least one saddle node point
             candidateHill = np.array(hill_for_saddle.pop())
-            equilibria = np.array(equilibria_for_saddle.pop())
-            if np.any(np.isnan(equilibria)):
+            equilibria = equilibria_for_saddle[0]
+            if not is_vector(equilibria):
                 # something went weird, and the "equilibria" are not really there
                 continue
             SN_candidate_eq = SN_candidates_from_bisection(equilibria)

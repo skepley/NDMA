@@ -1377,9 +1377,9 @@ class HillModel:
         if Z2_bound < 1e-16:
             Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
         delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
-        if delta < 0:
+        if delta < 0 or np.isnan(delta):
             return 0, 0
-        max_rad = (1 + np.sqrt(delta)) / (2 * Z2_bound)
+        max_rad = np.minimum( (1 + np.sqrt(delta)) / (2 * Z2_bound), 0.1) # approximations are too poor to extend further
         min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
         return max_rad, min_rad
 
