@@ -107,12 +107,11 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     for i in range(equilibria_at_0.shape[0]):
         idx = find_nearest_row(equilibria_at_1, equilibria_at_0[i, :])
         equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
-    #print('Found')
-    if equilibria_at_1.shape[1] == 1:
+    if equilibria_at_1.shape[0] == 1:
+        return equilibria_at_1[0]
         #print(equilibria_at_1)
-        return equilibria_at_1
     else:
-        equilibrium = np.mean(equilibria_at_1, axis=0)
+        equilibrium = np.mean(equilibria_at_1, axis=1)
         #print(equilibrium)
         return equilibrium
 
