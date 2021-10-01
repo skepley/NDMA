@@ -15,7 +15,7 @@ from models import ToggleSwitch
 from scipy.interpolate import griddata
 
 
-def count_eq(f, hill, p, gridDensity=10):
+def count_eq(f, hill, p, gridDensity=5):
     """Count the number of equilibria found for a given parameter"""
     if is_vector(hill):
         countVector = np.zeros_like(hill)
@@ -24,7 +24,7 @@ def count_eq(f, hill, p, gridDensity=10):
             countVector[j], equilibria[j] = count_eq(f, hill[j], p)
         return countVector
     else:
-        eq = HillModel.find_equilibria(f, gridDensity, hill, p)
+        eqBound = f.bootstrap_enclosure(hill, p)[1]
         if eq is not None:
             if is_vector(eq):
                 eq = eq[np.newaxis, :]

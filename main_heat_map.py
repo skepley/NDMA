@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 4
+n_sample = 10 ** 3
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -48,8 +48,9 @@ for j in range(n_sample):  # range(n_sample):
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
-            parameter_full = np.append(parameter_full, [a_j], axis=0)
-            solutions = np.append(solutions, SNParameters[k])
+            if k == 1:
+                parameter_full = np.append(parameter_full, [a_j], axis=0)
+                solutions = np.append(solutions, SNParameters[k])
             if k > 0:
                 print('More than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)

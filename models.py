@@ -167,7 +167,7 @@ class ToggleSwitch(HillModel):
 
         return bootstrap
 
-    def bootstrap_enclosure(self, *parameter, tol=1e-13):
+    def bootstrap_enclosure(self, *parameter, tol=1e-8):
         """Return an enclosure of all equilibria for the toggle switch as a rectangle of one of the following forms:
     
         1. R = [a1, b1]x[a2,b2] and the returned array has rows of the form [ai, bi]. In this case the vector field has at least
@@ -205,14 +205,18 @@ class ToggleSwitch(HillModel):
             u = uNew
             nIter += 1
 
-        if nIter == maxIter:
-            print('Uh oh. The bootstrap map failed to converge')
-            return u0, None
-
         # unzip i.e. (alpha, beta) ---> (a1, b1)x(a2, b2)
         alpha, beta = np.split(u, 2)
         intervalFactors = np.array(list(zip(alpha, beta)))
-        return u0, np.unique(np.round(intervalFactors, 13), axis=1).squeeze()  # remove degenerate intervals and return
+        corners = intervalFactors.T
+        if self.radii_uniqueness_existence(corners[0], *parameter)[0] > np.linalg.norm(corners[0]-corners[1]):
+            corners = corners[0]
+        else:
+            if(np.linalg.norm(corners[0]-corners[1]))<10**-4:
+                print(parameter)
+        if nIter == maxIter:
+            print('Uh oh. The bootstrap map failed to converge')
+        return u0, corners.T  # remove degenerate intervals and return
 
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""
@@ -244,6 +248,7 @@ class ToggleSwitch(HillModel):
 
         else:  # Use the old version inherited from the HillModel class. This should only be used to troubleshoot
             return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
+
 
     def plot_equilibria(self, *parameter, nInitData=10):
         """Find equilibria at given parameter and add to current plot"""
