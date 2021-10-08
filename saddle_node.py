@@ -17,7 +17,10 @@ def SN_candidates_from_bisection(equilibria):
     if is_vector(equilibria):
         equilibria = equilibria[np.newaxis, :]
 
-    nEquilibria = np.shape(equilibria)[0]  # count rows of equilibrium data
+    try:
+        nEquilibria = np.shape(equilibria)[0]  # count rows of equilibrium data
+    except:
+        print(22)
     if nEquilibria == 1:
         return equilibria
 
@@ -107,7 +110,7 @@ class SaddleNode:
                              u0,
                              diagnose=True)
 
-        if flag_return is 0:
+        if flag_return == 0:
             saddleNodePoints = []
         else:
             saddleNodePoints = np.empty((0, self.mapDimension))
@@ -128,7 +131,7 @@ class SaddleNode:
                 addSols = np.array([sol.x for sol in saddleNodeZeros])
                 saddleNodePoints = np.append(saddleNodePoints, addSols, axis=0)
 
-        if flag_return is 0 and len(saddleNodePoints) > 0:
+        if flag_return == 0 and len(saddleNodePoints) > 0:
             return np.unique(np.round(saddleNodePoints, uniqueDigits))
         elif len(saddleNodePoints) > 0:
             return np.unique(np.round(saddleNodePoints, uniqueDigits), axis=0)  # remove duplicates and return values
@@ -224,7 +227,7 @@ class SaddleNode:
         index1 = np.array(range(n))
         index2 = np.array(range(n)) + n
         index3 = 2 * n + np.array(range(parameterDim))
-        if parameterDim is 1:
+        if parameterDim == 1:
             # ROW 1
             Dg[np.ix_(index1, index1, index1)] = Dxxf  # block - (1,1,1)
             Dg[np.ix_(index1, index1), index3] = Dxpf

@@ -208,15 +208,18 @@ class ToggleSwitch(HillModel):
         # unzip i.e. (alpha, beta) ---> (a1, b1)x(a2, b2)
         alpha, beta = np.split(u, 2)
         intervalFactors = np.array(list(zip(alpha, beta)))
-        corners = intervalFactors.T
-        if self.radii_uniqueness_existence(corners[0], *parameter)[0] > np.linalg.norm(corners[0]-corners[1]):
-            corners = corners[0]
+        eq1 = np.array([alpha[0], beta[1]])
+        eq2 = np.array([beta[0], alpha[1]])
+        rad = self.radii_uniqueness_existence(eq1, *parameter)[0]
+        dist = np.linalg.norm(eq1-eq2)
+        if self.radii_uniqueness_existence(eq1, *parameter)[0] > np.linalg.norm(eq1-eq2):
+            return u0, eq1
         else:
-            if(np.linalg.norm(corners[0]-corners[1]))<10**-4:
-                print(parameter)
+            if parameter[0] > 75 and (np.linalg.norm(eq1-eq2)) < 10**-9:
+                return u0, eq1
         if nIter == maxIter:
-            print('Uh oh. The bootstrap map failed to converge')
-        return u0, corners.T  # remove degenerate intervals and return
+            print('\nUh oh. The bootstrap map failed to converge')
+        return u0, np.array([eq1, eq2])  # remove degenerate intervals and return
 
     def plot_nullcline(self, *parameter, nNodes=100, domainBounds=((0, 10), (0, 10))):
         """Plot the nullclines for the toggle switch at a given parameter"""

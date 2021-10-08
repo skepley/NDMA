@@ -9,7 +9,7 @@ from saddle_finding_functionalities import *
 from toggle_switch_heat_functionalities import *
 import numpy as np
 import matplotlib.pyplot as plt
-from models.TS_model import ToggleSwitch
+from models import ToggleSwitch
 import sys
 from create_dataset import *
 
@@ -22,13 +22,13 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 3
+n_sample = 10 ** 5
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
     n = 100000
-    create_dataset_TS(100000, file_name)
+    TS_region(100000, file_name)
 
 file_storing = 'heat_map.npz'
 
@@ -48,7 +48,7 @@ for j in range(n_sample):  # range(n_sample):
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
-            if k == 1:
+            if k == 0:
                 parameter_full = np.append(parameter_full, [a_j], axis=0)
                 solutions = np.append(solutions, SNParameters[k])
             if k > 0:
@@ -111,7 +111,7 @@ for j in unique_DSGRN.T:
         print('wrong')
 
 plt.figure()
-dsgrn_heat_plot(parameter_full, average_sol_long)
+dsgrn_heat_plot(parameter_full, np.minimum(solutions, 100))
 plt.title('dsgrn_heat_plot')
 plt.savefig('dsgrn_heat_plot.pdf')
 
