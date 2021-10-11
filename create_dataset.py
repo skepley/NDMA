@@ -18,7 +18,7 @@ from models import ToggleSwitch
 import matplotlib.pyplot as plt
 
 
-def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None):
+def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None, initial_coef=None):
     """
     create_dataset uses the information concerning a Hill model and its number of parameter regions to create a Fisher
     distribution spanning the parameter space such that all parameter regions are similarly sampled.
@@ -78,7 +78,13 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
 
     size_coef = n_parameters*(1+n_parameters)
     # for fisher  size_coef = 2*n_parameters
-    coefficients = np.abs(np.random.normal(size=size_coef))
+    if initial_coef in None:
+        coefficients = np.abs(np.random.normal(size=size_coef))
+    elif len(initial_coef)~=size_coef:
+        coefficients = np.abs(np.random.normal(size=size_coef))
+    else:
+        coefficients = initial_coef
+
     for i in range(100):
         other_random_coefs = np.abs(np.random.normal(size=size_coef))
         if sampler_score(other_random_coefs) < sampler_score(coefficients):
