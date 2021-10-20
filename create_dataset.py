@@ -78,17 +78,23 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
 
     size_coef = n_parameters*(1+n_parameters)
     # for fisher  size_coef = 2*n_parameters
-    if initial_coef in None:
+    if initial_coef is None:
         coefficients = np.abs(np.random.normal(size=size_coef))
-    elif len(initial_coef)~=size_coef:
+    elif len(initial_coef) != size_coef:
         coefficients = np.abs(np.random.normal(size=size_coef))
     else:
         coefficients = initial_coef
-
+    old_score = sampler_score(coefficients)
+    if np.isnan(old_score):
+        old_score = + 4
     for i in range(100):
         other_random_coefs = np.abs(np.random.normal(size=size_coef))
-        if sampler_score(other_random_coefs) < sampler_score(coefficients):
+        new_score = sampler_score(other_random_coefs)
+        if new_score < old_score:
             coefficients = other_random_coefs
+            old_score = new_score
+    if np.isnan(new_score):
+        stopHere  # no regions found??
     print('Random initial condition chosen to the best of what random can give us')
     print('Initial score', -sampler_score(coefficients) + 1)
     optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
@@ -166,8 +172,8 @@ def region_sampler():
         dim = len(mean)
         cov = np.reshape(c2_vec, (dim, dim))
         x = np.random.multivariate_normal(mean, cov, size)
-        par = np.square(x).T
-        # square ensures it's positive
+        par = np.abs(x).T
+        # abs ensures it's positive
         return par
     return multivariate_normal_distributions
 
