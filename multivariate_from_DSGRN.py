@@ -3,7 +3,7 @@ import scipy
 import matplotlib.pyplot as plt
 import DSGRN
 import graphviz
-from create_dataset import create_dataset, region_sampler
+from create_dataset import create_dataset, region_sampler, generate_data_from_coefs
 import json
 
 
@@ -106,21 +106,22 @@ def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_g
     theta_non_zero = T[np.nonzero(T)]
     delta_non_zero = delta[np.nonzero(delta)]
     all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
-
+    """
     success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
     if not success:
-        stopHere
+        raise ValueError('Debugging error')
     L_new, U_new, T_new = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
     pars_Hill, index_dom, index_in = DSGRNpar_to_HillCont(L_new, T_new, U_new )
     if np.max(np.abs(pars_Hill - all_pars))>10**-7:
-        stopHere
+        raise ValueError('Debugging error')
     if DSGRN.par_index_from_sample(parameter_graph, L_new, U_new, T_new) != region:
-        stopHere
+        raise ValueError('Debugging error')
 
     L, U, T = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
     success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
     if not success:
-        stopHere
+        raise ValueError('Debugging error')
+    """
     return all_pars, indices_domain, indices_input
 
 
@@ -205,7 +206,7 @@ if make_figure:
     ax.scatter([a[:, indeces_plot[2]], b[:, indeces_plot[2]], c[:, indeces_plot[2]]], [a[:, indeces_plot[3]], b[:, indeces_plot[3]], c[:, indeces_plot[3]]], marker='*', s=100)
     ax.scatter(sample[:, indeces_plot[2]], sample[:, indeces_plot[3]], marker='o', s=4)
 
-# creat network from file
+# create network from file
 EMT_network = DSGRN.Network("EMT.txt")
 # graph_EMT = graphviz.Source(EMT_network.graphviz())
 # graph_EMT.view()
@@ -334,14 +335,14 @@ L, U, T = HillContpar_to_DSGRN(monostable_pars, indices_domain_EMT, indices_inpu
 success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == monostable_region)
 
 if not success:
-    stopHere
+    raise ValueError('Debugging error')
 
 success = (par_to_region(bistable_pars, both_regions, parameter_graph_EMT, indices_domain_EMT, indices_input_EMT, domain_size_EMT) == 1)
 if not success:
-    stopHere
+    raise ValueError('Debugging error')
 success = (par_to_region(monostable_pars, both_regions, parameter_graph_EMT, indices_domain_EMT, indices_input_EMT, domain_size_EMT) == 0)
 if not success:
-    stopHere
+    raise ValueError('Debugging error')
 
 # Create initial distribution
 Sigma, mu = normal_distribution_around_points(np.reshape(bistable_pars, (1, -1)), np.reshape(monostable_pars, (1, -1)))
@@ -360,9 +361,9 @@ data_sample[:, 0] = bistable_pars
 data_sample[:, 1] = monostable_pars
 ar = assign_region(data_sample)
 if ar[0] != 1:
-    stopHere
+    raise ValueError('Debugging error')
 if ar[1] != 0:
-    stopHere
+    raise ValueError('Debugging error')
 
 data_sample = sampler_global(mu, Sigma.flatten(), 5*10**3)
 data_region = assign_region(data_sample)
@@ -390,6 +391,8 @@ if make_figure2:
     ax.scatter(data_sample[indeces_plot[2], :], data_sample[indeces_plot[3], :], marker='o', s=4)
     ax.scatter([a[indeces_plot[2]], b[indeces_plot[2]]], [a[indeces_plot[3]], b[indeces_plot[3]]], marker='*', s=100)
 
+sampler_global = region_sampler()
+generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters)
 
 file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
 

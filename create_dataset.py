@@ -246,7 +246,7 @@ def subsample(file_name, size_subsample):
     data, regions, coefs = load_dataset(file_name)
     size_data = np.size(data, 1)
     if size_subsample > size_data:
-        stopHere
+        raise ValueError('Cannot ask more samples than the stored ones')
     index_random = np.random.choice(size_data, size=size_subsample, replace=False)
     data_subsample = data[:, index_random]
     region_Subsample = regions[index_random]
