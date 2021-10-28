@@ -42,9 +42,9 @@ class Network12(HillModel):
                          interactionIndex)  # define HillModel for toggle switch by inheritance
 
         self.nComponent = np.sum(
-            [self.coordinates[j].nComponent for j in range(self.dimension)])  # count total number of Hill components
+            [self.coordinates[j].nProduction for j in range(self.dimension)])  # count total number of Hill productionComponents
         self.hillIndex = ezcat(
-            *[self.variableIndexByCoordinate[j] + self.coordinates[j].variableIndexByComponent[1:] - 1 for j in
+            *[self.variableIndexByCoordinate[j] + self.coordinates[j].productionParameterIndexRange[1:] - 1 for j in
               range(self.dimension)])
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if

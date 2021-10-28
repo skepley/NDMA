@@ -37,9 +37,8 @@ interactionTypes = [[3], [2], [1]]  # all interactions are single summand
 interactionIndex = [[0, 1, 2], [0, 2], [0]]
 parameter = [nan_array(len(interactionIndex[idx]), 4) for idx in range(nCoordinate)]
 
-f = HillModel(gamma, parameter, interactionSigns, interactionTypes,
-              interactionIndex)  # define HillModel
-# get easy access to Hill components
+f = HillModel(gamma, parameter, interactionSigns, interactionTypes, interactionIndex)  # define HillModel
+# get easy access to Hill productionComponents
 f0 = f.coordinates[0]
 f1 = f.coordinates[1]
 f2 = f.coordinates[2]

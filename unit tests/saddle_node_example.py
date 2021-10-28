@@ -21,8 +21,8 @@ p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
+H1 = f1.productionComponents[0]
+H2 = f2.productionComponents[0]
 
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)

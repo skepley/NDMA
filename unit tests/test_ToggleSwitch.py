@@ -28,8 +28,8 @@ gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
 f = ToggleSwitch(gammaVar, parameter1)
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
+H1 = f1.productionComponents[0]
+H2 = f2.productionComponents[0]
 
 # set some data to check evaluations with
 x = np.array([4, 3], dtype=float)

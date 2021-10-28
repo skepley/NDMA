@@ -65,8 +65,8 @@ fullParm = f.parse_parameter(
 P0, P1 = parameterByCoordinate = f.unpack_parameter(fullParm)  # unpack variable parameters by component
 g0, p0 = f.coordinates[0].parse_parameters(P0)
 g1, p1 = f.coordinates[1].parse_parameters(P1)
-H0 = f.coordinates[0].components[0]
-H1 = f.coordinates[1].components[0]
+H0 = f.coordinates[0].productionComponents[0]
+H1 = f.coordinates[1].productionComponents[0]
 x0Bounds = (1 / g0) * H0.image(p0[0])
 x1Bounds = (1 / g1) * H1.image(p1[0])
 u0 = np.array(list(zip(x0Bounds, x1Bounds))).flatten()  # zip initial bounds

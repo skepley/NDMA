@@ -38,10 +38,10 @@ gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
 f = ToggleSwitchPlus(gammaVar, parameter1, selfInteractions)
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
-H11 = f1.components[0]
-# H12 = f1.components[1]
-H21 = f2.components[0]
-H22 = f2.components[1]
+H11 = f1.productionComponents[0]
+# H12 = f1.productionComponents[1]
+H21 = f2.productionComponents[0]
+H22 = f2.productionComponents[1]
 
 p1 = componentParmValues[0].flatten()
 p2 = componentParmValues[1].flatten()

@@ -23,7 +23,7 @@ class ToggleSwitch(HillModel):
             parameter - A length-2 list of length-3 parameter vectors of the form (ell, delta, theta)
             hill - float for the (identified) Hill coefficient"""
 
-        nComponent = 2  # number of total Hill components (edges in GRN)
+        nComponent = 2  # number of total Hill productionComponents (edges in GRN)
         parameter = [np.insert(parmList, 3, hill) for parmList in
                      parameter]  # append hillCoefficient as free parameter
         interactionSigns = [[-1], [-1]]
@@ -151,12 +151,12 @@ class ToggleSwitch(HillModel):
         g1, p1 = self.coordinates[1].parse_parameters(P1)
 
         def H0(x):
-            """Evaluate the function from R^2 to R defined by the first and 3rd components of Phi"""
-            return (1 / g0) * self.coordinates[0].components[0](x[1], p0[0])
+            """Evaluate the function from R^2 to R defined by the first and 3rd productionComponents of Phi"""
+            return (1 / g0) * self.coordinates[0].productionComponents[0](x[1], p0[0])
 
         def H1(x):
-            """Evaluate the function from R^2 to R defined by the second and fourth components of Phi"""
-            return (1 / g1) * self.coordinates[1].components[0](x[0], p1[0])
+            """Evaluate the function from R^2 to R defined by the second and fourth productionComponents of Phi"""
+            return (1 / g1) * self.coordinates[1].productionComponents[0](x[0], p1[0])
 
         def bootstrap(u):
             alpha, beta = np.split(u, 2)
@@ -181,8 +181,8 @@ class ToggleSwitch(HillModel):
         P0, P1 = parameterByCoordinate = self.unpack_parameter(fullParm)  # unpack variable parameters by component
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
-        H0 = self.coordinates[0].components[0]
-        H1 = self.coordinates[1].components[0]
+        H0 = self.coordinates[0].productionComponents[0]
+        H1 = self.coordinates[1].productionComponents[0]
         x0Bounds = (1 / g0) * H0.image(p0[0])
         x1Bounds = (1 / g1) * H1.image(p1[0])
         u0 = np.array(list(zip(x0Bounds, x1Bounds))).flatten()  # zip initial bounds

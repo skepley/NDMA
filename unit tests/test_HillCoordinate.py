@@ -45,10 +45,10 @@ pVars = tuple(zip(*product(range(4), range(4))))  # set all parameters as variab
 parameter1[pVars] = np.nan
 p = ezcat(gamma, componentParm[pVars])  # get floating points for all variable parameters
 f = HillCoordinate(parameter1, interactionSign, interactionType, interactionIndex)
-H1 = f.components[0]
-H2 = f.components[1]
-H3 = f.components[2]
-H4 = f.components[3]
+H1 = f.productionComponents[0]
+H2 = f.productionComponents[1]
+H3 = f.productionComponents[2]
+H4 = f.productionComponents[3]
 pComp = [p[1:5], p[5:9], p[9:13], p[13:]]
 
 # ============= correct derivatives =============
@@ -69,17 +69,17 @@ yppx = f.dxdiff2(x, p)
 stopHere
 
 # ============= check derivatives defined by tensor contraction operations =============
-DP = f.diff_interaction(x, p, 1)  # 1-tensor
-D2P = f.diff_interaction(x, p, 2)  # 2-tensor
-D3P = f.diff_interaction(x, p, 3)  # 3-tensor
-DxH = f.diff_component(x, p, [1, 0])  # 2-tensor
-DpH = f.diff_component(x, p, [0, 1])  # 2-tensor
-DxxH = f.diff_component(x, p, [2, 0])  # 3-tensor
-DpxH = f.diff_component(x, p, [1, 1])  # 3-tensor
-DppH = f.diff_component(x, p, [0, 2])  # 3-tensor
-DppxH = f.diff_component(x, p, [1, 2])  # 4-tensor
-DpxxH = f.diff_component(x, p, [2, 1])  # 4-tensor
-DxxxH = f.diff_component(x, p, [3, 0])  # 4-tensor
+DP = f.diff_production(x, p, 1)  # 1-tensor
+D2P = f.diff_production(x, p, 2)  # 2-tensor
+D3P = f.diff_production(x, p, 3)  # 3-tensor
+DxH = f.diff_production_component(x, p, [1, 0])  # 2-tensor
+DpH = f.diff_production_component(x, p, [0, 1])  # 2-tensor
+DxxH = f.diff_production_component(x, p, [2, 0])  # 3-tensor
+DpxH = f.diff_production_component(x, p, [1, 1])  # 3-tensor
+DppH = f.diff_production_component(x, p, [0, 2])  # 3-tensor
+DppxH = f.diff_production_component(x, p, [1, 2])  # 4-tensor
+DpxxH = f.diff_production_component(x, p, [2, 1])  # 4-tensor
+DxxxH = f.diff_production_component(x, p, [3, 0])  # 4-tensor
 
 # ============= build all derivatives via tensor contraction operations =============
 yx2 = np.einsum('i,ij', DP, DxH)
@@ -131,7 +131,7 @@ parameter3[0, -1] = parameter3[1, -1] = np.nan
 p3 = np.array([componentParm[0, -1], componentParm[1, -1]], dtype=float)
 f3 = HillCoordinate(parameter3, interactionSign, interactionType, [0, 1, 2],
                     gamma=gamma)  # gamma is a variable parameter too
-print([f3.diff(x, p3, j) for j in range(f3.nVariableParameter)])
+print([f3.diff(x, p3, j) for j in range(f3.nParameter)])
 
 # check summand evaluations
 parameter4 = np.repeat(np.nan, 12).reshape(3, 4)
@@ -139,6 +139,6 @@ interactionType = [2, 1]
 interactionSign = [1, 1, -1]
 p4 = np.arange(12)
 f4 = HillCoordinate(parameter4, interactionSign, interactionType, [0, 1, 2, 3], gamma=gamma)
-print(f4.diff_interaction(x, p4, 1))
+print(f4.diff_production(x, p4, 1))
 print(f4.diff(x, p4))
 print(f4.dx2(x, p4))

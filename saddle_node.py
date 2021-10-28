@@ -84,7 +84,7 @@ class SaddleNode:
             freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
 
         def curry_parameters(u):
-            x, v, p0 = self.unpack_components(u)  # layout components in (R^n, R^n, R)
+            x, v, p0 = self.unpack_components(u)  # layout productionComponents in (R^n, R^n, R)
             return ezcat(x, v, np.insert(fixedParameter, freeParameterIndex,
                                          p0))  # embed into (R^n, R^n, R^m) by currying fixed Parameters
 
@@ -152,7 +152,7 @@ class SaddleNode:
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
-        parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
+        parameterDim = self.model.nParameter if diffIndex is None else len(ezcat(diffIndex))
         dimension_space = 2 * n + parameterDim
         mapDimension = 2 * n + 1
 
@@ -207,7 +207,7 @@ class SaddleNode:
 
         # unpack input vector and set dimensions for Hessian blocks
         n = self.model.dimension
-        parameterDim = self.model.nVariableParameter if diffIndex is None else len(ezcat(diffIndex))
+        parameterDim = self.model.nParameter if diffIndex is None else len(ezcat(diffIndex))
         dimension_space = 2 * n + parameterDim
         mapDimension = 2 * n + 1
 
