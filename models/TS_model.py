@@ -146,8 +146,7 @@ class ToggleSwitch(HillModel):
 
         fullParm = self.parse_parameter(
             *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
-        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
-            fullParm)  # unpack variable parameters by component
+        P0, P1 = parameterByCoordinate = self.unpack_parameter(fullParm)  # unpack variable parameters by component
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
 
@@ -179,8 +178,7 @@ class ToggleSwitch(HillModel):
         # get initial condition for Phi
         fullParm = self.parse_parameter(
             *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
-        P0, P1 = parameterByCoordinate = self.unpack_variable_parameters(
-            fullParm)  # unpack variable parameters by component
+        P0, P1 = parameterByCoordinate = self.unpack_parameter(fullParm)  # unpack variable parameters by component
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
         H0 = self.coordinates[0].components[0]
@@ -219,7 +217,7 @@ class ToggleSwitch(HillModel):
 
         X1, X2 = np.meshgrid(np.linspace(*domainBounds[0], nNodes), np.linspace(*domainBounds[1], nNodes))
         flattenNodes = np.array([np.ravel(X1), np.ravel(X2)])
-        p1, p2 = self.unpack_variable_parameters(self.parse_parameter(*parameter))
+        p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
         Z1 = np.reshape(self.coordinates[0](flattenNodes, p1), 2 * [nNodes])
         Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
         cs1 = plt.contour(X1, X2, Z1, [0], colors='g', alpha=0)
@@ -237,7 +235,10 @@ class ToggleSwitch(HillModel):
 
         if bootstrap:
             eqBound = self.bootstrap_enclosure(*parameter)[1]
-            if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
+
+            if eqBound is None:
+                return parameter, None
+            elif is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
                 return eqBound
             else:
                 return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits, eqBound=eqBound)

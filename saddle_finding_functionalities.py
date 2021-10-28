@@ -17,13 +17,13 @@ def count_eq(f, hill, p, gridDensity=10):
             countVector[j], equilibria[j] = count_eq(f, hill[j], p)
         return countVector
     else:
-        eq = HillModel.find_equilibria(f, gridDensity, hill, p)
+        eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
             if is_vector(eq):
                 eq = eq[np.newaxis, :]
             return np.shape(eq)[0], eq  # number of columns is the number of equilibria found
         else:
-            eq = HillModel.find_equilibria(f, gridDensity * 2, hill, p)
+            eq = f.find_equilibria(gridDensity * 2, hill, p)
             if eq is None:
                 eq = np.array([])
             

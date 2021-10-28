@@ -113,7 +113,7 @@ def snapshot_data(hillModel, N, parameter):
 
     # unpack decay parameters separately
     gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], hillModel.coordinates,
-                              hillModel.unpack_variable_parameters(hillModel.parse_parameter(N, parameter)))))
+                              hillModel.unpack_parameter(hillModel.parse_parameter(N, parameter)))))
     null1 = (hillModel(np.row_stack([Z, Yp]), N, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
     null2 = (hillModel(np.row_stack([Xp, Z]), N, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
 

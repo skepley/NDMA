@@ -15,60 +15,44 @@ import matplotlib.pyplot as plt
 from itertools import product
 from hill_model import *
 
-# ============= set up the toggle switch example to test on =============
-nCoordinate = 2
-gamma = np.array([1, 1], dtype=float)
-componentParmValues = [np.array([1, 5, 3, 4.1], dtype=float), np.array([1, 6, 3, 4.1], dtype=float)]
-parameter1 = [np.copy(cPValue) for cPValue in componentParmValues]
-compVars = [[j for j in range(4)] for i in range(nCoordinate)]  # set all parameters as variable
-for i in range(nCoordinate):
-    parameter1[i][compVars[i]] = np.nan
-gammaVar = np.array([np.nan, np.nan])  # set both decay rates as variables
-interactionSigns = [[-1], [-1]]
-interactionTypes = [[1], [1]]
-interactionIndex = [[1], [0]]
-f = HillModel(gammaVar, parameter1, interactionSigns, interactionTypes,
-              interactionIndex)  # define HillModel for toggle switch by inheritance
-f1 = f.coordinates[0]
-f2 = f.coordinates[1]
 
-x = np.array([4, 3], dtype=float)
-p = ezcat(*[ezcat(*tup) for tup in zip(gamma, componentParmValues)])  # this only works when all parameters are variable
-p1 = p[:5]
-p2 = p[5:]
+def nan_array(m, n):
+    """Return an m-by-n numpy array or vector of np.nan values"""
 
-# H1 = f.components[0]
-# H2 = f.components[1]
-# H3 = f.components[2]
-# H4 = f.components[3]
-# pComp = [p[1:5], p[5:9], p[9:13], p[13:]]
+    # if m ==1:  # return a vector
+    #     return np.array([np.nan for idx in range(n)])
+    # else:  # return a matrix
+    nanArray = np.empty((m, n))
+    nanArray[:] = np.nan
+    return nanArray
 
 
+# ============= set up the Network 12 example to test on =============
+nCoordinate = 3
 
-y = f(x, p)
-yx = f.dx(x,p)
-yp = f.diff(x,p)
-yxx = f.dx2(x,p)
+# set all parameters as variable
+gamma = np.array([np.nan for idx in range(nCoordinate)])  # set both decay rates as variables
+interactionSigns = [[1, 1, 1], [1, 1], [1]]  # all interactions are activation
+interactionTypes = [[3], [2], [1]]  # all interactions are single summand
+interactionIndex = [[0, 1, 2], [0, 2], [0]]
+parameter = [nan_array(len(interactionIndex[idx]), 4) for idx in range(nCoordinate)]
+
+f = HillModel(gamma, parameter, interactionSigns, interactionTypes,
+              interactionIndex)  # define HillModel
+# get easy access to Hill components
+f0 = f.coordinates[0]
+f1 = f.coordinates[1]
+f2 = f.coordinates[2]
 
 
 
+# set evaluation parameters and state variables
+gammaVals = np.array([10 * (j + 1) for j in range(nCoordinate)])
+pHill = np.array([1, 2, 4, 3])  # choose some Hill function parameters to use for all Hill functions.
+pVals = [ezcat(*len(interactionIndex[idx]) * [pHill]) for idx in range(nCoordinate)]
+x = np.array([4, 4, 0], dtype=float)
+p = ezcat(*[ezcat(*tup) for tup in zip(gammaVals, pVals)])  # this only works when all parameters are variable
 
-# test Hill model equilibrium finding
-eq = f.find_equilibria(10, p)
-print(eq)
-# added vectorized evaluation of Hill Models - DONE
+print(f(x, p))
+print(f.dx(x,p))
 
-
-# plot nullclines and equilibria
-plt.close('all')
-Xp = np.linspace(0, 10, 100)
-Yp = np.linspace(0, 10, 100)
-Z = np.zeros_like(Xp)
-
-N1 = f1(np.row_stack([Z, Yp]), p1) / gamma[0]  # f1 = 0 nullcline
-N2 = f2(np.row_stack([Xp, Z]), p2) / gamma[1]  # f2 = 0 nullcline
-
-plt.figure()
-plt.scatter(eq[0, :], eq[1, :])
-plt.plot(Xp, N2)
-plt.plot(N1, Yp)

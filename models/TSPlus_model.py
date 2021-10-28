@@ -111,7 +111,7 @@ class ToggleSwitchPlus(HillModel):
 
         X1, X2 = np.meshgrid(np.linspace(*domainBounds[0], nNodes), np.linspace(*domainBounds[1], nNodes))
         flattenNodes = np.array([np.ravel(X1), np.ravel(X2)])
-        p1, p2 = self.unpack_variable_parameters(self.parse_parameter(*parameter))
+        p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
         Z1 = np.reshape(self.coordinates[0](flattenNodes, p1), 2 * [nNodes])
         Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
         plt.contour(X1, X2, Z1, [0], colors='g')
