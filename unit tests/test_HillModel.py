@@ -32,26 +32,38 @@ nCoordinate = 3
 
 # set all parameters as variable
 gamma = np.array([np.nan for idx in range(nCoordinate)])  # set both decay rates as variables
-interactionSigns = [[1, 1, 1], [1, 1], [1]]  # all interactions are activation
-interactionTypes = [[3], [2], [1]]  # all interactions are single summand
-interactionIndex = [[0, 1, 2], [0, 2], [0]]
-parameter = [nan_array(len(interactionIndex[idx]), 4) for idx in range(nCoordinate)]
+productionSigns = [[1, 1, 1], [1, 1], [1]]  # all production terms are activating
+productionTypes = [[3], [2], [1]]  # all production terms in a single summand
+productionIndex = [[0, 1, 2], [0, 2], [0]]
+parameter = [nan_array(len(productionIndex[idx]), 4) for idx in range(nCoordinate)]
 
-f = HillModel(gamma, parameter, interactionSigns, interactionTypes, interactionIndex)  # define HillModel
+f = HillModel(gamma, parameter, productionSigns, productionTypes, productionIndex)  # define HillModel
 # get easy access to Hill productionComponents
 f0 = f.coordinates[0]
 f1 = f.coordinates[1]
 f2 = f.coordinates[2]
 
-
-
 # set evaluation parameters and state variables
 gammaVals = np.array([10 * (j + 1) for j in range(nCoordinate)])
 pHill = np.array([1, 2, 4, 3])  # choose some Hill function parameters to use for all Hill functions.
-pVals = [ezcat(*len(interactionIndex[idx]) * [pHill]) for idx in range(nCoordinate)]
+pVals = [ezcat(*len(productionIndex[idx]) * [pHill]) for idx in range(nCoordinate)]
 x = np.array([4, 4, 0], dtype=float)
 p = ezcat(*[ezcat(*tup) for tup in zip(gammaVals, pVals)])  # this only works when all parameters are variable
+# set up callable copy of Hill function which makes up all production terms
+H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
 
+# check f evaluation
 print(f(x, p))
-print(f.dx(x,p))
+print(-gammaVals[0] * x[0] + H(x[0]) + H(x[1]) + H(x[2]))
+print(-gammaVals[1] * x[1] + H(x[0]) + H(x[2]))
+print(-gammaVals[2] * x[2] + H(x[0]))
+print('\n')
 
+print(f.dx(x, p))
+print(np.array([
+    [-gammaVals[0] + H.dx(x[0], []), H.dx(x[1], []), H.dx(x[2], [])],
+    [H.dx(x[0], []), -gammaVals[1], H.dx(x[2], [])],
+    [H.dx(x[0], []), 0, -gammaVals[2]]
+]))
+
+print(f.diff(x,p))

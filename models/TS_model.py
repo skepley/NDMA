@@ -32,12 +32,12 @@ class ToggleSwitch(HillModel):
         super().__init__(gamma, parameter, interactionSigns, interactionTypes,
                          interactionIndex)  # define HillModel for toggle switch by inheritance
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
-        self.hillIndex = np.array(self.variableIndexByCoordinate[
+        self.hillIndex = np.array(self.parameterIndexByCoordinate[
                                   1:]) - 1  # indices of Hill coefficient parameters in the full parameter vector
-        self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
+        self.nonhillIndex = np.array([idx for idx in range(self.nParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
         self.hillInsertionIndex = self.hillIndex - np.array(range(nComponent))
-        self.nVariableParameter -= 1  # adjust variable parameter count by 1 to account for the identified Hill coefficients.
+        self.nParameter -= 1  # adjust variable parameter count by 1 to account for the identified Hill coefficients.
 
     def parse_parameter(self, *parameter):
         """Overload the generic parameter parsing for HillModels to identify all HillCoefficients as a single parameter, hill. The
@@ -57,7 +57,7 @@ class ToggleSwitch(HillModel):
         """Overload the diff function to identify the Hill parameters"""
 
         fullDf = super().diff(x, *parameter)
-        Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf = np.zeros([self.dimension, self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, 0] = np.einsum('ij->i',
                               fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
@@ -72,7 +72,7 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dxdiff(x, *parameter)
         Dpf = np.zeros(
-            2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+            2 * [self.dimension] + [self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:] = fullDf[:, :, self.nonhillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
                                             self.hillIndex])  # insert sum of derivatives for identified hill parameters
@@ -88,7 +88,7 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().diff2(x, *parameter)
         Dpf = np.zeros(
-            [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+            [self.dimension] + 2 * [self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, 1:, 1:] = fullDf[np.ix_(np.arange(self.dimension), self.nonhillIndex,
                                        self.nonhillIndex)]  # insert derivatives of non-hill parameters
         Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
@@ -106,7 +106,7 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dx2diff(x, *parameter)
         Dpf = np.zeros(
-            3 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+            3 * [self.dimension] + [self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, :, 1:] = fullDf[
             np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
                    self.nonhillIndex)]  # insert derivatives of non-hill parameters
@@ -126,7 +126,7 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dxdiff2(x, *parameter)
         Dpf = np.zeros(
-            2 * [self.dimension] + 2 * [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+            2 * [self.dimension] + 2 * [self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:, 1:] = fullDf[
             np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonhillIndex,
                    self.nonhillIndex)]  # insert derivatives of non-hill parameters

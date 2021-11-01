@@ -44,13 +44,13 @@ class Network12(HillModel):
         self.nComponent = np.sum(
             [self.coordinates[j].nProduction for j in range(self.dimension)])  # count total number of Hill productionComponents
         self.hillIndex = ezcat(
-            *[self.variableIndexByCoordinate[j] + self.coordinates[j].productionParameterIndexRange[1:] - 1 for j in
+            *[self.parameterIndexByCoordinate[j] + self.coordinates[j].productionParameterIndexRange[1:] - 1 for j in
               range(self.dimension)])
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
-        self.nonhillIndex = np.array([idx for idx in range(self.nVariableParameter) if
+        self.nonhillIndex = np.array([idx for idx in range(self.nParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
         self.hillInsertionIndex = self.hillIndex - np.arange(self.nComponent)
-        self.nVariableParameter -= (
+        self.nParameter -= (
                 self.nComponent - 1)  # adjust variable parameter count to account for the identified Hill coefficients.
 
     def parse_parameter(self, *parameter):
@@ -71,7 +71,7 @@ class Network12(HillModel):
         """Overload the diff function to identify the Hill parameters"""
 
         fullDf = super().diff(x, *parameter)
-        Dpf = np.zeros([self.dimension, self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+        Dpf = np.zeros([self.dimension, self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, 1:] = fullDf[:, self.nonhillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, 0] = np.einsum('ij->i',
                               fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
@@ -86,7 +86,7 @@ class Network12(HillModel):
 
         fullDf = super().dxdiff(x, *parameter)
         Dpf = np.zeros(
-            2 * [self.dimension] + [self.nVariableParameter])  # initialize full derivative w.r.t. all parameters
+            2 * [self.dimension] + [self.nParameter])  # initialize full derivative w.r.t. all parameters
         Dpf[:, :, 1:] = fullDf[:, :, self.nonhillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
                                             self.hillIndex])  # insert sum of derivatives for identified hill parameters

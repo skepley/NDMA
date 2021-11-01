@@ -143,6 +143,8 @@ class HillComponent:
 
     def curry_parameters(self, parameter):
         """Returns a parameter evaluation vector in R^4 with fixed and variable parameters indexed properly"""
+
+        # TODO: When all parameters of this component are fixed this function still requires an empty list as an argument.
         parameterEvaluation = self.parameterValues.copy()  # get a mutable copy of the fixed parameter values
         parameterEvaluation[self.parameterCallIndex] = parameter  # slice passed parameter vector into callable slots
         return parameterEvaluation
@@ -502,8 +504,8 @@ class HillCoordinate:
         self.parameterValues = parameter  # initialize array for the fixed (non-variable) parameter values
         self.nProduction = len(productionSign)  # number of incoming edges contributing to nonlinear production. In the
         # current version this is always equal to self.nState - 1 (no self edge) or self.nState (self edge)
-        self.productionIndex = slice(-self.nProduction, None,
-                                     1)  # state variable selection for the production term are the trailing
+        self.productionIndex = list(range(self.nState)[slice(-self.nProduction, None,
+                                                             1)])  # state variable selection for the production term are the trailing
         # K variables. If this coordinate has a self edge this is the entire vector, otherwise, it selects all state
         # variables except the first state variable.
         self.productionComponents, self.nParameterByProductionIndex, self.productionParameterIndexRange = self.set_production(
@@ -525,6 +527,19 @@ class HillCoordinate:
             gamma = self.gamma
         return gamma, [parameter[self.productionParameterIndexRange[j]:self.productionParameterIndexRange[j + 1]] for
                        j in range(self.nProduction)]
+
+    def verify_call(self, x, parameter):
+        """A function to insert into function and derivative evaluations to make sure the input variables have correct dimension and shape."""
+
+        if len(x) != self.nState:  # make sure input is the correct size
+            raise IndexError(
+                'State vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
+                    self.nState, len(x)))
+        elif len(parameter) != self.nParameter:
+            raise IndexError(
+                'Parameter vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
+                    self.nParameter, len(parameter)))
+        return
 
     def parameter_to_production_index(self, linearIndex):
         """Convert a linear parameter index to an ordered pair, (i, j) where the specified parameter is the j^th variable
@@ -555,6 +570,8 @@ class HillCoordinate:
         # TODO: Currently the input parameter must be a numpy array even if there is only a single parameter.
         # Evaluate coordinate for a single x in R^n. Slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
         # the j^th Hill function in the production term.
+
+        self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
         productionHillValues = self.evaluate_production_components(x, parameter)
         nonlinearProduction = self.evaluate_production_interaction(
@@ -564,14 +581,14 @@ class HillCoordinate:
     def __repr__(self):
         """Return a canonical string representation of a Hill coordinate"""
 
-        reprString = 'Hill Coordinate: {0} \n'.format(self.index) + 'Interaction Type: p = ' + (
+        reprString = 'Hill Coordinate: \n' + 'Interaction Type: p = ' + (
                 '(' + ')('.join(
             [' + '.join(['z_{0}'.format(idx + 1) for idx in summand]) for summand in self.summand]) + ')\n') + (
                              'Components: H = (' + ', '.join(
                          map(lambda i: 'H+' if i == 1 else 'H-', [H.sign for H in self.productionComponents])) + ') \n')
 
         # initialize index strings
-        stateIndexString = 'State Variables: x = (x_{0}; '.format(self.index)
+        stateIndexString = 'State Variables: x = (x_i; '
         variableIndexString = 'Variable Parameters: lambda = ('
         if self.gammaIsVariable:
             variableIndexString += 'gamma, '
@@ -610,14 +627,14 @@ class HillCoordinate:
         """Evaluate the summands of the production interaction function. This is a map taking values in R^q where the input is
         a vector in R^K obtained by evaluating the Hill production components. The component values which contribute to the same summand are then
         summed according to the productionType."""
-        
+
         return np.array([np.sum(componentValues[self.summand[j]]) for j in range(len(self.summand))])
 
     def evaluate_production_interaction(self, componentValues):
         """Evaluate the production interaction function at vector of HillComponent values: (H1,...,HK). This is the second evaluation
         in the composition which defines the production term."""
 
-        #TODO I think this is the function which should be removed and replaced by calls to evaluation_summand.
+        # TODO I think this is the function which should be removed and replaced by calls to evaluation_summand.
 
         if len(self.summand) == 1:  # this is the all sum interaction type
             return np.sum(componentValues)
@@ -655,7 +672,8 @@ class HillCoordinate:
                     fullProduct = np.prod(summandValues)
                     DxProducts = fullProduct / summandValues  # evaluate all partials only once using q multiplies. The m^th term looks like P/p_m.
                     return np.array([DxProducts[self.summand_index(k)] for k in
-                                     range(self.nProduction)])  # broadcast values to all members sharing the same summand
+                                     range(
+                                         self.nProduction)])  # broadcast values to all members sharing the same summand
 
             elif diffOrder == 2:  # compute second derivative of interaction function composed with Hill Components as a 2-tensor
                 if nSummand == 1:  # the all sum special case
@@ -720,22 +738,23 @@ class HillCoordinate:
         xOrder = diffOrder[0]
         parameterOrder = diffOrder[1]
         gamma, parameterByComponent = self.parse_parameters(parameter)
-        xLocal = x[self.productionIndex]  # extract only the coordinates of x that contribute to the production term.
+        xProduction = x[
+            self.productionIndex]  # extract only the coordinates of x that contribute to the production term.
 
         if parameterOrder == 0:  # return partials of H with respect to x as a length K vector of nonzero values. dH is
             # obtained by taking the diag operator to broadcast this vector to a tensor of correct rank.
 
             if xOrder == 1:
                 DH_nonzero = np.array(
-                    list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, xLocal,
+                    list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, xProduction,
                              parameterByComponent)))  # evaluate vector of first order state variable partial derivatives for Hill productionComponents
             elif xOrder == 2:
                 DH_nonzero = np.array(
-                    list(map(lambda H_k, x_k, p_k: H_k.dx2(x_k, p_k), self.productionComponents, xLocal,
+                    list(map(lambda H_k, x_k, p_k: H_k.dx2(x_k, p_k), self.productionComponents, xProduction,
                              parameterByComponent)))  # evaluate vector of second order state variable partial derivatives for Hill productionComponents
             elif xOrder == 3:
                 DH_nonzero = np.array(
-                    list(map(lambda H_k, x_k, p_k: H_k.dx3(x_k, p_k), self.productionComponents, xLocal,
+                    list(map(lambda H_k, x_k, p_k: H_k.dx3(x_k, p_k), self.productionComponents, xProduction,
                              parameterByComponent)))  # evaluate vector of third order state variable partial derivatives for Hill productionComponents
 
             if fullTensor:
@@ -754,20 +773,20 @@ class HillCoordinate:
 
             if xOrder == 0:  # Compute D_lambda(H)
                 DH_nonzero = np.array(
-                    list(map(lambda idx: self.productionComponents[idx[0]].diff(xLocal[idx[0]],
+                    list(map(lambda idx: self.productionComponents[idx[0]].diff(xProduction[idx[0]],
                                                                                 parameterByComponent[idx[0]],
                                                                                 idx[1]),
                              parameterComponentIndex)))  # evaluate vector of first order partial derivatives for Hill productionComponents
 
             elif xOrder == 1:
                 DH_nonzero = np.array(
-                    list(map(lambda idx: self.productionComponents[idx[0]].dxdiff(xLocal[idx[0]],
+                    list(map(lambda idx: self.productionComponents[idx[0]].dxdiff(xProduction[idx[0]],
                                                                                   parameterByComponent[idx[0]],
                                                                                   idx[1]),
                              parameterComponentIndex)))  # evaluate vector of second order mixed partial derivatives for Hill productionComponents
             elif xOrder == 2:
                 DH_nonzero = np.array(
-                    list(map(lambda idx: self.productionComponents[idx[0]].dx2diff(xLocal[idx[0]],
+                    list(map(lambda idx: self.productionComponents[idx[0]].dx2diff(xProduction[idx[0]],
                                                                                    parameterByComponent[idx[0]],
                                                                                    idx[1]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill productionComponents
@@ -801,14 +820,14 @@ class HillCoordinate:
 
             if xOrder == 0:
                 DH_nonzero = np.array(
-                    list(map(lambda idx: self.productionComponents[idx[0]].diff2(xLocal[idx[0]],
+                    list(map(lambda idx: self.productionComponents[idx[0]].diff2(xProduction[idx[0]],
                                                                                  parameterByComponent[idx[0]],
                                                                                  idx[1:]),
                              parameterComponentIndex)))  # evaluate vector of second order pure partial derivatives for Hill productionComponents
 
             elif xOrder == 1:
                 DH_nonzero = np.array(
-                    list(map(lambda idx: self.productionComponents[idx[0]].dxdiff2(xLocal[idx[0]],
+                    list(map(lambda idx: self.productionComponents[idx[0]].dxdiff2(xProduction[idx[0]],
                                                                                    parameterByComponent[idx[0]],
                                                                                    idx[1:]),
                              parameterComponentIndex)))  # evaluate vector of third order mixed partial derivatives for Hill productionComponents
@@ -838,14 +857,15 @@ class HillCoordinate:
     def dx(self, x, parameter, diffIndex=None):
         """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
 
+        self.verify_call(x, parameter)
         if diffIndex is None:
             gamma, parameterByComponent = self.parse_parameters(parameter)
             Df = np.zeros(self.nState, dtype=float)
             diffInteraction = self.diff_production(x, parameter,
                                                    1)  # evaluate derivative of interaction function (outer term in chain rule)
             DHillComponent = np.array(
-                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.productionComponents, xLocal,
-                         parameterByComponent)))  # evaluate vector of partial derivatives for Hill productionComponents (inner term in chain rule)
+                list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, x[self.productionIndex],
+                         parameterByComponent)))  # evaluate vector of partial derivatives for production Hill Components (inner term in chain rule)
             Df[
                 self.productionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
             Df[0] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
@@ -858,12 +878,13 @@ class HillCoordinate:
         """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
            The parameter must be a variable parameter for one or more HillComponents."""
 
+        self.verify_call(x, parameter)
         if diffIndex is None:  # return the full gradient with respect to parameters as a vector in R^m
             return np.array([self.diff(x, parameter, diffIndex=k) for k in range(self.nParameter)])
 
         else:  # return a single partial derivative as a scalar
             if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
-                return -x[self.index]
+                return -x[0]
             else:  # First obtain a local index in the HillComponent for the differentiation variable
                 diffComponent = np.searchsorted(self.productionParameterIndexRange,
                                                 diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
@@ -873,11 +894,11 @@ class HillCoordinate:
 
                 # Now evaluate the derivative through the HillComponent and embed into tangent space of R^n
                 gamma, parameterByComponent = self.parse_parameters(parameter)
-                xLocal = x[
-                    self.productionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
+                xProduction = x[
+                    self.productionIndex]  # extract only the coordinates of x that contribute to the production of this HillCoordinate
                 diffInteraction = self.diff_production(x, parameter, 1,
                                                        diffIndex=diffComponent)  # evaluate outer term in chain rule
-                dpH = self.productionComponents[diffComponent].diff(xLocal[diffComponent],
+                dpH = self.productionComponents[diffComponent].diff(xProduction[diffComponent],
                                                                     parameterByComponent[
                                                                         diffComponent],
                                                                     diffParameterIndex)  # evaluate inner term in chain rule
@@ -887,22 +908,24 @@ class HillCoordinate:
         """Return the second derivative (Hessian matrix) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
+        self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
-        xLocal = x[
+        xProduction = x[
             self.productionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
         D2f = np.zeros(2 * [self.nState], dtype=float)
 
         D2HillComponent = np.array(
-            list(map(lambda H, x_k, parm: H.dx2(x_k, parm), self.productionComponents, xLocal, parameterByComponent)))
-        # evaluate vector of second partial derivatives for Hill productionComponents
+            list(map(lambda H_k, x_k, p_k: H_k.dx2(x_k, p_k), self.productionComponents, x[self.productionIndex],
+                     parameterByComponent)))
+        # evaluate vector of second partial derivatives for production Hill Components
         nSummand = len(self.productionType)  # number of summands
 
-        if nSummand == 1:  # interaction is all sum
+        if nSummand == 1:  # production is all sum
             D2Nonlinear = np.diag(D2HillComponent)
-        # TODO: Adding more special cases for 2 and even 3 summand interaction types will speed up the computation quite a bit.
+        # TODO: Adding more special cases for 2 and even 3 summand production types will speed up the computation quite a bit.
         #       This should be done if this method ever becomes a bottleneck.
 
-        else:  # interaction function contributes derivative terms via chain rule
+        else:  # production interaction function contributes derivative terms via chain rule
 
             # compute off diagonal terms in Hessian matrix by summand membership
             productionComponentValues = self.evaluate_production_components(x, parameter)
@@ -920,13 +943,14 @@ class HillCoordinate:
             # Only the cross-diagonal terms of this matrix are meaningful.
 
             offDiagonal = np.zeros_like(D2Nonlinear)  # initialize matrix of mixed partials (off diagonal terms)
-            for row in range(nSummand):  # compute Hessian of interaction function (outside term of chain rule)
+            for row in range(
+                    nSummand):  # compute Hessian of production interaction function (outside term of chain rule)
                 for col in range(row + 1, nSummand):
                     offDiagonal[np.ix_(self.summand[row], self.summand[col])] = offDiagonal[
                         np.ix_(self.summand[col], self.summand[row])] = DxxProducts[row, col]
 
             DHillComponent = np.array(
-                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.productionComponents, xLocal,
+                list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, x[self.productionIndex],
                          parameterByComponent)))  # evaluate vector of partial derivatives for Hill productionComponents
             mixedPartials = np.outer(DHillComponent,
                                      DHillComponent)  # mixed partial matrix is outer product of gradients!
@@ -941,6 +965,7 @@ class HillCoordinate:
         R^n and p in R^m as a gradient vector in R^K. If no parameter index is specified this returns the
         full second derivative as the m-by-K Hessian matrix of mixed partials"""
 
+        self.verify_call(x, parameter)
         if diffIndex is None:
             return np.column_stack(
                 list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nParameter))))
@@ -949,11 +974,11 @@ class HillCoordinate:
             D2f = np.zeros(self.nState, dtype=float)  # initialize derivative as a vector
 
             if self.gammaIsVariable and diffIndex == 0:  # derivative with respect to decay parameter
-                D2f[self.index] = -1
+                D2f[0] = -1
                 return D2f
 
             gamma, parameterByComponent = self.parse_parameters(parameter)
-            xLocal = x[
+            xProduction = x[
                 self.productionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
             diffComponent = np.searchsorted(self.productionParameterIndexRange,
                                             diffIndex + 0.5) - 1  # get the component which contains the differentiation variable. Adding 0.5
@@ -964,14 +989,14 @@ class HillCoordinate:
             # initialize inner terms of chain rule derivatives of f
             # DH = np.zeros(2 * [self.nProduction])  # initialize diagonal tensor for DxH as a 2-tensor
             DHillComponent = np.array(
-                list(map(lambda H, x_k, parm: H.dx(x_k, parm), self.productionComponents, xLocal,
+                list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, xProduction,
                          parameterByComponent)))  # 1-tensor of partials for DxH
             # np.einsum('ii->i', DH)[:] = DHillComponent  # build the diagonal tensor for DxH
-            DpH = self.productionComponents[diffComponent].diff(xLocal[diffComponent],
+            DpH = self.productionComponents[diffComponent].diff(xProduction[diffComponent],
                                                                 parameterByComponent[diffComponent],
                                                                 diffParameterIndex)
 
-            D2H = self.productionComponents[diffComponent].dxdiff(xLocal[diffComponent],
+            D2H = self.productionComponents[diffComponent].dxdiff(xProduction[diffComponent],
                                                                   parameterByComponent[diffComponent],
                                                                   diffParameterIndex)  # get the correct mixed partial derivative of H_k
 
@@ -988,6 +1013,7 @@ class HillCoordinate:
         R^n and p in R^m as a Hessian matrix. If no parameter index is specified this returns the
         full second derivative as the m-by-m Hessian matrix"""
 
+        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DlambdaH = self.diff_production_component(x, parameter, [0, 1], fullTensor=fullTensor)
         D2lambdaH = self.diff_production_component(x, parameter, [0, 2], fullTensor=fullTensor)
@@ -1014,6 +1040,7 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
+        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DxxH = self.diff_production_component(x, parameter, [2, 0], fullTensor=fullTensor)
@@ -1040,6 +1067,7 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector (twice) and then the parameter
         (once) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
+        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DxxH = self.diff_production_component(x, parameter, [2, 0], fullTensor=fullTensor)
@@ -1076,6 +1104,7 @@ class HillCoordinate:
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
         evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
+        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DlambdaH = self.diff_production_component(x, parameter, [0, 1], fullTensor=fullTensor)  # Km 2-tensor
@@ -1151,7 +1180,8 @@ class HillCoordinate:
         if parameter is None:
             # all parameters are fixed
             # TODO: This should only require all ell, delta, and gamma variables to be fixed.
-            minInteraction = self.evaluate_production_interaction([H.ell for H in self.productionComponents]) / self.gamma
+            minInteraction = self.evaluate_production_interaction(
+                [H.ell for H in self.productionComponents]) / self.gamma
             maxInteraction = self.evaluate_production_interaction(
                 [H.ell + H.delta for H in self.productionComponents]) / self.gamma
 
@@ -1160,8 +1190,10 @@ class HillCoordinate:
             gamma, parameterByComponent = self.parse_parameters(parameter)
             rectangle = np.row_stack(
                 list(map(lambda H, parm: H.image(parm), self.productionComponents, parameterByComponent)))
-            minInteraction = self.evaluate_production_interaction(rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
-            maxInteraction = self.evaluate_production_interaction(rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
+            minInteraction = self.evaluate_production_interaction(
+                rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
+            maxInteraction = self.evaluate_production_interaction(
+                rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
 
         return [minInteraction, maxInteraction]
 
@@ -1199,24 +1231,27 @@ class HillModel:
         self.productionIndex = productionIndex  # store the list of global indices which contribute to the production term of each coordinate.
         self.stateIndexByCoordinate = [self.state_variable_selection(idx) for idx in range(self.dimension)]
         # create a list of selections which slice the full state vector into subvectors for passing to evaluation functions of each coordinate.
-        self.nVarByCoordinate = [fi.nParameter for fi in
-                                 self.coordinates]  # number of variable parameters by coordinate
-        self.variableIndexByCoordinate = np.insert(np.cumsum(self.nVarByCoordinate), 0,
-                                                   0)  # endpoints for concatenated parameter vector by coordinate
-        self.nVariableParameter = sum(self.nVarByCoordinate)  # number of variable parameters for this HillModel
+        self.nParameterByCoordinate = list(f_i.nParameter for f_i in
+                                           self.coordinates)  # number of variable parameters by coordinate
+        parameterIndexEndpoints = np.insert(np.cumsum(self.nParameterByCoordinate), 0,
+                                            0)  # endpoints for concatenated parameter vector by coordinate
+        self.parameterIndexByCoordinate = [list(range(parameterIndexEndpoints[idx], parameterIndexEndpoints[idx + 1]))
+                                           for idx in
+                                           range(self.dimension)]
+        self.nParameter = sum(self.nParameterByCoordinate)  # number of variable parameters for this HillModel
 
     def state_variable_selection(self, idx):
-        """Return a slice which selects the correct state subvector for the component with specified index."""
+        """Return a list which selects the correct state subvector for the component with specified index."""
 
         if idx in self.productionIndex[idx]:  # This coordinate has a self edge in the GRN
             if self.productionIndex[idx][0] == idx:
-                return np.ix_(self.productionIndex[idx])
+                return self.productionIndex[idx]
             else:
-                print(
+                raise IndexError(
                     'Coordinates with a self edge must have their own index appearing first in their interaction index list')
 
         else:  # This coordinate has no self edge. Append its own global index as the first index of the selection slice.
-            return np.ix_([idx] + self.productionIndex[idx])
+            return [idx] + self.productionIndex[idx]
 
     def parse_parameter(self, *parameter):
         """Default parameter parsing if input is a single vector simply returns the same vector. Otherwise, it assumes
@@ -1237,8 +1272,7 @@ class HillModel:
     def unpack_parameter(self, parameter):
         """Unpack a parameter vector for the HillModel into disjoint parameter slices for each distinct coordinate"""
 
-        return [parameter[self.variableIndexByCoordinate[j]:self.variableIndexByCoordinate[j + 1]] for
-                j in range(self.dimension)]
+        return [parameter[idx] for idx in self.parameterIndexByCoordinate]
 
     def unpack_state(self, x):
         """Unpack a state vector for the HillModel into a length-n list of state vector slices to pass for evaluation into
@@ -1264,8 +1298,8 @@ class HillModel:
         the K-HillComponents for the j^th HillCoordinate.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(
-            *parameter)  # unpack state and parameter vectors
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
+                                                                             *parameter)  # unpack state and parameter vectors
         # by component
         return np.array(
             list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate, parameterByCoordinate)))
@@ -1274,18 +1308,18 @@ class HillModel:
         """Return the derivative of the HillModel vector field with respect to x.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(
-            *parameter)  # unpack state and parameter vectors
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
+                                                                             *parameter)  # unpack state and parameter vectors
         # by component
         if diffIndex is None:
             Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor (i.e. a matrix)
             for (i, f_i) in enumerate(self.coordinates):
-                # get gradient values for f_i
-                Df_i = f_i.dx(stateByCoordinate[i], parameterByCoordinate[i])
-                Dxf[np.ix_([i], self.stateIndexByCoordinate[i])] = Df_i  # embed derivative of f_i into the full derivative of f.
+                # get gradient values for f_i and embed derivative of f_i into the full derivative of f.
+                Dxf[np.ix_([i], self.stateIndexByCoordinate[
+                    i])] = f_i.dx(stateByCoordinate[i], parameterByCoordinate[i])
             return Dxf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def diff(self, x, *parameter, diffIndex=None):
         """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
@@ -1293,20 +1327,18 @@ class HillModel:
         by summing this Jacobian along rows.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
+                                                                             *parameter)  # unpack state and parameter vectors
+        # by component
         if diffIndex is None:  # return the full derivative wrt all parameters
-            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
             Dpf = np.zeros(
-                [self.dimension, len(parameter)])  # initialize Derivative as 2-tensor (Jacobian matrix)
-            parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
-                Dpf[np.ix_([iCoordinate], parameterSlice)] = f_i.diff(x, parameterByCoordinate[
-                    iCoordinate])  # insert derivative of this coordinate
+                [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor (i.e. a matrix)
+            for (i, f_i) in enumerate(self.coordinates):
+                Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
             return Dpf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def dx2(self, x, *parameter):
         """Evaluate the second derivative of f w.r.t. state variable vector (twice), returns a 3D tensr"""
@@ -1328,8 +1360,8 @@ class HillModel:
             parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
+                                           self.parameterIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.globalStateIndex)
                 Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
@@ -1345,8 +1377,8 @@ class HillModel:
             parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
+                                           self.parameterIndexByCoordinate[iCoordinate + 1])
                 Dppf[np.ix_([iCoordinate], parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
             return Dppf
@@ -1374,8 +1406,8 @@ class HillModel:
 
             for iCoordinate in range(self.dimension):
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
+                                           self.parameterIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.globalStateIndex)
                 Dpxxf[np.ix_([iCoordinate], xSlice, xSlice, parameterSlice)] = f_i.dx2diff(x, parameterByCoordinate[
                     iCoordinate])  # insert derivative of this coordinate
@@ -1391,8 +1423,8 @@ class HillModel:
             parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
             for iCoordinate in range(self.dimension):
                 f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.variableIndexByCoordinate[iCoordinate],
-                                           self.variableIndexByCoordinate[iCoordinate + 1])
+                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
+                                           self.parameterIndexByCoordinate[iCoordinate + 1])
                 xSlice = np.array(f_i.globalStateIndex)
                 Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.dxdiff2(x,
                                                                                                    parameterByCoordinate[
