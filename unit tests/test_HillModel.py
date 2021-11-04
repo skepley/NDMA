@@ -47,12 +47,13 @@ f2 = f.coordinates[2]
 gammaVals = np.array([10 * (j + 1) for j in range(nCoordinate)])
 pHill = np.array([1, 2, 4, 3])  # choose some Hill function parameters to use for all Hill functions.
 pVals = [ezcat(*len(productionIndex[idx]) * [pHill]) for idx in range(nCoordinate)]
-x = np.array([4, 4, 0], dtype=float)
+x = np.array([4, 3, 2], dtype=float)
 p = ezcat(*[ezcat(*tup) for tup in zip(gammaVals, pVals)])  # this only works when all parameters are variable
 # set up callable copy of Hill function which makes up all production terms
 H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
 
 # check f evaluation
+print('f eval')
 y = f(x, p)
 print(y)
 print(-gammaVals[0] * x[0] + H(x[0]) + H(x[1]) + H(x[2]))
@@ -61,6 +62,7 @@ print(-gammaVals[2] * x[2] + H(x[0]))
 print('\n')
 
 # check dx evaluation
+print('dx eval')
 yx = f.dx(x, p)
 print(yx)
 print(np.array([
@@ -71,5 +73,22 @@ print(np.array([
 print('\n')
 
 # check diff evaluation
+print('diff eval')
 yp = f.diff(x, p)
 print(yp)
+print('\n')
+
+
+# check dx2 evaluation
+print('dx2 eval')
+yxx = f.dx2(x, p)
+print(yxx)
+
+# check dxdiff evaluation
+print('dxdiff eval')
+ypx = f.dxdiff(x, p)
+print(ypx)
+
+# check diff2 evaluation
+ypp = f.diff2(x, p)
+print(ypp)

@@ -51,34 +51,65 @@ parameter = nan_array(len(productionSign), 4)
 productionVals = ezcat(*len(productionSign) * [pHill])
 gammaVal = 10
 p = ezcat(gammaVal, productionVals)
-x = np.array([1, 4, 4, 0], dtype=float)
+x = np.array([1, 4, 3, 2], dtype=float)
 f = HillCoordinate(parameter, productionSign, productionType, nStateVariables, gamma=np.nan)
 
 # set up callable copy of Hill function which makes up all production terms
-H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
+# H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
+H = HillComponent(1)
+
 
 # check f
 y = f(x, p)
-print(y)
-print(-gammaVal * x[0] + H(x[1]) + H(x[2]) + H(x[3]))
+y_chk = -gammaVal * x[0] + H(x[1], pHill) + H(x[2], pHill) + H(x[3], pHill)
 
+print('Check f')
+print(abs(y-y_chk))
+print('\n')
+
+# FIRST DERIVATIVES
 # check dx
 yx = f.dx(x, p)
-yx_chk = np.array([-gammaVal, H.dx(x[1], []), H.dx(x[2], []), H.dx(x[3], [])])
-print(yx)
-print(yx_chk)
+yx_chk = np.array([-gammaVal, H.dx(x[1], pHill), H.dx(x[2], pHill), H.dx(x[3], pHill)])
+print('Check dx')
+print(yx.shape)
+print(check_equal(yx, yx_chk))
+print('\n')
+
 
 # check diff
 yp = f.diff(x, p)
-print(yp)
+yp_chk = np.array([-x[0]] + [H.diff(x[1], pHill, j) for j in range(4)] + [H.diff(x[2], pHill, j) for j in range(4)] + [H.diff(x[3], pHill, j) for j in range(4)])
+print('Check diff')
+print(yp.shape)
+print(check_equal(yp, yp_chk))
+print('\n')
 
+
+# SECOND DERIVATIVES
 yxx = f.dx2(x, p)
-print(yxx)
+yxx_chk = np.zeros(2 * [nStateVariables])
+yxx_chk[np.ix_(range(1, nStateVariables), range(1, nStateVariables))] = np.diag([H.dx2(x[1], pHill), H.dx2(x[2], pHill), H.dx2(x[3], pHill)])
+print('Check dx2')
+print(yxx.shape)
+print(check_equal(yxx, yxx_chk))
+print('\n')
+
 
 ypx = f.dxdiff(x, p)
-print(ypx)
-#
-# ypp = f.diff2(x, p)
+print('Check dxdiff')
+print(ypx.shape)
+# print(check_equal(yp, yp_chk))
+print('\n')
+
+
+ypp = f.diff2(x, p)
+print('Check diff2')
+print(ypp.shape)
+# print(check_equal(yp, yp_chk))
+print('\n')
+
+
 # yxxx = f.dx3(x, p)
 # ypxx = f.dx2diff(x, p)
 # yppx = f.dxdiff2(x, p)
