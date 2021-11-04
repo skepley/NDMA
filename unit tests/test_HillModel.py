@@ -53,17 +53,23 @@ p = ezcat(*[ezcat(*tup) for tup in zip(gammaVals, pVals)])  # this only works wh
 H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
 
 # check f evaluation
-print(f(x, p))
+y = f(x, p)
+print(y)
 print(-gammaVals[0] * x[0] + H(x[0]) + H(x[1]) + H(x[2]))
 print(-gammaVals[1] * x[1] + H(x[0]) + H(x[2]))
 print(-gammaVals[2] * x[2] + H(x[0]))
 print('\n')
 
-print(f.dx(x, p))
+# check dx evaluation
+yx = f.dx(x, p)
+print(yx)
 print(np.array([
     [-gammaVals[0] + H.dx(x[0], []), H.dx(x[1], []), H.dx(x[2], [])],
     [H.dx(x[0], []), -gammaVals[1], H.dx(x[2], [])],
     [H.dx(x[0], []), 0, -gammaVals[2]]
 ]))
+print('\n')
 
-print(f.diff(x,p))
+# check diff evaluation
+yp = f.diff(x, p)
+print(yp)

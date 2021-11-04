@@ -1298,21 +1298,20 @@ class HillModel:
         the K-HillComponents for the j^th HillCoordinate.
         NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
 
-        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
-                                                                             *parameter)  # unpack state and parameter vectors
-        # by component
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         return np.array(
             list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate, parameterByCoordinate)))
 
     def dx(self, x, *parameter, diffIndex=None):
-        """Return the derivative of the HillModel vector field with respect to x.
-        NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
+        """Return the first derivative of the HillModel vector field with respect to x as a rank-2 tensor (matrix). The i-th row
+        of this tensor is the differential (i.e. gradient) of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
+        and parameter represent a single state and parameter vector."""
 
-        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
-                                                                             *parameter)  # unpack state and parameter vectors
-        # by component
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:
-            Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor (i.e. a matrix)
+            Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor of size NxN
             for (i, f_i) in enumerate(self.coordinates):
                 # get gradient values for f_i and embed derivative of f_i into the full derivative of f.
                 Dxf[np.ix_([i], self.stateIndexByCoordinate[
@@ -1322,116 +1321,123 @@ class HillModel:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def diff(self, x, *parameter, diffIndex=None):
-        """Return the derivative (Jacobian) of the HillModel vector field with respect to n assuming n is a VECTOR
-        of Hill Coefficients. If n is uniform across all HillComponents, then the derivative is a gradient vector obtained
-        by summing this Jacobian along rows.
-        NOTE: This function is not vectorized. It assumes x is a single vector in R^n."""
+        """Return the first derivative of the HillModel vector field with respect to a specific parameter (or the full parameter vector) as
+        a vector (or matrix). In the latter case, the i-th row of this tensor is the differential of
+        the i-th coordinate of f with respect to parameters. NOTE: This function is not vectorized. It assumes x
+        and parameter represent a single state and parameter vector. NOTE: This function is not vectorized."""
 
-        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x,
-                                                                             *parameter)  # unpack state and parameter vectors
-        # by component
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative wrt all parameters
             Dpf = np.zeros(
-                [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor (i.e. a matrix)
+                [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
             for (i, f_i) in enumerate(self.coordinates):
-                Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i], parameterByCoordinate[
-                    i])  # insert derivative of this coordinate
+                Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i],
+                                                                                parameterByCoordinate[
+                                                                                    i])  # insert derivative of this coordinate
             return Dpf
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
-    def dx2(self, x, *parameter):
-        """Evaluate the second derivative of f w.r.t. state variable vector (twice), returns a 3D tensr"""
-        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor
-        parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-        for iCoordinate in range(self.dimension):
-            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.globalStateIndex)
-            Dxf[np.ix_([iCoordinate], xSlice, xSlice)] = f_i.dx2(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
-        return Dxf
+    def dx2(self, x, *parameter, diffIndex=None):
+        """Return the second derivative of the HillModel vector field with respect to x (twice) as a rank-3 tensor. The i-th matrix
+        of this tensor is the Hessian matrix of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
+        and parameter represent a single state and parameter vector."""
+
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
+        if diffIndex is None:
+            Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor of size NxNxN
+            for (i, f_i) in enumerate(self.coordinates):
+                # get second derivatives (Hessian matrices) for f_i and embed each into the full derivative of f.
+                Dxf[np.ix_([i], self.stateIndexByCoordinate[
+                    i], self.stateIndexByCoordinate[
+                               i])] = f_i.dx2(stateByCoordinate[i], parameterByCoordinate[i])
+            return Dxf
+        else:
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def dxdiff(self, x, *parameter, diffIndex=None):
-        """Evaluate the second order mixed derivative of f w.r.t. state variables and parameters (once each)"""
+        """Return the second derivative of the HillModel vector field with respect to the state and parameter vectors (once each)
+        as a rank-3 tensor. The i-th matrix of this tensor is the matrix of mixed partials of the i-th coordinate of f.
+        NOTE: This function is not vectorized. It assumes x and parameter represent a single state and parameter vector."""
+
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative wrt all parameters
-            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dpxf = np.zeros(2 * [self.dimension] + [len(parameter)])  # initialize Derivative as 3-tensor
-            parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
-                                           self.parameterIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.globalStateIndex)
-                Dpxf[np.ix_([iCoordinate], xSlice, parameterSlice)] = f_i.dxdiff(x, parameterByCoordinate[
-                    iCoordinate])  # insert derivative of this coordinate
+            Dpxf = np.zeros(2 * [self.dimension] + [self.nParameter])  # initialize Derivative as 3-tensor of size NxNxM
+            for (i, f_i) in enumerate(self.coordinates):
+                Dpxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dxdiff(
+                    stateByCoordinate[i], parameterByCoordinate[
+                        i])  # insert derivative of this coordinate
             return Dpxf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def diff2(self, x, *parameter, diffIndex=None):
-        """Evaluate the second order derivative of f w.r.t. parameters (twice)"""
-        if diffIndex is None:  # return the full derivative wrt all parameters
-            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dppf = np.zeros([self.dimension] + 2 * [len(parameter)])  # initialize Derivative as 3-tensor
-            parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
-                                           self.parameterIndexByCoordinate[iCoordinate + 1])
-                Dppf[np.ix_([iCoordinate], parameterSlice, parameterSlice)] = f_i.diff2(x, parameterByCoordinate[
-                    iCoordinate])  # insert derivative of this coordinate
+        """Return the second derivative of the HillModel vector field with respect to parameter vector (twice)
+        as a rank-3 tensor. The i-th matrix of this tensor is the Hessian matrix of the i-th coordinate of f with respect
+        to x. NOTE: This function is not vectorized. It assumes x and parameter represent a single state and parameter vector."""
+
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
+        if diffIndex is None:  # return the full derivative with respect to all state and parameter vectors
+            Dppf = np.zeros([self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 3-tensor of size NxMxM
+            for (i, f_i) in enumerate(self.coordinates):
+                Dppf[np.ix_([i], self.parameterIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.diff2(stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
             return Dppf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
-    def dx3(self, x, *parameter):
-        """Evaluate the third derivative of f w.r.t. state variable vector (three times)"""
-        parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-        Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor
-        parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-        for iCoordinate in range(self.dimension):
-            f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-            xSlice = np.array(f_i.globalStateIndex)
-            Dxxxf[np.ix_([iCoordinate], xSlice, xSlice, xSlice)] = f_i.dx3(x, parameterByCoordinate[
-                iCoordinate])  # insert derivative of this coordinate
-        return Dxxxf
+    def dx3(self, x, *parameter, diffIndex=None):
+        """Return the third derivative of the HillModel vector field with respect to x (three times) as a rank-4 tensor. The i-th
+        rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
+        It assumes x and parameter represent a single state and parameter vector."""
+
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
+        if diffIndex is None:  # return the full derivative with respect to all state and parameter vectors
+            Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor of size NxNxNxN
+            for (i, f_i) in enumerate(self.coordinates):
+                Dxxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i])] = f_i.dx3(stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
+            return Dxxxf
+        else:
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def dx2diff(self, x, *parameter, diffIndex=None):
-        """Evaluate the third order derivative of a HillModel w.r.t. parameters (once) and state variable vector (twice)"""
-        if diffIndex is None:  # return the full derivative wrt all parameters
-            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dpxxf = np.zeros(3 * [self.dimension] + [len(parameter)])  # initialize Derivative as 4-tensor
-            parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
+        """Return the third derivative of the HillModel vector field with respect to parameters (once) and x (twice) as a rank-4 tensor. The i-th
+        rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
+        It assumes x and parameter represent a single state and parameter vector."""
 
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
-                                           self.parameterIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.globalStateIndex)
-                Dpxxf[np.ix_([iCoordinate], xSlice, xSlice, parameterSlice)] = f_i.dx2diff(x, parameterByCoordinate[
-                    iCoordinate])  # insert derivative of this coordinate
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
+        if diffIndex is None:  # return the full derivative wrt all parameters
+            Dpxxf = np.zeros(3 * [self.dimension] + [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxNxM
+
+            for (i, f_i) in enumerate(self.coordinates):
+                Dpxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dx2diff(stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
             return Dpxxf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def dxdiff2(self, x, *parameter, diffIndex=None):
-        """Evaluate the third order derivative of f w.r.t. parameters (twice) and state variable vector (once)"""
+        """Return the third derivative of the HillModel vector field with respect to parameters (twice) and x (once) as a rank-4 tensor. The i-th
+        rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
+        It assumes x and parameter represent a single state and parameter vector."""
+
+        # unpack state and parameter vectors by component
+        stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative wrt all parameters
-            parameter = self.parse_parameter(*parameter)  # concatenate all parameters into a vector
-            Dppxf = np.zeros(2 * [self.dimension] + 2 * [len(parameter)])  # initialize Derivative as 4-tensor
-            parameterByCoordinate = self.unpack_parameter(parameter)  # unpack variable parameters by component
-            for iCoordinate in range(self.dimension):
-                f_i = self.coordinates[iCoordinate]  # assign this coordinate function to a variable
-                parameterSlice = np.arange(self.parameterIndexByCoordinate[iCoordinate],
-                                           self.parameterIndexByCoordinate[iCoordinate + 1])
-                xSlice = np.array(f_i.globalStateIndex)
-                Dppxf[np.ix_([iCoordinate], xSlice, parameterSlice, parameterSlice)] = f_i.dxdiff2(x,
-                                                                                                   parameterByCoordinate[
-                                                                                                       iCoordinate])  # insert derivative of this coordinate
+            Dppxf = np.zeros(2 * [self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxMxM
+            for (i, f_i) in enumerate(self.coordinates):
+                Dppxf[np.ix_([i], self.stateIndexByCoordinate[i],  self.parameterIndexByCoordinate[i],  self.parameterIndexByCoordinate[i])] = f_i.dxdiff2(
+                    stateByCoordinate[i], parameterByCoordinate[i])  # insert derivative of this coordinate
             return Dppxf
         else:
-            raise ValueError  # this isn't implemented yet
+            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
