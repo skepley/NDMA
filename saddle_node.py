@@ -2,8 +2,8 @@
 A saddle-node bifurcation class and related functionality.
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 5/18/20; Last revision: 6/25/20
+    Email: s.kepley@vu.nl
+    Created: 5/18/2020
 """
 import numpy as np
 from scipy import optimize
@@ -30,7 +30,8 @@ def SN_candidates_from_bisection(equilibria):
             if eqDistance < minDistance:
                 minDistance = eqDistance
                 eqPair = (idx1, idx2)
-    return np.column_stack((equilibria[eqPair[0], :] + equilibria[eqPair[1], :]) / 2 ) # return midpoint between 2 closest equilibria
+    return np.column_stack(
+        (equilibria[eqPair[0], :] + equilibria[eqPair[1], :]) / 2)  # return midpoint between 2 closest equilibria
 
 
 class SaddleNode:
@@ -60,7 +61,8 @@ class SaddleNode:
         g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
         return ezcat(g1, g2, g3)
 
-    def find_saddle_node(self, freeParameterIndex, *parameter, equilibria=None, freeParameterValues=None, uniqueDigits=5, flag_return=0):
+    def find_saddle_node(self, freeParameterIndex, *parameter, equilibria=None, freeParameterValues=None,
+                         uniqueDigits=5, flag_return=0):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
         equilibrium found for the initial parameter. The function returns only values of the free parameter or returns
@@ -289,19 +291,5 @@ class SaddleNode:
         #     minHill = self(parameter, n0Grid[kIter])
         #     kIter += 1
         # return minHill
-        print('This function needs to be updated before being called')
-        return
-
-    def find_minimizer(self, parameter):
-        """Find a minimizer of a given loss function with respect to remaining parameters via gradient descent"""
-
-        # TODO: 1. This needs to be overhauled to match the fully general class
-        #
-        # def local_function(parameter):
-        #     return self.call_grid(parameter)
-        #
-        # minima = optimize.minimize(local_function, parameter, method='nelder-mead', options={'xatol': 1e-2})
-        # return minima
-
         print('This function needs to be updated before being called')
         return

@@ -2,8 +2,8 @@
 Classes and methods for constructing, evaluating, and doing parameter continuation of Hill Models
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 2/29/20; Last revision: 6/23/20
+    Email: s.kepley@vu.nl
+    Created: 2/29/2020
 """
 import numpy as np
 import warnings
@@ -477,9 +477,16 @@ class HillComponent:
 
 
 class HillCoordinate:
-    """Define a coordinate of the vector field for a Hill system as a function, f : R^K ---> R. If x does not have a nonlinear
-     self interaction, then this is a scalar equation taking the form x' = -gamma*x + p(H_1, H_2,...,H_K) where each H_i is a Hill function depending on x_i which is a state variable
-    which regulates x. Otherwise, it takes the form, x' = -gamma*x + p(H_1, H_2,...,H_K) where we write x_K = x. """
+    """Define a single scalar coordinate of a Hill system. This function always takes the form of a linear decay term
+    and a nonlinear production term defined by composing a polynomial interaction function with HillCoordinates
+    which each depend only on a single variable. Specifically, a HillCoordinate represents a function, f : R^K ---> R.
+    which describes rate of production and decay of a scalar quantity x. If x does not have a nonlinear self production,
+    (i.e. no self loop in the network topology) then this is a scalar differential equation taking the form
+    x' = -gamma*x + p(H_1, H_2, ...,H_{K-1})
+    where each H_i is a Hill function depending on a single state variable y_i != x. Otherwise, if x does contribute to
+    its own nonlinear production, then f takes the form,
+    x' = -gamma*x + p(H_1, H_2,...,H_K)
+    where H_1 depends on x and H_2,...,H_K depend on a state variable y_i != x."""
 
     def __init__(self, parameter, productionSign, productionType, nStateVariables, gamma=np.nan):
         """Hill Coordinate instantiation with the following syntax:
@@ -529,7 +536,7 @@ class HillCoordinate:
                        j in range(self.nProduction)]
 
     def verify_call(self, x, parameter):
-        """A function to insert into function and derivative evaluations to make sure the input variables have correct dimension and shape."""
+        """A function to insert into evaluation methods to make sure the input variables have correct dimension and shape."""
 
         if len(x) != self.nState:  # make sure input is the correct size
             raise IndexError(
@@ -573,15 +580,18 @@ class HillCoordinate:
 
         self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
-        productionHillValues = self.evaluate_production_components(x, parameter)
-        nonlinearProduction = self.evaluate_production_interaction(
-            productionHillValues)  # compose with interaction function
+        productionComponentValues = self.evaluate_production_components(x, parameter)
+        summandValues = self.evaluate_summand(productionComponentValues)
+        nonlinearProduction = np.prod(summandValues)
+        # TODO: Below is the old version. This should be removed once the refactored classes are fully vetted.
+        # nonlinearProduction = self.evaluate_production_interaction(
+        #     productionHillValues)  # compose with production interaction function
         return -gamma * x[0] + nonlinearProduction
 
     def __repr__(self):
         """Return a canonical string representation of a Hill coordinate"""
 
-        reprString = 'Hill Coordinate: \n' + 'Interaction Type: p = ' + (
+        reprString = 'Hill Coordinate: \n' + 'Production Type: p = ' + (
                 '(' + ')('.join(
             [' + '.join(['z_{0}'.format(idx + 1) for idx in summand]) for summand in self.summand]) + ')\n') + (
                              'Components: H = (' + ', '.join(
@@ -635,7 +645,8 @@ class HillCoordinate:
         in the composition which defines the production term."""
 
         # TODO I think this is the function which should be removed and replaced by calls to evaluation_summand.
-
+        print('Deprecation Warning: This function should no longer be called. Use the evaluate_summand method and '
+              'np.prod() instead.')
         if len(self.summand) == 1:  # this is the all sum interaction type
             return np.sum(componentValues)
         else:
@@ -854,25 +865,21 @@ class HillCoordinate:
             else:
                 return DH_nonzero
 
-    def dx(self, x, parameter, diffIndex=None):
+    def dx(self, x, parameter):
         """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
 
         self.verify_call(x, parameter)
-        if diffIndex is None:
-            gamma, parameterByComponent = self.parse_parameters(parameter)
-            Df = np.zeros(self.nState, dtype=float)
-            diffInteraction = self.diff_production(x, parameter,
-                                                   1)  # evaluate derivative of interaction function (outer term in chain rule)
-            DHillComponent = np.array(
-                list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, x[self.productionIndex],
-                         parameterByComponent)))  # evaluate vector of partial derivatives for production Hill Components (inner term in chain rule)
-            Df[
-                self.productionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
-            Df[0] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
-            return Df
-
-        else:  # At some point we may need to call partial derivatives with respect to specific state variables by index
-            return
+        gamma, parameterByComponent = self.parse_parameters(parameter)
+        Df = np.zeros(self.nState, dtype=float)
+        diffInteraction = self.diff_production(x, parameter,
+                                               1)  # evaluate derivative of production interaction function (outer term in chain rule)
+        DHillComponent = np.array(
+            list(map(lambda H_k, x_k, p_k: H_k.dx(x_k, p_k), self.productionComponents, x[self.productionIndex],
+                     parameterByComponent)))  # evaluate vector of partial derivatives for production Hill Components (inner term in chain rule)
+        Df[
+            self.productionIndex] = diffInteraction * DHillComponent  # evaluate gradient of nonlinear part via chain rule
+        Df[0] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
+        return Df
 
     def diff(self, x, parameter, diffIndex=None):
         """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
@@ -1165,7 +1172,7 @@ class HillCoordinate:
         return productionComponents, nParameterByProductionIndex, productionParameterIndexRange
 
     def set_summand(self):
-        """Return the list of lists containing the summand indices defined by the interaction type.
+        """Return the list of lists containing the summand indices defined by the production type.
         EXAMPLE:
             productionType = [2,1,3,1] returns the index partition [[0,1], [2], [3,4,5], [6]]"""
 
@@ -1180,9 +1187,9 @@ class HillCoordinate:
         if parameter is None:
             # all parameters are fixed
             # TODO: This should only require all ell, delta, and gamma variables to be fixed.
-            minInteraction = self.evaluate_production_interaction(
+            minProduction = self.evaluate_production_interaction(
                 [H.ell for H in self.productionComponents]) / self.gamma
-            maxInteraction = self.evaluate_production_interaction(
+            maxProduction = self.evaluate_production_interaction(
                 [H.ell + H.delta for H in self.productionComponents]) / self.gamma
 
         else:
@@ -1190,19 +1197,19 @@ class HillCoordinate:
             gamma, parameterByComponent = self.parse_parameters(parameter)
             rectangle = np.row_stack(
                 list(map(lambda H, parm: H.image(parm), self.productionComponents, parameterByComponent)))
-            minInteraction = self.evaluate_production_interaction(
+            minProduction = self.evaluate_production_interaction(
                 rectangle[:, 0]) / gamma  # min(f) = p(ell_1, ell_2,...,ell_K)
-            maxInteraction = self.evaluate_production_interaction(
+            maxProduction = self.evaluate_production_interaction(
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
 
-        return [minInteraction, maxInteraction]
+        return [minProduction, maxProduction]
 
 
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
-    describes the derivative of the state variable, x_i, as a function of x_i and its incoming interactions, {X_1,...,X_{K_i}}.
-    This function is always a linear decay and a nonlinear interaction defined by a polynomial composition of Hill
-    functions evaluated at the interactions. The vector field is defined coordinate-wise as a vector of HillCoordinate instances"""
+    describes the derivative of the state variable, x_i, as a function of x_i and the state variables influencing
+    its production nonlinearly represented as a HillCoordinate. The vector field is defined coordinate-wise as a vector
+    of HillCoordinate instances."""
 
     def __init__(self, gamma, parameter, productionSign, productionType, productionIndex):
         """Class constructor which has the following syntax:
@@ -1220,8 +1227,6 @@ class HillModel:
                 index."""
 
         # TODO: Class constructor should not do work!
-        # TODO? check if the interaction elements make sense together (i.e. they have the same dimensionality)
-
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
         self.coordinates = [HillCoordinate(np.squeeze(parameter[j]), productionSign[j],
@@ -1303,22 +1308,19 @@ class HillModel:
         return np.array(
             list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate, parameterByCoordinate)))
 
-    def dx(self, x, *parameter, diffIndex=None):
+    def dx(self, x, *parameter):
         """Return the first derivative of the HillModel vector field with respect to x as a rank-2 tensor (matrix). The i-th row
         of this tensor is the differential (i.e. gradient) of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
         and parameter represent a single state and parameter vector."""
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:
-            Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor of size NxN
-            for (i, f_i) in enumerate(self.coordinates):
-                # get gradient values for f_i and embed derivative of f_i into the full derivative of f.
-                Dxf[np.ix_([i], self.stateIndexByCoordinate[
-                    i])] = f_i.dx(stateByCoordinate[i], parameterByCoordinate[i])
-            return Dxf
-        else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+        Dxf = np.zeros(2 * [self.dimension])  # initialize Derivative as 2-tensor of size NxN
+        for (i, f_i) in enumerate(self.coordinates):
+            # get gradient values for f_i and embed derivative of f_i into the full derivative of f.
+            Dxf[np.ix_([i], self.stateIndexByCoordinate[
+                i])] = f_i.dx(stateByCoordinate[i], parameterByCoordinate[i])
+        return Dxf
 
     def diff(self, x, *parameter, diffIndex=None):
         """Return the first derivative of the HillModel vector field with respect to a specific parameter (or the full parameter vector) as
@@ -1339,23 +1341,20 @@ class HillModel:
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
-    def dx2(self, x, *parameter, diffIndex=None):
+    def dx2(self, x, *parameter):
         """Return the second derivative of the HillModel vector field with respect to x (twice) as a rank-3 tensor. The i-th matrix
         of this tensor is the Hessian matrix of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
         and parameter represent a single state and parameter vector."""
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:
-            Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor of size NxNxN
-            for (i, f_i) in enumerate(self.coordinates):
-                # get second derivatives (Hessian matrices) for f_i and embed each into the full derivative of f.
-                Dxf[np.ix_([i], self.stateIndexByCoordinate[
-                    i], self.stateIndexByCoordinate[
-                               i])] = f_i.dx2(stateByCoordinate[i], parameterByCoordinate[i])
-            return Dxf
-        else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+        Dxf = np.zeros(3 * [self.dimension])  # initialize Derivative as 3-tensor of size NxNxN
+        for (i, f_i) in enumerate(self.coordinates):
+            # get second derivatives (Hessian matrices) for f_i and embed each into the full derivative of f.
+            Dxf[np.ix_([i], self.stateIndexByCoordinate[
+                i], self.stateIndexByCoordinate[
+                           i])] = f_i.dx2(stateByCoordinate[i], parameterByCoordinate[i])
+        return Dxf
 
     def dxdiff(self, x, *parameter, diffIndex=None):
         """Return the second derivative of the HillModel vector field with respect to the state and parameter vectors (once each)
@@ -1384,27 +1383,26 @@ class HillModel:
         if diffIndex is None:  # return the full derivative with respect to all state and parameter vectors
             Dppf = np.zeros([self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 3-tensor of size NxMxM
             for (i, f_i) in enumerate(self.coordinates):
-                Dppf[np.ix_([i], self.parameterIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.diff2(stateByCoordinate[i], parameterByCoordinate[
-                    i])  # insert derivative of this coordinate
+                Dppf[np.ix_([i], self.parameterIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.diff2(
+                    stateByCoordinate[i], parameterByCoordinate[
+                        i])  # insert derivative of this coordinate
             return Dppf
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
-    def dx3(self, x, *parameter, diffIndex=None):
+    def dx3(self, x, *parameter):
         """Return the third derivative of the HillModel vector field with respect to x (three times) as a rank-4 tensor. The i-th
         rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
         It assumes x and parameter represent a single state and parameter vector."""
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:  # return the full derivative with respect to all state and parameter vectors
-            Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor of size NxNxNxN
-            for (i, f_i) in enumerate(self.coordinates):
-                Dxxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i])] = f_i.dx3(stateByCoordinate[i], parameterByCoordinate[
-                    i])  # insert derivative of this coordinate
-            return Dxxxf
-        else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+        Dxxxf = np.zeros(4 * [self.dimension])  # initialize Derivative as 4-tensor of size NxNxNxN
+        for (i, f_i) in enumerate(self.coordinates):
+            Dxxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i],
+                         self.stateIndexByCoordinate[i])] = f_i.dx3(stateByCoordinate[i], parameterByCoordinate[
+                i])  # insert derivative of this coordinate
+        return Dxxxf
 
     def dx2diff(self, x, *parameter, diffIndex=None):
         """Return the third derivative of the HillModel vector field with respect to parameters (once) and x (twice) as a rank-4 tensor. The i-th
@@ -1414,11 +1412,14 @@ class HillModel:
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative wrt all parameters
-            Dpxxf = np.zeros(3 * [self.dimension] + [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxNxM
+            Dpxxf = np.zeros(
+                3 * [self.dimension] + [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxNxM
 
             for (i, f_i) in enumerate(self.coordinates):
-                Dpxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dx2diff(stateByCoordinate[i], parameterByCoordinate[
-                    i])  # insert derivative of this coordinate
+                Dpxxf[np.ix_([i], self.stateIndexByCoordinate[i], self.stateIndexByCoordinate[i],
+                             self.parameterIndexByCoordinate[i])] = f_i.dx2diff(stateByCoordinate[i],
+                                                                                parameterByCoordinate[
+                                                                                    i])  # insert derivative of this coordinate
             return Dpxxf
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
@@ -1431,9 +1432,11 @@ class HillModel:
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative wrt all parameters
-            Dppxf = np.zeros(2 * [self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxMxM
+            Dppxf = np.zeros(
+                2 * [self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 4-tensor of size NxNxMxM
             for (i, f_i) in enumerate(self.coordinates):
-                Dppxf[np.ix_([i], self.stateIndexByCoordinate[i],  self.parameterIndexByCoordinate[i],  self.parameterIndexByCoordinate[i])] = f_i.dxdiff2(
+                Dppxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i],
+                             self.parameterIndexByCoordinate[i])] = f_i.dxdiff2(
                     stateByCoordinate[i], parameterByCoordinate[i])  # insert derivative of this coordinate
             return Dppxf
         else:

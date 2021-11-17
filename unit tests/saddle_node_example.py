@@ -4,8 +4,8 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Other files required: hill_model, saddle_node, models
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 4/24/20; Last revision: 6/24/20
+    Email: s.kepley@vu.nl
+    Created: 4/24/2020 
 """
 from hill_model import *
 from saddle_node import SaddleNode

@@ -4,8 +4,8 @@ Testing and analysis of the ToggleSwitch model
     Other files required: models, hill_model
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 6/9/20; Last revision: 6/24/20
+    Email: s.kepley@vu.nl
+    Created: 6/9/2020 
 """
 
 from hill_model import *

@@ -5,8 +5,8 @@ Testing functionality for the ToggleSwitch with self edges allowed.
     See also: test_ToggleSwitch
    
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 7/9/20; Last revision: 7/9/20
+    Email: s.kepley@vu.nl
+    Created: 7/9/2020 
 """
 from hill_model import *
 from models.TSPlus_model import ToggleSwitchPlus

@@ -6,8 +6,8 @@ Troubleshoot problems with the bootstrap algorithm for finding equilibria in the
     See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
    
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 9/30/2021; Last revision: 9/30/2021
+    Email: s.kepley@vu.nl
+    Created: 9/30/2021
 """
 """
 This code creates the heat map, as presented in the article.

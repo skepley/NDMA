@@ -5,8 +5,8 @@ Function and design testing for the HillComponent class
     Other files required: none
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 4/3/20; Last revision: 6/23/20
+    Email: s.kepley@vu.nl
+    Created: 4/3/2020 
 """
 
 import numpy as np

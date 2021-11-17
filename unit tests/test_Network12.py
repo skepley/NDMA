@@ -10,8 +10,8 @@ Optional file header info (to give more details about the function than in the H
     See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
    
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 7/20/20; Last revision: 7/20/20
+    Email: s.kepley@vu.nl
+    Created: 7/20/2020 
 """
 from hill_model import *
 from models.Network12_model import Network12

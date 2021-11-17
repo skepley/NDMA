@@ -5,8 +5,8 @@ Function and design testing for the SaddleNode class
     Other files required: none
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 4/13/20; Last revision: 4/13/20
+    Email: s.kepley@vu.nl
+    Created: 4/13/2020 
 """
 from hill_model import SaddleNode
 from test_HillModel import ToggleSwitch

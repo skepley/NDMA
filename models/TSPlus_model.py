@@ -4,8 +4,8 @@ A separate file to store important HillModel subclasses for analysis or testing
     Other files required: hill_model
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 6/24/20; Last revision: 1/22/21
+    Email: s.kepley@vu.nl
+    Created: 6/24/2020 
 """
 from hill_model import *
 
