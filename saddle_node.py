@@ -74,7 +74,7 @@ class SaddleNode:
         flag_return asks for complete info on the parameters and solutions at the saddle node"""
 
         if equilibria is None:  # start the saddle node search at the equilibria returned by the find_equilbria method
-            equilibria = self.model.find_equilibria(10, *parameter)
+            equilibria = self.model.find_equilibria(3, *parameter)
         if equilibria is None:
             print('No equilibria found for parameter: {0} \n'.format(parameter))
             return []
