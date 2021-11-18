@@ -22,8 +22,35 @@ emtParameters = emtData['data'].transpose()  # transpose to make into an arrow o
 monostableParameters = emtParameters[monostableIdx]
 bistableParameters = emtParameters[bistableIdx]
 
-for idx in range(10):
-    p = monostableParameters[idx]
-    eq = f.find_equilibria(3, p)
-    print(eq)
 
+# # Equilibria search in monostable region
+# hill = 5  # an arbitrary Hill coefficient for testing
+# badCandidates = []
+# for (idx, p) in enumerate(monostableParameters):
+#     eq = f.find_equilibria(3, hill, p)
+#     nEq = np.shape(eq)[0]
+#     print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
+#     if nEq != 1:
+#         badCandidates += (idx, p)
+
+# # Equilibria search in bistable region
+# hill = [2, 5, 10, 20, 30]  # some arbitrary Hill coefficients for a line search
+# badCandidates = []
+# for (idx, p) in enumerate(bistableParameters[:10]):
+#     nEq = []
+#     for d in hill:
+#         eq = f.find_equilibria(3, d, p)
+#         nEq.append(np.shape(eq)[0])
+#     print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
+# # Parameter 7 returns [1, 1, 3, 3, 1]
+
+# Saddle node bifurcation search
+SNB = SaddleNode(f)
+p = bistableParameters[7]
+snb = []
+for d in range(5, 11):
+    snb_d = SNB.find_saddle_node(0, d, p)
+    if len(snb_d) > 0:
+        snb.append(snb_d[0])
+        print('SNB found: {0}'.format(snb_d))
+# SNB found for hill coeffficients ~ 7.27998 and 25.01123

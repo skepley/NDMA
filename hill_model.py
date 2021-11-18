@@ -106,15 +106,16 @@ def verify_call(func):
         hillObj = args[0]  # a HillModel or HillCoordinate instance is passed as 1st position argument to evaluation
         # method
         x = args[1]  # state vector passed as 2nd positional argument to evaluation method
-        if type(hillObj) is HillCoordinate:
+        if issubclass(type(hillObj), HillCoordinate):
             N = hillObj.nState
             parameter = args[2]  # parameter vector passed as 3rd positional argument to evaluation method
-        elif type(hillObj) is HillModel:
+        elif issubclass(type(hillObj), HillModel):
             N = hillObj.dimension
             parameter = hillObj.parse_parameter(*args[2:])  # parameters passed as variable argument to
             # evaluation method and need to be parsed to obtain a single parameter vector
         else:
-            raise TypeError('First argument must be a HillCoordinate or HillModel instance')
+            raise TypeError('First argument must be a HillCoordinate or HillModel instance. Instead it received {'
+                            '0}'.format(type(hillObj)))
 
         if len(x) != N:  # make sure state input is the correct size
             raise IndexError(
@@ -537,8 +538,6 @@ class HillCoordinate:
             this size. """
 
         # TODO: 1. Class constructor should not do work!
-        #       2. Handing local vs global indexing of state variable vectors should be moved to the HillModel class instead of this class.
-        #       3. There is a lot of redundancy between the "summand" methods and "component" methods. It is stil not clear how the code needs to be refactored.
         self.gammaIsVariable = np.isnan(gamma)
         if ~np.isnan(gamma):
             self.gamma = gamma  # set fixed linear decay
@@ -679,9 +678,10 @@ class HillCoordinate:
         """Evaluate the production interaction function at vector of HillComponent values: (H1,...,HK). This is the second evaluation
         in the composition which defines the production term."""
 
-        # TODO I think this is the function which should be removed and replaced by calls to evaluation_summand.
-        print('Deprecation Warning: This function should no longer be called. Use the evaluate_summand method and '
-              'np.prod() instead.')
+        # TODO: This function is deprecated but it is still used in the HillModel.eq_interval method. This usage
+        #  should be replaced with calls to evaluate_summand and np.prod instead.
+        # print('Deprecation Warning: This function should no longer be called. Use the evaluate_summand method and '
+        #       'np.prod() instead.')
         if len(self.summand) == 1:  # this is the all sum interaction type
             return np.sum(componentValues)
         else:
