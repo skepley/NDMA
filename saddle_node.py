@@ -93,8 +93,9 @@ class SaddleNode:
         def init_eigenvector(equilibrium, rho):
             """Choose an initial eigenvector for the saddle-node root finding problem"""
             p = np.insert(fixedParameter, freeParameterIndex, rho)
-            tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p),
-                                             self.model.diff(equilibrium, p, diffIndex=freeParameterIndex))
+            dp_f = self.model.diff(equilibrium, p, diffIndex=freeParameterIndex)  # partial derivative with respect to
+            # the free parameter only
+            tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p), dp_f)
             # in R, we still have one choice of orientation once we fix the norm - this is done by checking the sign of
             # the first element of the eigenvector. If we extend to C, more work will be needed
             if tangentVector[0] < 0:
@@ -102,7 +103,7 @@ class SaddleNode:
             return tangentVector / np.linalg.norm(tangentVector)
 
         def root(u0):
-            """Attempts to return a single root of the SaddleNode rootfinding problem"""
+            """Attempts to return a single root of the SaddleNode root finding problem"""
 
             return find_root(lambda u: self.__call__(curry_parameters(u)),
                              lambda u: self.diff(curry_parameters(u), diffIndex=freeParameterIndex),
@@ -150,7 +151,8 @@ class SaddleNode:
     def diff(self, u, diffIndex=None):
         """Evaluate the derivative of the zero finding map. This is a matrix valued function of the form
         Dg: R^{2n+M} ---> M_{2n+1 x 2n+m}(R).
-        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector."""
+        INPUT: u = (x, v, all parameters) where x is a state vector, v a tangent vector. diffIndex is a single
+        integer denoting the free parameter."""
 
         # unpack input vector and set dimensions for Jacobian blocks
         n = self.model.dimension
@@ -170,8 +172,11 @@ class SaddleNode:
             # BLOCK ROW 1
             Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
             # block - (1, 2) is an n-by-n zero block
-            a = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # block - (1,3)
-            Dg[index1, index3] = a
+            dp_f = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)  # derivative with respect to full
+            # parameter vector
+
+            # a = self.model.diff(stateVector, fullParameter, diffIndex=diffIndex)
+            Dg[index1, index3] = dp_f  # block - (1,3)
             # BLOCK ROW 2
             Dg[np.ix_(index2, index1)] = np.einsum('ijk,j', self.model.dx2(stateVector, fullParameter),
                                                    tangentVector)  # block - (2,1)

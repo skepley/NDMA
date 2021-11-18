@@ -28,7 +28,7 @@ class EMT(HillModel):
             parameter - A length-6 list of parameter arrays of size K_i-by-4 where K_i is the number of incoming edges to
              node i. Each row of a parameter array has the form (ell, delta, theta, hill)."""
 
-        parameter = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0]*[
+        parameter = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
             np.nan]]).transpose()], axis=1), parameter))  # Insert a nan value into the Hill coefficient spot of the
         # HillComponent parameter list associated to every edge
         productionSign = [[-1, -1], [-1, -1], [1, -1], [-1], [-1, 1, -1],
@@ -75,87 +75,96 @@ class EMT(HillModel):
         parameterVector = ezcat(
             *parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
         hill, p = parameterVector[0], parameterVector[1:]
-        print('Im Mr Meeseeks look at me')
         return np.insert(p, self.hillInsertionIndex, hill)
 
     def diff(self, x, *parameter, diffIndex=None):
         """Overload the diff function to identify the Hill parameters"""
 
+        fullDf = super().diff(x, *parameter)
+        Dpf = np.zeros(
+            [self.dimension, self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf[:, 1:] = fullDf[:, self.nonHillIndex]  # insert derivatives of non-hill parameters
+        Dpf[:, 0] = np.einsum('ij->i',
+                              fullDf[:, self.hillIndex])  # insert sum of all derivatives for Hill coefficient
+        # parameters
         if diffIndex is None:
-            fullDf = super().diff(x, *parameter)
-            Dpf = np.zeros(
-                [self.dimension, self.nReducedParameter])  # initialize full derivative with respect to all parameters
-            Dpf[:, 1:] = fullDf[:, self.nonHillIndex]  # insert derivatives of non-hill parameters
-            Dpf[:, 0] = np.einsum('ij->i',
-                                  fullDf[:, self.hillIndex])  # insert sum of all derivatives for Hill coefficient
-            # parameters
             return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(Dpf[:, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
     def dxdiff(self, x, *parameter, diffIndex=None):
         """Overload the dxdiff function to identify the Hill parameters"""
 
+        fullDf = super().dxdiff(x, *parameter)
+        Dpf = np.zeros(
+            2 * [self.dimension] + [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf[:, :, 1:] = fullDf[:, :, self.nonHillIndex]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
+                                            self.hillIndex])  # insert sum of derivatives for identified hill parameters
         if diffIndex is None:
-            fullDf = super().dxdiff(x, *parameter)
-            Dpf = np.zeros(
-                2 * [self.dimension] + [self.nReducedParameter])  # initialize full derivative with respect to all parameters
-            Dpf[:, :, 1:] = fullDf[:, :, self.nonHillIndex]  # insert derivatives of non-hill parameters
-            Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
-                                                self.hillIndex])  # insert sum of derivatives for identified hill parameters
             return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(
+                Dpf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
 
-    def diff2(self, x, *parameter, diffIndex=None):
+    def diff2(self, x, *parameter, diffIndex=[None, None]):
         """Overload the diff2 function to identify the Hill parameters"""
 
-        if diffIndex is None:
-            fullDf = super().diff2(x, *parameter)
-            Dpf = np.zeros(
-                [self.dimension] + 2 * [self.nReducedParameter])  # initialize full derivative with respect to all parameters
-            Dpf[:, 1:, 1:] = fullDf[np.ix_(np.arange(self.dimension), self.nonHillIndex,
-                                           self.nonHillIndex)]  # insert derivatives of non-hill parameters
-            Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
-                                                             self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+        fullDf = super().diff2(x, *parameter)
+        Dpf = np.zeros(
+            [self.dimension] + 2 * [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf[:, 1:, 1:] = fullDf[np.ix_(np.arange(self.dimension), self.nonHillIndex,
+                                       self.nonHillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
+                                                         self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+        if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), diffIndex,
+                           diffIndex)])  # return only slices for the specified subset of partials
 
     def dx2diff(self, x, *parameter, diffIndex=None):
         """Overload the dx2diff function to identify the Hill parameters"""
 
+        fullDf = super().dx2diff(x, *parameter)
+        Dpf = np.zeros(
+            3 * [self.dimension] + [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf[:, :, :, 1:] = fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.nonHillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
         if diffIndex is None:
-            fullDf = super().dx2diff(x, *parameter)
-            Dpf = np.zeros(
-                3 * [self.dimension] + [self.nReducedParameter])  # initialize full derivative with respect to all parameters
-            Dpf[:, :, :, 1:] = fullDf[
-                np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
-                       self.nonHillIndex)]  # insert derivatives of non-hill parameters
-            Dpf[:, :, :, 0] = np.einsum('ijkl->ijk', fullDf[
-                np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
-                       self.hillIndex)])  # insert sum of derivatives for identified hill parameters
             return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
+                           diffIndex)])  # return only slices for the specified subset of partials
 
-    def dxdiff2(self, x, *parameter, diffIndex=None):
+    def dxdiff2(self, x, *parameter, diffIndex=[None, None]):
         """Overload the dxdiff2 function to identify the Hill parameters"""
 
-        if diffIndex is None:
-            fullDf = super().dxdiff2(x, *parameter)
-            Dpf = np.zeros(
-                2 * [self.dimension] + 2 * [
-                    self.nReducedParameter])  # initialize full derivative with respect to all parameters
-            Dpf[:, :, 1:, 1:] = fullDf[
-                np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonHillIndex,
-                       self.nonHillIndex)]  # insert derivatives of non-hill parameters
-            Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[
-                np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex,
-                       self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+        fullDf = super().dxdiff2(x, *parameter)
+        Dpf = np.zeros(
+            2 * [self.dimension] + 2 * [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf[:, :, 1:, 1:] = fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonHillIndex,
+                   self.nonHillIndex)]  # insert derivatives of non-hill parameters
+        Dpf[:, :, 0, 0] = np.einsum('ijkl->ij', fullDf[
+            np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.hillIndex,
+                   self.hillIndex)])  # insert sum of derivatives for identified hill parameters
+        if diffIndex[0] is None and diffIndex[1] is None:
             return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(
+                Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), diffIndex,
+                           diffIndex)])  # return only slices for the specified subset of partials
 
 
 if __name__ == "__main__":
