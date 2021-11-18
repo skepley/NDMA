@@ -97,6 +97,41 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
             return np.nan
 
 
+def verify_call(func):
+    """Evaluation method decorator for validating evaluation calls. This can be used when troubleshooting and
+    testing and then omitted in production runs to improve efficiency. This decorates any HillModel or
+    HillCoordinate method which has inputs of the form (self, x, *parameter, **kwargs)."""
+
+    def func_wrapper(*args, **kwargs):
+        hillObj = args[0]  # a HillModel or HillCoordinate instance is passed as 1st position argument to evaluation
+        # method
+        x = args[1]  # state vector passed as 2nd positional argument to evaluation method
+        if type(hillObj) is HillCoordinate:
+            N = hillObj.nState
+            parameter = args[2]  # parameter vector passed as 3rd positional argument to evaluation method
+        elif type(hillObj) is HillModel:
+            N = hillObj.dimension
+            parameter = hillObj.parse_parameter(*args[2:])  # parameters passed as variable argument to
+            # evaluation method and need to be parsed to obtain a single parameter vector
+        else:
+            raise TypeError('First argument must be a HillCoordinate or HillModel instance')
+
+        if len(x) != N:  # make sure state input is the correct size
+            raise IndexError(
+                'State vector for this evaluation should be size {0} but received a vector of size {1}'.format(N,
+                                                                                                               len(x)))
+        elif len(parameter) != hillObj.nParameter:
+            raise IndexError(
+                'Parsed parameter vector for this evaluation should be size {0} but received a vector of '
+                'size {1}'.format(
+                    hillObj.nParameter, len(parameter)))
+
+        else:  # parameter and state vectors are correct size. Pass through to evaluation method
+            return func(*args, **kwargs)
+
+    return func_wrapper
+
+
 PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
 
 
@@ -535,18 +570,18 @@ class HillCoordinate:
         return gamma, [parameter[self.productionParameterIndexRange[j]:self.productionParameterIndexRange[j + 1]] for
                        j in range(self.nProduction)]
 
-    def verify_call(self, x, parameter):
-        """A function to insert into evaluation methods to make sure the input variables have correct dimension and shape."""
-
-        if len(x) != self.nState:  # make sure input is the correct size
-            raise IndexError(
-                'State vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
-                    self.nState, len(x)))
-        elif len(parameter) != self.nParameter:
-            raise IndexError(
-                'Parameter vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
-                    self.nParameter, len(parameter)))
-        return
+    # def verify_call(self, x, parameter):
+    #     """A function to insert into evaluation methods to make sure the input variables have correct dimension and shape."""
+    #
+    #     if len(x) != self.nState:  # make sure input is the correct size
+    #         raise IndexError(
+    #             'State vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
+    #                 self.nState, len(x)))
+    #     elif len(parameter) != self.nParameter:
+    #         raise IndexError(
+    #             'Parameter vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
+    #                 self.nParameter, len(parameter)))
+    #     return
 
     def parameter_to_production_index(self, linearIndex):
         """Convert a linear parameter index to an ordered pair, (i, j) where the specified parameter is the j^th variable
@@ -567,6 +602,7 @@ class HillCoordinate:
 
         return self.productionParameterIndexRange[componentIdx] + localIdx
 
+    @verify_call
     def __call__(self, x, parameter):
         """Evaluate the Hill coordinate on a vector of state and parameter variables. This is a
         map of the form  g: R^n x R^m ---> R where n is the number of state variables for this Hill coordinate (in the current version
@@ -578,7 +614,6 @@ class HillCoordinate:
         # Evaluate coordinate for a single x in R^n. Slice callable parameters into a list of length K. The j^th list contains the variable parameters belonging to
         # the j^th Hill function in the production term.
 
-        self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
         productionComponentValues = self.evaluate_production_components(x, parameter)
         summandValues = self.evaluate_summand(productionComponentValues)
@@ -865,10 +900,10 @@ class HillCoordinate:
             else:
                 return DH_nonzero
 
+    @verify_call
     def dx(self, x, parameter):
         """Return the derivative as a gradient vector evaluated at x in R^n and p in R^m"""
 
-        self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
         Df = np.zeros(self.nState, dtype=float)
         diffInteraction = self.diff_production(x, parameter,
@@ -881,11 +916,11 @@ class HillCoordinate:
         Df[0] -= gamma  # Add derivative of linear part to the gradient at this HillCoordinate
         return Df
 
+    @verify_call
     def diff(self, x, parameter, diffIndex=None):
         """Evaluate the derivative of a Hill coordinate with respect to a parameter at the specified local index.
            The parameter must be a variable parameter for one or more HillComponents."""
 
-        self.verify_call(x, parameter)
         if diffIndex is None:  # return the full gradient with respect to parameters as a vector in R^m
             return np.array([self.diff(x, parameter, diffIndex=k) for k in range(self.nParameter)])
 
@@ -911,11 +946,11 @@ class HillCoordinate:
                                                                     diffParameterIndex)  # evaluate inner term in chain rule
                 return diffInteraction * dpH
 
+    @verify_call
     def dx2(self, x, parameter):
         """Return the second derivative (Hessian matrix) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
-        self.verify_call(x, parameter)
         gamma, parameterByComponent = self.parse_parameters(parameter)
         xProduction = x[
             self.productionIndex]  # extract only the coordinates of x that this HillCoordinate depends on as a vector in R^{K}
@@ -967,12 +1002,12 @@ class HillCoordinate:
         D2f[np.ix_(self.productionIndex, self.productionIndex)] = D2Nonlinear
         return D2f
 
+    @verify_call
     def dxdiff(self, x, parameter, diffIndex=None):
         """Return the mixed second derivative with respect to x and a scalar parameter evaluated at x in
         R^n and p in R^m as a gradient vector in R^K. If no parameter index is specified this returns the
         full second derivative as the m-by-K Hessian matrix of mixed partials"""
 
-        self.verify_call(x, parameter)
         if diffIndex is None:
             return np.column_stack(
                 list(map(lambda idx: self.dxdiff(x, parameter, idx), range(self.nParameter))))
@@ -1015,12 +1050,12 @@ class HillCoordinate:
             D2f[self.productionIndex[diffComponent]] += D2H * Dp  # contribution from Dp(H)*D_parm(DxH)
             return D2f
 
+    @verify_call
     def diff2(self, x, parameter, *diffIndex, fullTensor=True):
         """Return the second derivative with respect to parameters specified evaluated at x in
         R^n and p in R^m as a Hessian matrix. If no parameter index is specified this returns the
         full second derivative as the m-by-m Hessian matrix"""
 
-        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DlambdaH = self.diff_production_component(x, parameter, [0, 1], fullTensor=fullTensor)
         D2lambdaH = self.diff_production_component(x, parameter, [0, 2], fullTensor=fullTensor)
@@ -1043,11 +1078,11 @@ class HillCoordinate:
         else:
             return DpoH
 
+    @verify_call
     def dx3(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector evaluated at x in
         R^n and p in R^m as a K-by-K matrix"""
 
-        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DxxH = self.diff_production_component(x, parameter, [2, 0], fullTensor=fullTensor)
@@ -1070,11 +1105,11 @@ class HillCoordinate:
 
             return D3p * DxH * DxH * DxH + 3 * D2p * DxH * DxxH + Dp * DxxxH
 
+    @verify_call
     def dx2diff(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector (twice) and then the parameter
         (once) evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
-        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DxxH = self.diff_production_component(x, parameter, [2, 0], fullTensor=fullTensor)
@@ -1107,11 +1142,11 @@ class HillCoordinate:
         else:
             return DpoH
 
+    @verify_call
     def dxdiff2(self, x, parameter, fullTensor=True):
         """Return the third derivative (3-tensor) with respect to the state variable vector (once) and the parameters (twice)
         evaluated at x in R^n and p in R^m as a K-by-K matrix"""
 
-        self.verify_call(x, parameter)
         # get vectors of appropriate partial derivatives of H (inner terms of chain rule)
         DxH = self.diff_production_component(x, parameter, [1, 0], fullTensor=fullTensor)
         DlambdaH = self.diff_production_component(x, parameter, [0, 1], fullTensor=fullTensor)  # Km 2-tensor
@@ -1270,6 +1305,8 @@ class HillModel:
         Any of these parameters which are not a variable for the model are simply omitted in this concatenated vector."""
 
         if parameter:
+            parameterVector = ezcat(*parameter)
+
             return ezcat(*parameter)
         else:
             return np.array([])
@@ -1295,6 +1332,7 @@ class HillModel:
         stateByCoordinate = self.unpack_state(x)  # unpack state variables by coordinate
         return stateByCoordinate, parameterByCoordinate
 
+    @verify_call
     def __call__(self, x, *parameter):
         """Evaluate the vector field defined by this HillModel instance. This is a function of the form
         f: R^n x R^{m_1} x ... x R^{m_n} ---> R^n where the j^th Hill coordinate has m_j variable parameters. The syntax
@@ -1308,6 +1346,7 @@ class HillModel:
         return np.array(
             list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate, parameterByCoordinate)))
 
+    @verify_call
     def dx(self, x, *parameter):
         """Return the first derivative of the HillModel vector field with respect to x as a rank-2 tensor (matrix). The i-th row
         of this tensor is the differential (i.e. gradient) of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
@@ -1322,6 +1361,7 @@ class HillModel:
                 i])] = f_i.dx(stateByCoordinate[i], parameterByCoordinate[i])
         return Dxf
 
+    @verify_call
     def diff(self, x, *parameter, diffIndex=None):
         """Return the first derivative of the HillModel vector field with respect to a specific parameter (or the full parameter vector) as
         a vector (or matrix). In the latter case, the i-th row of this tensor is the differential of
@@ -1341,6 +1381,7 @@ class HillModel:
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
+    @verify_call
     def dx2(self, x, *parameter):
         """Return the second derivative of the HillModel vector field with respect to x (twice) as a rank-3 tensor. The i-th matrix
         of this tensor is the Hessian matrix of the i-th coordinate of f. NOTE: This function is not vectorized. It assumes x
@@ -1356,6 +1397,7 @@ class HillModel:
                            i])] = f_i.dx2(stateByCoordinate[i], parameterByCoordinate[i])
         return Dxf
 
+    @verify_call
     def dxdiff(self, x, *parameter, diffIndex=None):
         """Return the second derivative of the HillModel vector field with respect to the state and parameter vectors (once each)
         as a rank-3 tensor. The i-th matrix of this tensor is the matrix of mixed partials of the i-th coordinate of f.
@@ -1373,6 +1415,7 @@ class HillModel:
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
+    @verify_call
     def diff2(self, x, *parameter, diffIndex=None):
         """Return the second derivative of the HillModel vector field with respect to parameter vector (twice)
         as a rank-3 tensor. The i-th matrix of this tensor is the Hessian matrix of the i-th coordinate of f with respect
@@ -1390,6 +1433,7 @@ class HillModel:
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
+    @verify_call
     def dx3(self, x, *parameter):
         """Return the third derivative of the HillModel vector field with respect to x (three times) as a rank-4 tensor. The i-th
         rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
@@ -1404,6 +1448,7 @@ class HillModel:
                 i])  # insert derivative of this coordinate
         return Dxxxf
 
+    @verify_call
     def dx2diff(self, x, *parameter, diffIndex=None):
         """Return the third derivative of the HillModel vector field with respect to parameters (once) and x (twice) as a rank-4 tensor. The i-th
         rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
@@ -1424,6 +1469,7 @@ class HillModel:
         else:
             raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
+    @verify_call
     def dxdiff2(self, x, *parameter, diffIndex=None):
         """Return the third derivative of the HillModel vector field with respect to parameters (twice) and x (once) as a rank-4 tensor. The i-th
         rank-3 subtensor of this tensor is the associated third derivative of the i-th coordinate of f. NOTE: This function is not vectorized.
