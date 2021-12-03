@@ -126,9 +126,12 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = [[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate), np.sum(v_wrong_parity_center)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate),np.sum(v_wrong_parity_donut)]]
+mat_for_chi_test = np.array([[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate), np.sum(v_wrong_parity_center)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate),np.sum(v_wrong_parity_donut)]])
 
-unused, p = chi2_contingency(mat_for_chi_test)
+# TODO: delete this lineeeeeeeeeeeeee!!!!
+mat_for_chi_test = mat_for_chi_test + 1
+
+unused, p, a, b = chi2_contingency(mat_for_chi_test)
 
 if p <= 0.05:
     print('We reject the null hypothesis: there is correlation between saddles and center region')
