@@ -4,8 +4,8 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Other files required: hill_model, saddle_node, models
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 4/24/20; Last revision: 6/24/20
+    Email: s.kepley@vu.nl
+    Created: 4/24/2020 
 """
 from hill_model import *
 from saddle_node import SaddleNode
@@ -21,8 +21,8 @@ p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
+H1 = f1.productionComponents[0]
+H2 = f2.productionComponents[0]
 
 p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
@@ -113,7 +113,7 @@ def snapshot_data(hillModel, N, parameter):
 
     # unpack decay parameters separately
     gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], hillModel.coordinates,
-                              hillModel.unpack_variable_parameters(hillModel.parse_parameter(N, parameter)))))
+                              hillModel.unpack_parameter(hillModel.parse_parameter(N, parameter)))))
     null1 = (hillModel(np.row_stack([Z, Yp]), N, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
     null2 = (hillModel(np.row_stack([Xp, Z]), N, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
 

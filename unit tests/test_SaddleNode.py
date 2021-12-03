@@ -5,8 +5,8 @@ Function and design testing for the SaddleNode class
     Other files required: none
 
     Author: Shane Kepley
-    email: shane.kepley@rutgers.edu
-    Date: 4/13/20; Last revision: 4/13/20
+    Email: s.kepley@vu.nl
+    Created: 4/13/2020 
 """
 from hill_model import SaddleNode
 from test_HillModel import ToggleSwitch
@@ -21,8 +21,8 @@ x = np.array([4, 3])
 f = ToggleSwitch(decay, [p1, p2])
 f1 = f.coordinates[0]
 f2 = f.coordinates[1]
-H1 = f1.components[0]
-H2 = f2.components[0]
+H1 = f1.productionComponents[0]
+H2 = f2.productionComponents[0]
 n0 = 4.1
 
 SN = SaddleNode(f, unit_phase_condition, diff_unit_phase_condition)
