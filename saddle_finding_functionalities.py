@@ -30,7 +30,7 @@ def estimate_saddle_node(f, hill, p, gridDensity=5):
     return an empty interval."""
 
     hillIdx = 0
-    numEquilibria, Eq = count_eq(f, hill[0], p, gridDensity)
+    numEquilibria, eq = count_eq(f, hill[0], p, gridDensity)
 
     hill_for_saddle = []
     equilibria_for_saddle = []
@@ -39,12 +39,26 @@ def estimate_saddle_node(f, hill, p, gridDensity=5):
         hillMin = hill[hillIdx]  # update lower hill coefficient bound
         hillMax = hill[hillIdx + 1]  # update upper hill coefficient bound
         numEquilibriaOld = numEquilibria
+        eq_old = eq
         numEquilibria, eq = count_eq(f, hillMax, p, gridDensity)
         if numEquilibria - numEquilibriaOld != 0:
             n_steps = int(np.ceil(log((hillMax - hillMin) * 5)))
-            hill_SN, equilibria = bisection(f, hillMin, hillMax, p, n_steps, gridDensity)
-            hill_for_saddle.append(hill_SN)
-            equilibria_for_saddle.append(equilibria)
+            if numEquilibria > numEquilibriaOld:
+                eq_more = eq
+                start_Hill = hillMax
+                end_Hill = hillMin
+            else:
+                eq_more = eq_old
+                start_Hill = hillMin
+                end_Hill = hillMax
+            # f.saddle_though_arc_length_cont(eq_more[1], start_Hill, end_Hill)
+            #for eq_possible in eq_more:
+            #    eq_saddle, hill_saddle, bool_saddle = f.saddle_though_arc_length_cont(eq_possible, start_Hill, end_Hill)
+            #    if bool_saddle:
+            #        break
+            hill_saddle, eq_saddle = bisection(f, hillMin, hillMax, p, n_steps, gridDensity)
+            hill_for_saddle.append(hill_saddle)
+            equilibria_for_saddle.append(eq_saddle)
 
     return hill_for_saddle, equilibria_for_saddle
 
@@ -124,7 +138,7 @@ def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
     p = parameter
     badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
     SNParameters = []
-    hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(f, hillRange, p)
+    hill_for_saddle, equilibria_for_saddle = estimate_saddle_node(hill_model, hillRange, p)
     # print('Coarse grid: {0}'.format(candidateInterval))
     # print("there are possible saddles ", len(hill_for_saddle))
     if len(hill_for_saddle) == 0:
