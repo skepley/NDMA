@@ -1603,3 +1603,59 @@ class HillModel:
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None
+
+    @verify_call
+    def saddle_though_arc_length_cont(self, equilibrium, parameter, parameter_bound):
+        """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
+        INPUT:
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            gridDensity - density to sample in each dimension.
+            uniqueRootDigits - Number of digits to use for distinguishing between floats.
+            eqBound - N-by-2 array of intervals defining a search rectangle. Initial data will be chosen uniformly here. """
+
+        def F(x, param):
+            """Fix parameter values in the zero finding map"""
+            return self.__call__(x, param)
+
+        def DF(x, param):
+            """Fix parameter values in the zero finding map derivative"""
+            return self.dx(x, param)
+
+        def D_lambda_F(x, param):
+            return self.diff(x, param)
+
+        def Jac(x, param):
+            return np.array([DF(x, param), D_lambda_F(x, param)])
+
+        def Newton_loc(x, param):
+            iter = 0
+            while np.linalg.norm(F(x,param))< 10**-14 and iter < 20:
+                iter = iter + 1
+                step = np.linalg.solve(DF(x,param), F(x, param))
+                x = x - step[:-1]
+                param = param - step[-1]
+            return x, param
+
+        def arc_length_step(x, param, direction):
+            step_size = 10**-6
+            tangent = linalg.null_space(Jac(x, param))
+            if tangent[-1] * direction < 0:
+                tangent = -1 * tangent
+            new_x = x + step_size * tangent[:-1]
+            new_par = param + step_size * tangent[-1]
+            [x, param] = Newton_loc(new_x, new_par)
+            if np.abs(np.log(np.linalg.det(DF(x, param)))) > 10 and np.linalg.norm(D_lambda_F(x, param)) > 0.9:
+                is_saddle = True
+            else:
+                is_saddle = False
+            return x, param, is_saddle
+
+        if parameter < parameter_bound:
+            direction = +1
+        else:
+            direction = -1
+        is_saddle = False
+        while not is_saddle and (parameter - parameter_bound) * direction < 0:
+            equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
+
+        return equilibrium, parameter, is_saddle
