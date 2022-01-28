@@ -228,7 +228,7 @@ bistable_FP_parameters = []
 multistable_FP_parameters = []
 good_candidate = []
 
-for par_index in range(10):  # parameter_graph_EMT.size()
+for par_index in range(500):  # parameter_graph_EMT.size()
     parameter = parameter_graph_EMT.parameter(par_index)
     domain_graph = DSGRN.DomainGraph(parameter)
     morse_graph = DSGRN.MorseGraph(domain_graph)
@@ -302,6 +302,7 @@ best_candidate = np.argmax(grade_candidate[:, 0]**2 + grade_candidate[:, 1]**2)
 monostable_region = good_candidate[best_candidate][0]
 bistable_region = good_candidate[best_candidate][1]
 both_regions = np.array(good_candidate[best_candidate])
+print('Chosen regions: ' + str(both_regions))
 
 # # reality check  - are the regions correct?
 # parameter_adjacent = parameter_graph_EMT.parameter(monostable_region)
@@ -365,7 +366,7 @@ if ar[0] != 1:
 if ar[1] != 0:
     raise ValueError('Debugging error')
 
-data_sample = sampler_global(mu, Sigma.flatten(), 5*10**3)
+data_sample = sampler_global(mu, Sigma.flatten(), 10**4)
 data_region = assign_region(data_sample)
 
 # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
@@ -392,8 +393,8 @@ if make_figure2:
     ax.scatter([a[indeces_plot[2]], b[indeces_plot[2]]], [a[indeces_plot[3]], b[indeces_plot[3]]], marker='*', s=100)
 
 sampler_global = region_sampler()
-generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters)
+# generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters) # done with range 10
 
-file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
+# file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
 
 stophere

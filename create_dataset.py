@@ -14,7 +14,7 @@ from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from datetime import datetime
 import warnings
-from models import ToggleSwitch
+from models.TS_model import ToggleSwitch
 import matplotlib.pyplot as plt
 
 
