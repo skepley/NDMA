@@ -17,7 +17,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10 ** 2
+n_sample = 10 ** 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -126,16 +126,16 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = np.array([[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate), np.sum(v_wrong_parity_center)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate),np.sum(v_wrong_parity_donut)]])
-
-# TODO: delete this lineeeeeeeeeeeeee!!!!
-mat_for_chi_test = mat_for_chi_test + 1
+mat_for_chi_test = np.array([[np.sum(v_center_with_saddle)+np.sum(v_wrong_parity_center), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate)], [np.sum(v_donut_with_saddle)+np.sum(v_wrong_parity_donut), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate)]])
 
 unused, p, a, b = chi2_contingency(mat_for_chi_test)
 
+print('Correlation matrix\n')
+print(mat_for_chi_test)
 if p <= 0.05:
-    print('We reject the null hypothesis: there is correlation between saddles and center region')
+    print('We reject the null hypothesis: there is correlation between saddles and center region\n')
 else:
-    print('We cannot reject the null hypothesis: there is NO proven correlation between saddles and center region')
+    print('We cannot reject the null hypothesis: there is NO proven correlation between saddles and center region\n')
 
+print('p-value = ', p)
 print('It is the end!')
