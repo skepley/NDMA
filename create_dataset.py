@@ -6,13 +6,19 @@ Author: Elena Queirolo
 Created: 1st March 2021
 Modified: 1st March 2021
 """
+from hill_model import *
+import numpy as np
 from toggle_switch_heat_functionalities import *
 import random
+from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from datetime import datetime
+import warnings
+from models import ToggleSwitch
+import matplotlib.pyplot as plt
 
 
-def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None):
+def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None, initial_coef=None):
     """
     create_dataset uses the information concerning a Hill model and its number of parameter regions to create a Fisher
     distribution spanning the parameter space such that all parameter regions are similarly sampled.
@@ -72,11 +78,23 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
 
     size_coef = n_parameters*(1+n_parameters)
     # for fisher  size_coef = 2*n_parameters
-    coefficients = np.abs(np.random.normal(size=size_coef))
+    if initial_coef is None:
+        coefficients = np.abs(np.random.normal(size=size_coef))
+    elif len(initial_coef) != size_coef:
+        coefficients = np.abs(np.random.normal(size=size_coef))
+    else:
+        coefficients = initial_coef
+    old_score = sampler_score(coefficients)
+    if np.isnan(old_score):
+        old_score = + 4
     for i in range(100):
         other_random_coefs = np.abs(np.random.normal(size=size_coef))
-        if sampler_score(other_random_coefs) < sampler_score(coefficients):
+        new_score = sampler_score(other_random_coefs)
+        if new_score < old_score:
             coefficients = other_random_coefs
+            old_score = new_score
+    if np.isnan(new_score):
+        stopHere  # no regions found??
     print('Random initial condition chosen to the best of what random can give us')
     print('Initial score', -sampler_score(coefficients) + 1)
     optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
@@ -154,8 +172,8 @@ def region_sampler():
         dim = len(mean)
         cov = np.reshape(c2_vec, (dim, dim))
         x = np.random.multivariate_normal(mean, cov, size)
-        par = np.square(x).T
-        # square ensures it's positive
+        par = np.abs(x).T
+        # abs ensures it's positive
         return par
     return multivariate_normal_distributions
 
@@ -171,11 +189,11 @@ def create_dataset_ToggleSwitch(size_dataset, namefile=None, boolAppend=False):
     return
 
 
-"""def readTS(file_name=None):
+def readTS(file_name=None):
     if file_name is None:
         file_name = f"ToggleSwitchDataset.npz"
     dataset = np.load(file_name)
-    return dataset.f.alpha, dataset.f.beta, dataset.f.parameters, dataset.f.parameter_region"""
+    return dataset.f.alpha, dataset.f.beta, dataset.f.parameters, dataset.f.parameter_region
 
 
 def subsample_data_by_region(n_sample, region, alpha, beta, parameters, parameter_region):
@@ -228,7 +246,7 @@ def subsample(file_name, size_subsample):
     data, regions, coefs = load_dataset(file_name)
     size_data = np.size(data, 1)
     if size_subsample > size_data:
-        stopHere
+        raise ValueError('Cannot ask more samples than the stored ones')
     index_random = np.random.choice(size_data, size=size_subsample, replace=False)
     data_subsample = data[:, index_random]
     region_Subsample = regions[index_random]
@@ -246,13 +264,120 @@ def region_subsample(file_name, region_number, size_subsample):
     data_subsample = data[:, index_random]
     return data_subsample, coefs
 
+# costum specific for Toggle Switch
+# create_dataset_ToggleSwitch(10)
+# readTS()
 
-def create_dataset_TS(size_dataset_TS: int, name_TS=None):
-    if name_TS is None:
-        name_TS = 'TS_data_' + str(size_dataset_TS)+ '.npz'
+
+def simple_region(x):
+    x1 = x[0]
+    x2 = x[1]
+    assigned_region = np.zeros_like(x1)
+    assigned_region[x1 > x2] = 1
+    return assigned_region
+
+
+def second_simple_region(x):
+    x1 = x[0]
+    x2 = x[1]
+    x3 = x[2]
+    assigned_region = np.zeros_like(x1) + 1
+    assigned_region[x3 < x1 - x2] = 0
+    assigned_region[x3 > x1 + x2] = 2
+    return assigned_region
+
+
+def third_simple_region(x):
+    a = x[0]
+    b = x[1]
+    c = x[2]
+    d = x[3]
+    assigned_region1 = np.zeros_like(a) + 1
+    assigned_region1[c+d < a * b] = 0
+    assigned_region1[a * b < c-d] = 2
+
+    assigned_region2 = np.zeros_like(a)
+    assigned_region2[a > b] = 1
+
+    assigned_region = assigned_region1 + 3*assigned_region2
+    return assigned_region
+
+
+def TS_region(n, name_input):
     n_parameters_TS = 5
     n_regions_TS = 9
-    name_TS = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, size_dataset_TS, name_TS)
-    return name_TS
+    name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, n, name_input)
+    return name
 
 
+test_case = np.infty
+if test_case == 0:
+    # a < b  ,  a > b
+    name = 'simple_test.npz'
+    n_parameters_simple = 2
+    n_regions_simple = 2
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    plt.plot(data_loc[0], data_loc[1], '.')
+
+
+if test_case == 1:
+    # c < a - b , a-b < c < a+b , a+b < c
+    name = 'second_simple_test.npz'
+    n_parameters_simple = 3
+    n_regions_simple = 3
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, second_simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
+    region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
+    region_2 = requested_size - region_1 - region_3
+
+
+if test_case == 2:
+    # c + d < ab , c-d < ab < c+d , ab < c-d
+    # AND a<b, b<a     (6 regions)
+    name = 'third_simple_test.npz'
+    n_parameters_simple = 4
+    n_regions_simple = 6
+    requested_size = 5000
+    name = create_dataset(n_parameters_simple, third_simple_region, n_regions_simple, requested_size, name)
+    data_loc, regions_loc, coefs_optimal = load_dataset(name)
+    counter = np.zeros(n_regions_simple)
+    for i in range(n_regions_simple):
+        counter[i] = np.count_nonzero(regions_loc == i)
+
+
+if test_case == 3:
+    print('This is the toggle switch')
+
+    # testing region assignment
+    # region = associate_parameter_regionTS(np.array([0.5, 0.5, 1.2]), np.array([1.2, 2.4, 0.5]))
+    # region should be [1,2,3]
+
+    decay = np.array([1, 1], dtype=float)
+    p1 = np.array([1, 5, 3], dtype=float)
+    p2 = np.array([1, 6, 3], dtype=float)
+
+    f = ToggleSwitch(decay, [p1, p2])
+
+    name = 'TS_data_test.npz'
+    n_parameters_TS = 5
+    n_regions_TS = 9
+    name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, 100, name)
+    # create a new TS dataset
+
+    testing_functionalities = 0
+    if testing_functionalities > 1:
+        # expand the dataset (actually, using the same coefs but rewriting the dataset)
+        data, parameter_region, coefs_optimal = load_dataset(name)
+        sampler_TS = region_sampler()
+        size_dataset = 100000
+        generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
+
+        # subsampling methods: all regions or specific regions
+        size_sample = 4
+        subsample(name, size_sample)
+        region_number = 5
+        region_subsample(name, region_number, size_sample)
