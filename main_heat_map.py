@@ -22,13 +22,13 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 5
+n_sample = 10 ** 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
     n = 100000
-    create_dataset_TS(100000, file_name)
+    create_dataset_ToggleSwitch(100000, file_name)
 
 file_storing = 'heat_map.npz'
 
@@ -37,7 +37,7 @@ a = np.transpose(data_subsample)
 u, v = parameter_to_DSGRN_coord(a)
 
 parameter_full = np.empty(shape=[0, 5])
-solutions = np.empty(0)
+lowest_hill = np.empty(0)
 bad_parameters = np.empty(shape=[0, 5])
 bad_candidates = []
 boring_parameters = np.empty(shape=[0, 5])
@@ -50,7 +50,7 @@ for j in range(n_sample):  # range(n_sample):
             # print('Saddle detected')
             if k == 0:
                 parameter_full = np.append(parameter_full, [a_j], axis=0)
-                solutions = np.append(solutions, SNParameters[k])
+                lowest_hill = np.append(lowest_hill, SNParameters[k])
             if k > 0:
                 print('\nMore than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
@@ -66,7 +66,7 @@ for j in range(n_sample):  # range(n_sample):
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
 np.savez('heat_map_data',
-         u=u, v=v, a=a, parameter_full=parameter_full, solutions=solutions, bad_parameters=bad_parameters,
+         u=u, v=v, a=a, parameter_full=parameter_full, lowest_hill=lowest_hill, bad_parameters=bad_parameters,
          bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample,
          multiple_saddles=multiple_saddles)
 
@@ -76,7 +76,7 @@ bad_parameters = data.f.bad_parameters
 boring_parameters = data.f.boring_parameters
 n_sample = data.f.n_sample
 parameter_full = data.f.parameter_full
-solutions = data.f.solutions
+lowest_hill = data.f.lowest_hill
 multiple_saddles = data.f.multiple_saddles
 
 print('\nNumber of bad candidates', len(bad_parameters), 'out of ', n_sample)
@@ -113,12 +113,12 @@ for j in unique_DSGRN.T:
 """
 
 plt.figure()
-dsgrn_heat_plot(parameter_full, np.minimum(solutions, 100))
+dsgrn_heat_plot(parameter_full, np.minimum(lowest_hill, 100))
 plt.title('dsgrn_heat_plot')
 plt.savefig('dsgrn_heat_plot.pdf')
 
 plt.figure()
-dsgrn_contour_plot(parameter_full, solutions)
+dsgrn_contour_plot(parameter_full, lowest_hill)
 plt.title('dsgrn_contour_plot')
 plt.savefig('dsgrn_contour_plot.pdf')
 
@@ -138,5 +138,15 @@ if len(bad_parameters) > 0:
     dsgrn_plot(bad_parameters)
     plt.title('bad_parameters')
     plt.savefig('bad_parameters.pdf')
+
+
+
+plt.figure()
+dsgrn_plot(a, color='k')
+dsgrn_plot(parameter_full, color='g')
+if len(multiple_saddles) > 0:
+    dsgrn_plot(multiple_saddles, color='b')
+if len(bad_parameters) > 0:
+    dsgrn_plot(bad_parameters, color='r')
 
 print('It is the end!')
