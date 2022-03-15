@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 4
+n_sample = 10 ** 4 # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -35,6 +35,19 @@ file_storing = 'heat_map.npz'
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = np.transpose(data_subsample)
 u, v = parameter_to_DSGRN_coord(a)
+
+
+# test for nice heat map pictures
+alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(a)
+alpha1 = np.sort(alpha1)
+alpha2 = np.sort(alpha2)
+ninety_percentile = int(np.ceil(len(alpha1)*0.9))
+alphaMax = np.array([alpha1[ninety_percentile], alpha2[ninety_percentile]])
+
+plt.figure()
+dsgrn_plot(a, alphaMax)
+plt.title('all parameters')
+plt.savefig('all_parameters.pdf')
 
 parameter_full = np.empty(shape=[0, 5])
 lowest_hill = np.empty(0)
@@ -113,17 +126,17 @@ for j in unique_DSGRN.T:
 """
 
 plt.figure()
-dsgrn_heat_plot(parameter_full, np.minimum(lowest_hill, 100))
+dsgrn_heat_plot(parameter_full, np.minimum(lowest_hill, 100), alphaMax=alphaMax)
 plt.title('dsgrn_heat_plot')
 plt.savefig('dsgrn_heat_plot.pdf')
 
 plt.figure()
-dsgrn_contour_plot(parameter_full, lowest_hill)
+dsgrn_contour_plot(parameter_full, lowest_hill, alphaMax=alphaMax)
 plt.title('dsgrn_contour_plot')
 plt.savefig('dsgrn_contour_plot.pdf')
 
 plt.figure()
-dsgrn_plot(parameter_full)
+dsgrn_plot(parameter_full, alphaMax=alphaMax)
 plt.title('dsgrn_plot')
 plt.savefig('dsgrn_plot.pdf')
 

@@ -79,9 +79,9 @@ def DSGRN_coordinate(alpha, beta, alphaMax):
 def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
     x = np.array(
-        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
+        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
     y = np.array(
-        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
+        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
     return x, y
 
 
@@ -104,7 +104,7 @@ def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
     alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
     if alphaMax is None:
-        alphaMax = np.max([np.max(alpha1), np.max(alpha2)])
+        alphaMax = np.array([np.max(alpha1), np.max(alpha2)])
 
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
@@ -130,6 +130,8 @@ def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
     ax.scatter(x, y, marker='o', s=4, **pyPlotOpts)
+    plt.xlim(0, 3)
+    plt.ylim(0, 3)
     grid_lines()
 
 
