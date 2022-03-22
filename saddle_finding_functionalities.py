@@ -8,6 +8,7 @@ Main function: saddle_node_search
 
 from saddle_node import *
 from scipy.linalg import null_space
+from models.TS_model import *
 
 
 # Implementation of pseudo-arc length continuation for finding saddle-node bifurcations

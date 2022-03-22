@@ -49,7 +49,7 @@ for j in range(n_sample):  # range(n_sample):
     else:
         n_donut = n_donut + 1
     ds = 0.01
-    dsMinimum = 0.000001
+    dsMinimum = 0.005
     SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5)
     # SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
     if SNParameters and SNParameters != 0:
