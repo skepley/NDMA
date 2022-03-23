@@ -106,6 +106,9 @@ def verify_call(func):
         hillObj = args[0]  # a HillModel or HillCoordinate instance is passed as 1st position argument to evaluation
         # method
         x = args[1]  # state vector passed as 2nd positional argument to evaluation method
+        if not is_vector(x):  # x must be a vector
+            raise TypeError('Second argument must be a state vector.')
+
         if issubclass(type(hillObj), HillCoordinate):
             N = hillObj.nState
             parameter = args[2]  # parameter vector passed as 3rd positional argument to evaluation method
@@ -568,19 +571,6 @@ class HillCoordinate:
             gamma = self.gamma
         return gamma, [parameter[self.productionParameterIndexRange[j]:self.productionParameterIndexRange[j + 1]] for
                        j in range(self.nProduction)]
-
-    # def verify_call(self, x, parameter):
-    #     """A function to insert into evaluation methods to make sure the input variables have correct dimension and shape."""
-    #
-    #     if len(x) != self.nState:  # make sure input is the correct size
-    #         raise IndexError(
-    #             'State vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
-    #                 self.nState, len(x)))
-    #     elif len(parameter) != self.nParameter:
-    #         raise IndexError(
-    #             'Parameter vector for this Hill Coordinate should be size {0} but received a vector of size {1}'.format(
-    #                 self.nParameter, len(parameter)))
-    #     return
 
     def parameter_to_production_index(self, linearIndex):
         """Convert a linear parameter index to an ordered pair, (i, j) where the specified parameter is the j^th variable
