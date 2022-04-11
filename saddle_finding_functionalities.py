@@ -196,7 +196,7 @@ def saddle_node_from_interval(hillModel, p, candidateInterval, ds, dsMinimum, ma
                                      gridDensity=gridDensity)
 
 
-def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5):
+def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5, bisection=False):
     """
     This function takes a Hill model with identified Hill coefficients and searches for saddle node bifurcations with
     respect to the Hill coefficient. The Hill coefficient must have the first parameter index.
@@ -227,7 +227,10 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
         badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
         SNParameters = []
         for interval in candidateIntervals:
-            SNB = saddle_node_from_interval(hillModel, parameter, interval, ds, dsMinimum, maxIteration=maxIteration,
+            if bisection:
+                SNB = None
+            else:
+                SNB = saddle_node_from_interval(hillModel, parameter, interval, ds, dsMinimum, maxIteration=maxIteration,
                                             gridDensity=gridDensity)
             if SNB is not None:
                 SNParameters.append(SNB)
