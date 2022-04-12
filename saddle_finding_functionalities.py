@@ -35,6 +35,30 @@ def count_eq(hillModel, hill, p, gridDensity=5):
                 return len(equilibria)
 
 
+def count_eq_with_eq(hillModel, hill, p, gridDensity=5):
+    """Count the number of equilibria found for a Hill Model with identified Hill coefficients at a given parameter
+    of the form (hill, p)."""
+
+    if is_vector(hill):  # vectorize function call to compute equilibria count for a vetor of Hill Coefficients
+        countVector = [hillModel.count_eq(hill_j, p, gridDensity=gridDensity) for hill_j in hill]
+        return countVector
+    else:
+        if issubclass(type(hillModel), ToggleSwitch):
+            # equilibria counting for the Toggle Switch is done using the bootstrap algorithm
+            eqBound = hillModel.bootstrap_enclosure(hill, p)[1]
+            if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
+                return 1, eqBound
+            else:
+                return 3, eqBound
+        else:
+            equilibria = hillModel.find_eqilibria(gridDensity, hill, p)
+            if is_vector(equilibria):
+                return 1, equilibria
+            else:
+                return len(equilibria), equilibria
+
+
+
 def initial_direction(h0, hTarget):
     """Choose the initial tangent direction for pseudo-arc length continuation. h0 is the starting hill coefficient
     and hTarget is the direction in which we want to drive the coefficient. The output is a
@@ -195,8 +219,69 @@ def saddle_node_from_interval(hillModel, p, candidateInterval, ds, dsMinimum, ma
     return saddle_node_from_interval(hillModel, p, candidateInterval, ds / 2, dsMinimum, maxIteration=2 * maxIteration,
                                      gridDensity=gridDensity)
 
+# BISECTION CODE
 
-def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5, bisection=False):
+
+def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
+    if n_steps == 0:
+        n_steps = 1
+    SN = SaddleNode(hillModel)
+    nEq0, Eq0 = count_eq_with_eq(hillModel, hill0, p, gridDensity)
+    nEq1, Eq1 = count_eq_with_eq(hillModel, hill1, p, gridDensity)
+    if nEq0 == nEq1:
+        print('problem')
+    for i in range(n_steps):
+        hill_middle = (hill0 + hill1) / 2
+        nEqmiddle, EqMiddle = count_eq_with_eq(hillModel, hill_middle, p, gridDensity)
+        if nEqmiddle == nEq0:
+            hill0 = hill_middle
+            nEq0 = nEqmiddle
+            Eq0 = EqMiddle
+        elif nEqmiddle == nEq1:
+            hill1 = hill_middle
+            nEq1 = nEqmiddle
+            Eq1 = EqMiddle
+        else:
+            return hill_middle, from_eqs_select_saddle_eq(Eq0, EqMiddle)
+    if nEq0 > nEq1:
+        hill = hill0
+    else:
+        hill = hill1
+    eq = from_eqs_select_saddle_eq(Eq0, Eq1)
+    SNB = SN.find_saddle_node(0, hill, p, equilibria=eq)
+    if len(SNB) > 0:
+        return eq, SNB[0]
+    else:
+        return None
+
+
+def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
+    # assumption: there is a different number of equilibria at 1 and at 0, select the equilibrium that is most
+    # likely undergoing saddle node bifurcation
+    # equilibria are stored as row vectors
+
+    if is_vector(equilibria_at_1):
+        temp = equilibria_at_0
+        equilibria_at_0 = equilibria_at_1
+        equilibria_at_1 = temp
+
+    # 0 has less equilibria than 1
+    idx = find_nearest_row(equilibria_at_1, equilibria_at_0)
+    equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
+    if equilibria_at_1.shape[0] == 1:
+        return equilibria_at_1[0]
+    else:
+        equilibrium = np.mean(equilibria_at_1, axis=1)
+        return equilibrium
+
+
+def find_nearest_row(array2D, value1D):
+    match = np.array(list(map(lambda row: np.linalg.norm(row - value1D), array2D)))
+    idx = match.argmin()
+    return idx
+
+
+def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=False):
     """
     This function takes a Hill model with identified Hill coefficients and searches for saddle node bifurcations with
     respect to the Hill coefficient. The Hill coefficient must have the first parameter index.
@@ -227,11 +312,11 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
         badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
         SNParameters = []
         for interval in candidateIntervals:
-            if bisection:
-                SNB = None
+            if bisectionBool:
+                SNB = bisection(hillModel, np.min(interval), np.max(interval), parameter, gridDensity=gridDensity)
             else:
-                SNB = saddle_node_from_interval(hillModel, parameter, interval, ds, dsMinimum, maxIteration=maxIteration,
-                                            gridDensity=gridDensity)
+                SNB = saddle_node_from_interval(hillModel, parameter, interval, ds, dsMinimum,
+                                                maxIteration=maxIteration, gridDensity=gridDensity)
             if SNB is not None:
                 SNParameters.append(SNB)
             else:
@@ -265,3 +350,4 @@ if __name__ == "__main__":
     # print(ints)
     print(SNB)
     print(BC)
+

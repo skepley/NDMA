@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 4 # testing on 3, final run on 4
+n_sample = 10 ** 3 # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -59,13 +59,13 @@ for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
     ds = 0.01
     dsMinimum = 0.005
-    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
             if k == 0:
                 parameter_full = np.append(parameter_full, [a_j], axis=0)
-                lowest_hill = np.append(lowest_hill, SNParameters[k])
+                lowest_hill = np.append(lowest_hill, SNParameters[k][1])
             if k > 0:
                 print('\nMore than one saddle detected!')
                 multiple_saddles = np.append(multiple_saddles, [a_j], axis=0)
@@ -144,24 +144,24 @@ plt.savefig('dsgrn_plot.pdf')
 
 if len(multiple_saddles) > 0:
     plt.figure()
-    dsgrn_plot(multiple_saddles)
+    dsgrn_plot(multiple_saddles, alphaMax=alphaMax)
     plt.title('multiple_saddles')
     plt.savefig('multiple_saddles.pdf')
 
 if len(bad_parameters) > 0:
     plt.figure()
-    dsgrn_plot(bad_parameters)
+    dsgrn_plot(bad_parameters, alphaMax=alphaMax)
     plt.title('bad_parameters')
     plt.savefig('bad_parameters.pdf')
 
 
 
 plt.figure()
-dsgrn_plot(a, color='k')
-dsgrn_plot(parameter_full, color='g')
+dsgrn_plot(a, color='k', alphaMax=alphaMax)
+dsgrn_plot(parameter_full, color='g', alphaMax=alphaMax)
 if len(multiple_saddles) > 0:
-    dsgrn_plot(multiple_saddles, color='b')
+    dsgrn_plot(multiple_saddles, color='b', alphaMax=alphaMax)
 if len(bad_parameters) > 0:
-    dsgrn_plot(bad_parameters, color='r')
+    dsgrn_plot(bad_parameters, color='r', alphaMax=alphaMax)
 
 print('It is the end!')
