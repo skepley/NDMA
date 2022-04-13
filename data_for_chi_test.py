@@ -17,7 +17,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10 ** 3
+n_sample = 10 ** 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -50,7 +50,7 @@ for j in range(n_sample):  # range(n_sample):
         n_donut = n_donut + 1
     ds = 0.01
     dsMinimum = 0.005
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
     # SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
     if SNParameters and SNParameters != 0:
         if region_j == 4:
