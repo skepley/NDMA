@@ -271,7 +271,7 @@ def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
     if equilibria_at_1.shape[0] == 1:
         return equilibria_at_1[0]
     else:
-        equilibrium = np.mean(equilibria_at_1, axis=1)
+        equilibrium = np.mean(equilibria_at_1, axis=0)
         return equilibrium
 
 
