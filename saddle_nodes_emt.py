@@ -22,27 +22,28 @@ emtParameters = emtData['data'].transpose()  # transpose to make into an arrow o
 monostableParameters = emtParameters[monostableIdx]
 bistableParameters = emtParameters[bistableIdx]
 
-
+"""
 # # Equilibria search in monostable region
-# hill = 5  # an arbitrary Hill coefficient for testing
-# badCandidates = []
-# for (idx, p) in enumerate(monostableParameters):
-#     eq = f.find_equilibria(3, hill, p)
-#     nEq = np.shape(eq)[0]
-#     print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
-#     if nEq != 1:
-#         badCandidates += (idx, p)
+hill = 5  # an arbitrary Hill coefficient for testing
+badCandidates = []
+for (idx, p) in enumerate(bistableParameters):
+    eq = f.find_equilibria(3, hill, p)
+    nEq = np.shape(eq)[0]
+    print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
+    if nEq != 1:
+        badCandidates += (idx, p)
+"""
 
-# # Equilibria search in bistable region
-# hill = [2, 5, 10, 20, 30]  # some arbitrary Hill coefficients for a line search
-# badCandidates = []
-# for (idx, p) in enumerate(bistableParameters[:10]):
-#     nEq = []
-#     for d in hill:
-#         eq = f.find_equilibria(3, d, p)
-#         nEq.append(np.shape(eq)[0])
-#     print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
-# # Parameter 7 returns [1, 1, 3, 3, 1]
+# Equilibria search in bistable region
+hill = [2, 10, 20, 30, 50, 100]  # some arbitrary Hill coefficients for a line search
+badCandidates = []
+for (idx, p) in enumerate(bistableParameters[:10]):
+    nEq = []
+    for d in hill:
+        eq = f.find_equilibria(3, d, p)
+        nEq.append(np.shape(eq)[0])
+    print('Parameter: {0}, Equilibria found: {1}'.format(idx, nEq))
+# Parameter 7 returns [1, 1, 3, 3, 1]
 
 # Saddle node bifurcation search
 SNB = SaddleNode(f)
