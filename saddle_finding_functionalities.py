@@ -28,7 +28,7 @@ def count_eq(hillModel, hill, p, gridDensity=5):
             else:
                 return 3
         else:
-            equilibria = hillModel.find_eqilibria(gridDensity, hill, p)
+            equilibria = hillModel.find_equilibria(gridDensity, hill, p)
             if is_vector(equilibria):
                 return 1
             else:
@@ -51,7 +51,7 @@ def count_eq_with_eq(hillModel, hill, p, gridDensity=5):
             else:
                 return 3, eqBound
         else:
-            equilibria = hillModel.find_eqilibria(gridDensity, hill, p)
+            equilibria = hillModel.find_equilibria(gridDensity, hill, p)
             if is_vector(equilibria):
                 return 1, equilibria
             else:
