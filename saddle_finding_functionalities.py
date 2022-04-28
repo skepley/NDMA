@@ -32,7 +32,10 @@ def count_eq(hillModel, hill, p, gridDensity=5):
             if is_vector(equilibria):
                 return 1
             else:
-                return len(equilibria)
+                if equilibria is None:
+                    return 0
+                else:
+                    return len(equilibria)
 
 
 def count_eq_with_eq(hillModel, hill, p, gridDensity=5):

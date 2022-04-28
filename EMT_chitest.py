@@ -20,8 +20,8 @@ f = EMT(gammaVar, parameterVar)
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_EMT_old.npz'
 file_storing = 'chi_test_EMT.npz'
-n_sample = 5
-"""
+n_sample = 200
+
 emtData = np.load(dataFile)
 emtRegions = emtData['parameter_region']
 monostableIdx = [idx for idx in range(len(emtRegions)) if emtRegions[idx] == 0]
@@ -29,7 +29,14 @@ bistableIdx = [idx for idx in range(len(emtRegions)) if emtRegions[idx] == 1]
 emtParameters = emtData['data'].transpose()  # transpose to make into an arrow of row vectors.
 monostableParameters = emtParameters[monostableIdx]
 bistableParameters = emtParameters[bistableIdx]
-"""
+
+random_index_monostable = random.sample(monostableIdx, n_sample)
+random_index_bistable = random.sample(bistableIdx, n_sample)
+all_index = set(random_index_monostable + random_index_bistable)
+n_sample = len(all_index)
+all_index = random.sample(set(random_index_monostable + random_index_bistable), n_sample)
+data_subsample = emtParameters[all_index].transpose()
+region_subsample = emtRegions[all_index]
 
 # Saddle node bifurcation search
 # SNB = SaddleNode(f)
@@ -38,8 +45,8 @@ bistableParameters = emtParameters[bistableIdx]
 ds = []
 dsMinimum = []
 
-data_subsample, region_subsample, coefs = subsample(dataFile, n_sample)
-a = data_subsample
+# data_subsample, region_subsample, coefs = subsample(dataFile, n_sample)
+# a = data_subsample
 
 n_monostable_region = 0
 n_monostable_with_saddle = 0
@@ -55,25 +62,20 @@ n_bistable_bad_candidate = 0
 for d in range(0, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
     if SNParameters and SNParameters != 0:
-        if region_j == 1:
-            if len(SNParameters) == 1 or len(SNParameters) == 3:
-                n_monostable_with_saddle = n_monostable_with_saddle + 1
-            else:
-                wrong_parity_monostable = wrong_parity_monostable + 1
+        if region_j == 0:
+            n_monostable_with_saddle = n_monostable_with_saddle + 1
         else:
-            if len(SNParameters) == 2:
-                n_bistable_with_saddle = n_bistable_with_saddle + 1
-            else:
-                wrong_parity_bistable = wrong_parity_bistable + 1
+            n_bistable_with_saddle = n_bistable_with_saddle + 1
+
     elif badCandidates and badCandidates != 0:
-        if region_j == 1:
+        if region_j == 0:
             n_monostable_bad_candidate = n_monostable_bad_candidate + 1
         else:
             n_bistable_bad_candidate = n_bistable_bad_candidate + 1
     else:
-        if region_j == 4:
+        if region_j == 0:
             n_monostable_without_saddle = n_monostable_without_saddle + 1
         else:
             n_bistable_without_saddle = n_bistable_without_saddle + 1
@@ -131,12 +133,13 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = np.array([[np.sum(v_monostable_with_saddle)+np.sum(v_wrong_parity_monostable), np.sum(v_monostable_without_saddle), np.sum(v_monostable_bad_candidate)], [np.sum(v_bistable_with_saddle)+np.sum(v_wrong_parity_bistable), np.sum(v_bistable_without_saddle), np.sum(v_bistable_bad_candidate)]])
-
-unused, p, a, b = chi2_contingency(mat_for_chi_test)
+mat_for_chi_test = np.array([[np.sum(v_monostable_with_saddle)+np.sum(v_wrong_parity_monostable), np.sum(v_monostable_without_saddle)], [np.sum(v_bistable_with_saddle)+np.sum(v_wrong_parity_bistable), np.sum(v_bistable_without_saddle)]])
 
 print('Correlation matrix\n')
 print(mat_for_chi_test)
+
+unused, p, a, b = chi2_contingency(mat_for_chi_test)
+
 if p <= 0.05:
     print('We reject the null hypothesis: there is correlation between saddles and center region\n')
 else:
