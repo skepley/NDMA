@@ -18,7 +18,7 @@ def gram_schmidt(vectors):
         if (np.abs(w) > 1e-10).any():
             basis.append(w / np.linalg.norm(w))
         else:
-            disp('The vectors are not linearly independent')
+            print('The vectors are not linearly independent')
     return np.array(basis)
 
 
@@ -182,29 +182,32 @@ def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indice
         return np.array(region_number)
     return par_2_region
 
+def test_multivar():
+    a = np.random.rand(1, 42)
+    b = np.random.rand(1, 42)
+    c = np.random.rand(1, 42)
+    make_figure = True
 
-a = np.random.rand(1, 42)
-b = np.random.rand(1, 42)
-c = np.random.rand(1, 42)
-make_figure = True
+    # Sigma, mu = normal_distribution_around_points(a, b)
+    Sigma, mu = normal_distribution_around_many_points(a, b, c)
+    sample = np.random.multivariate_normal(mu, Sigma, 300)
 
-# Sigma, mu = normal_distribution_around_points(a, b)
-Sigma, mu = normal_distribution_around_many_points(a, b, c)
-sample = np.random.multivariate_normal(mu, Sigma, 300)
+    if make_figure:
+        indeces_plot = [11, 22, 33, 40]
+        plt.figure()
+        fig = plt.gcf()
+        ax = fig.gca()
+        ax.scatter([a[:, indeces_plot[0]], b[:, indeces_plot[0]], c[:, indeces_plot[0]]],
+                   [a[:, indeces_plot[1]], b[:, indeces_plot[1]], c[:, indeces_plot[1]]], marker='*', s=100)
+        ax.scatter(sample[:, indeces_plot[0]], sample[:, indeces_plot[1]], marker='o', s=4)
 
-if make_figure:
-    indeces_plot = [11, 22, 33, 40]
-    plt.figure()
-    fig = plt.gcf()
-    ax = fig.gca()
-    ax.scatter([a[:, indeces_plot[0]], b[:, indeces_plot[0]], c[:, indeces_plot[0]]], [a[:, indeces_plot[1]], b[:, indeces_plot[1]], c[:, indeces_plot[1]]], marker='*', s=100)
-    ax.scatter(sample[:, indeces_plot[0]], sample[:, indeces_plot[1]], marker='o', s=4)
+        plt.figure()
+        fig = plt.gcf()
+        ax = fig.gca()
+        ax.scatter([a[:, indeces_plot[2]], b[:, indeces_plot[2]], c[:, indeces_plot[2]]],
+                   [a[:, indeces_plot[3]], b[:, indeces_plot[3]], c[:, indeces_plot[3]]], marker='*', s=100)
+        ax.scatter(sample[:, indeces_plot[2]], sample[:, indeces_plot[3]], marker='o', s=4)
 
-    plt.figure()
-    fig = plt.gcf()
-    ax = fig.gca()
-    ax.scatter([a[:, indeces_plot[2]], b[:, indeces_plot[2]], c[:, indeces_plot[2]]], [a[:, indeces_plot[3]], b[:, indeces_plot[3]], c[:, indeces_plot[3]]], marker='*', s=100)
-    ax.scatter(sample[:, indeces_plot[2]], sample[:, indeces_plot[3]], marker='o', s=4)
 
 # create network from file
 EMT_network = DSGRN.Network("EMT.txt")
@@ -228,7 +231,7 @@ bistable_FP_parameters = []
 multistable_FP_parameters = []
 good_candidate = []
 
-for par_index in range(500):  # parameter_graph_EMT.size()
+for par_index in range(1500):  # parameter_graph_EMT.size()
     parameter = parameter_graph_EMT.parameter(par_index)
     domain_graph = DSGRN.DomainGraph(parameter)
     morse_graph = DSGRN.MorseGraph(domain_graph)
@@ -375,8 +378,9 @@ counter = np.zeros(n_parameter_region)
 for iter_loc in range(n_parameter_region):
     counter[iter_loc] = np.count_nonzero(data_region == iter_loc)
 score = 1 - np.min(counter)/np.max(counter)
+print(score)
 
-make_figure2 = True
+make_figure2 = False
 if make_figure2:
     indeces_plot = [11, 22, 33, 40]
     a = bistable_pars

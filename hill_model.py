@@ -1518,7 +1518,7 @@ class HillModel:
         min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
         return max_rad, min_rad
 
-    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=10, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
             *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
