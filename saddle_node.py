@@ -5,8 +5,6 @@ A saddle-node bifurcation class and related functionality.
     Email: s.kepley@vu.nl
     Created: 5/18/2020
 """
-import numpy as np
-from scipy import optimize
 from hill_model import *
 
 

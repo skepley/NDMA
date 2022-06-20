@@ -41,7 +41,7 @@ for hill in hill_range:
         # print(j)
         a_j = a[j, :]
         a_j = ezcat(hill, a_j[:interestingIndex], a_j[interestingIndex+1:]) # a_j has hill and skips the interestingIndex
-        SNParameters, badCandidates = find_saddle_coef(f, [0, a_j[interestingIndex]], a_j, interestingIndex) # totally arbitrary starting point
+        SNParameters, badCandidates = saddle_node_search(f, [0, a_j[interestingIndex]], a_j, interestingIndex) # totally arbitrary starting point
         if SNParameters and SNParameters is not 0:
             for k in range(len(SNParameters)):
                 #print('Saddle detected')
@@ -62,7 +62,7 @@ for hill in hill_range:
             boring_parameters = np.append(boring_parameters, [a_j], axis=0)
         # Check for saddles in the other direction
 
-        SNParameters, badCandidates = find_saddle_coef(f, [a_j[interestingIndex], 100], a_j, interestingIndex)
+        SNParameters, badCandidates = saddle_node_search(f, [a_j[interestingIndex], 100], a_j, interestingIndex)
         if SNParameters and SNParameters is not 0:
             for k in range(len(SNParameters)):
                 print('\nSaddle detected\n')

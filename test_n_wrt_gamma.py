@@ -47,7 +47,7 @@ n_info_n_vs_gamma = np.empty(0)
 
 for j in range(n_sample * n_second_sample):
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1, 50], a_j)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 50], a_j)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             #print('Saddle detected')

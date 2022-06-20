@@ -45,7 +45,7 @@ boring_parameters = np.empty(shape=[0, 5])
 multiple_saddles = np.empty(shape=[0, 5])
 for j in []:#range(n_sample):#range(n_sample):
     a_j = a[j, :]
-    SNParameters, badCandidates = find_saddle_coef(f, [1,2,3,4,5,10,20,30,40,50], a_j)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 2, 3, 4, 5, 10, 20, 30, 40, 50], a_j)
     if SNParameters and SNParameters is not 0:
         for k in range(len(SNParameters)):
             #print('Saddle detected')
@@ -131,7 +131,7 @@ counter = 1
 for j in out_parameters:
     a_j = j
     if counter >=0:#== 2 or counter == 5 or counter == 29:
-        SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 50, 100, 200], a_j)
+        SNParameters, badCandidates = saddle_node_search(f, [1, 10, 50, 100, 200], a_j)
         if len(SNParameters) > 1:
             print('that is not what we were expecting')
         if len(SNParameters) < 1:
@@ -153,7 +153,7 @@ for j in out_parameters:
 stopHere
 
 a_j = out_parameters[0]
-SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 50, 100, 300], a_j)
+SNParameters, badCandidates = saddle_node_search(f, [1, 10, 50, 100, 300], a_j)
 interesting_hills = np.sort(np.linspace(SNParameters[1][0]*0.8, SNParameters[0][0]*1.3, 100))
 x_data = []
 y_data = []

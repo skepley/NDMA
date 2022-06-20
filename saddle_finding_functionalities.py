@@ -6,6 +6,7 @@ first variable parameter in the Hill model.
 Main function: saddle_node_search
 """
 
+from models.TS_model import *
 from saddle_node import *
 from scipy.linalg import null_space
 
@@ -237,8 +238,6 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
 
 
 if __name__ == "__main__":
-    from models.TS_model import *
-
     # set some parameters for the ToggleSwitch to test with
     p_hyst = np.array([1, 0.92436706, 0.05063294, 1, 0.81250005, 0.07798304, 0.81613, 1])  # hysteresis example with SN
     # at hill ~39.34 and 63.797
