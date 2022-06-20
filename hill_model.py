@@ -1508,7 +1508,7 @@ class HillModel:
         min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
         return max_rad, min_rad
 
-    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=10, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
             *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
@@ -1578,18 +1578,19 @@ class HillModel:
 
                 radii2 = radii
                 for i in range(len(all_equilibria)):
-                    equilibrium1 = all_equilibria[i]
+                    equilibrium1 = all_equilibria[i, :]
                     radius1 = radii[i]
                     j = i + 1
                     while j < len(radii2):
-                        equilibrium2 = unique_equilibria[j]
+                        equilibrium2 = unique_equilibria[j, :]
                         radius2 = radii2[j]
                         if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
                             # remove one of the two from
-                            unique_equilibria = np.delete(unique_equilibria, j)
-                            radii2 = np.delete(radii2, j)
+                            unique_equilibria = np.delete(unique_equilibria, j, 0)
+                            radii2 = np.delete(radii2, j, 0)
                         else:
                             j = j + 1
+                equilibria = unique_equilibria
             return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None

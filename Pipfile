@@ -7,7 +7,7 @@ verify_ssl = true
 
 [packages]
 scipy = "*"
-matplotlib = '*'
+matplotlib = '3.5.0'
 
 [requires]
 python_version = "3"

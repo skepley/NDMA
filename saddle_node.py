@@ -125,7 +125,7 @@ class SaddleNode:
                                                       parmValue))
                                            for j in
                                            range(equilibria.shape[0])]))  # return equilibria which converged
-            if saddleNodeZeros and flag_return is 0:
+            if saddleNodeZeros and flag_return == 0:
                 addSols = np.array([sol.x[-1] for sol in saddleNodeZeros])
                 saddleNodePoints = ezcat(saddleNodePoints, addSols[addSols > 0])
             elif saddleNodeZeros:
@@ -169,7 +169,7 @@ class SaddleNode:
         index1 = np.arange(n)
         index2 = np.arange(n) + n
         index3 = 2 * n + np.arange(parameterDim)
-        if parameterDim is 1:
+        if parameterDim == 1:
             # BLOCK ROW 1
             Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
             # block - (1, 2) is an n-by-n zero block
