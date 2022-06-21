@@ -127,7 +127,8 @@ def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_g
     ell_non_zero = L[np.nonzero(L)]
     theta_non_zero = T[np.nonzero(T)]
     delta_non_zero = delta[np.nonzero(delta)]
-    all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
+    # all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
+    all_pars = np.array(list(zip(gamma, ell_non_zero, delta_non_zero, theta_non_zero))).flatten()
     """
     success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
     if not success:
@@ -231,81 +232,83 @@ def test_multivar():
         ax.scatter(sample[:, indeces_plot[2]], sample[:, indeces_plot[3]], marker='o', s=4)
 
 
-# create network from file
-EMT_network = DSGRN.Network("EMT.txt")
-# graph_EMT = graphviz.Source(EMT_network.graphviz())
-# graph_EMT.view()
-parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)
+if __name__ == "__main__":
 
-# look into a parameter region
-parameterindex = 64
-special_parameternode = parameter_graph_EMT.parameter(parameterindex)
-# print(special_parameternode.inequalities())
+    # create network from file
+    EMT_network = DSGRN.Network("EMT.txt")
+    # graph_EMT = graphviz.Source(EMT_network.graphviz())
+    # graph_EMT.view()
+    parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)
 
-# sampling a special parameter node
-sampler = DSGRN.ParameterSampler(EMT_network)
-sampler.sample(special_parameternode)
+    # look into a parameter region
+    parameterindex = 64
+    special_parameternode = parameter_graph_EMT.parameter(parameterindex)
+    # print(special_parameternode.inequalities())
 
-isFP = lambda morse_node: morse_graph.annotation(morse_node)[0].startswith('FP')
+    # sampling a special parameter node
+    sampler = DSGRN.ParameterSampler(EMT_network)
+    sampler.sample(special_parameternode)
 
-multistable_FP_parameters = []
-good_candidate = []
+    isFP = lambda morse_node: morse_graph.annotation(morse_node)[0].startswith('FP')
 
-for par_index in range(150):  # parameter_graph_EMT.size()
-    parameter = parameter_graph_EMT.parameter(par_index)
-    domain_graph = DSGRN.DomainGraph(parameter)
-    morse_graph = DSGRN.MorseGraph(domain_graph)
-    morse_nodes = range(morse_graph.poset().size())
-    num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
-    if num_stable_FP >= 2:
-        multistable_FP_parameters.append(par_index)
-        break
+    multistable_FP_parameters = []
+    good_candidate = []
 
-num_parameters = parameter_graph_EMT.size()
-num_multistable_params = len(multistable_FP_parameters)
-num_candidates = len(good_candidate)
+    for par_index in range(150):  # parameter_graph_EMT.size()
+        parameter = parameter_graph_EMT.parameter(par_index)
+        domain_graph = DSGRN.DomainGraph(parameter)
+        morse_graph = DSGRN.MorseGraph(domain_graph)
+        morse_nodes = range(morse_graph.poset().size())
+        num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
+        if num_stable_FP >= 2:
+            multistable_FP_parameters.append(par_index)
+            break
 
-print('Number of parameters in the parameter graph: ' + str(num_parameters))
-print('Multistable parameters in the parameter graph: ' + str(num_multistable_params))
-print(good_candidate)
+    num_parameters = parameter_graph_EMT.size()
+    num_multistable_params = len(multistable_FP_parameters)
+    num_candidates = len(good_candidate)
 
-
-best_candidate = multistable_FP_parameters
-multistable_region = best_candidate[0]
-print('Chosen regions: ' + str(best_candidate))
+    print('Number of parameters in the parameter graph: ' + str(num_parameters))
+    print('Multistable parameters in the parameter graph: ' + str(num_multistable_params))
+    print(good_candidate)
 
 
-# sampling from each region
-sampler = DSGRN.ParameterSampler(EMT_network)
+    best_candidate = multistable_FP_parameters
+    multistable_region = best_candidate[0]
+    print('Chosen regions: ' + str(best_candidate))
 
-multistable_parameternode = parameter_graph_EMT.parameter(multistable_region)
-multistable_parameter = sampler.sample(multistable_parameternode)
-print(multistable_parameter)
 
-# extract sheer data??
-domain_size_EMT = 6
-multistable_pars, indices_domain_EMT, indices_input_EMT= from_string_to_Hill_data(multistable_parameter, domain_size_EMT, EMT_network, parameter_graph_EMT, multistable_region)
+    # sampling from each region
+    sampler = DSGRN.ParameterSampler(EMT_network)
 
-L, U, T = HillContpar_to_DSGRN(multistable_pars, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
-success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == multistable_region)
+    multistable_parameternode = parameter_graph_EMT.parameter(multistable_region)
+    multistable_parameter = sampler.sample(multistable_parameternode)
+    print(multistable_parameter)
 
-# Create initial distribution
-Sigma, mu = normal_distribution_around_point(np.reshape(multistable_pars, (1, -1)))
+    # extract sheer data??
+    domain_size_EMT = 6
+    multistable_pars, indices_domain_EMT, indices_input_EMT = from_string_to_Hill_data(multistable_parameter, domain_size_EMT, EMT_network, parameter_graph_EMT, multistable_region)
 
-# Create dataset
-n_parameters = len(multistable_pars)
-n_parameter_region = 2
-size_dataset = 10**4
-file_name = 'dataset_bistable_EMT.npz'
-initial_coef = np.append(mu, Sigma.flatten())
-assign_region = par_to_region_wrapper(multistable_FP_parameters, parameter_graph_EMT, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
+    L, U, T = HillContpar_to_DSGRN(multistable_pars, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
+    success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == multistable_region)
 
-sampler_global = region_sampler()
-data_sample = np.zeros((42, 1))
-data_sample[:, 0] = multistable_pars
-ar = assign_region(data_sample)
-data_sample = sampler_global(mu, Sigma.flatten(), 10**4)
-data_region = assign_region(data_sample)
+    # Create initial distribution
+    Sigma, mu = normal_distribution_around_point(np.reshape(multistable_pars, (1, -1)))
 
-generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters) # done with range 10
-# file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
+    # Create dataset
+    n_parameters = len(multistable_pars)
+    n_parameter_region = 2
+    size_dataset = 10**4
+    file_name = 'dataset_bistable_EMT.npz'
+    initial_coef = np.append(mu, Sigma.flatten())
+    assign_region = par_to_region_wrapper(multistable_FP_parameters, parameter_graph_EMT, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
+
+    sampler_global = region_sampler()
+    data_sample = np.zeros((42, 1))
+    data_sample[:, 0] = multistable_pars
+    ar = assign_region(data_sample)
+    data_sample = sampler_global(mu, Sigma.flatten(), 10**4)
+    data_region = assign_region(data_sample)
+
+    generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters) # done with range 10
+    # file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
