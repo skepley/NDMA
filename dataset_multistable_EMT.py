@@ -23,24 +23,9 @@ def gram_schmidt(vectors):
 
 
 def normal_distribution_around_point(a):
-    v1 = a
-    lambda_1 = np.linalg.norm(a) / 2
+    Sigma = 0.01*np.identity(np.size(a, 1))
 
-    V = np.identity(np.size(a, 1))
-    index_info = np.argmax(v1)
-    V[:, index_info] = v1
-    V[:, [0, index_info]] = V[:, [index_info, 0]]
-
-    Lambda = np.identity(np.size(a, 1))
-    Lambda = 10**-4 * lambda_1 * Lambda
-    Lambda[0, 0] = lambda_1
-
-    V = gram_schmidt(V.T)
-    V = V.T
-
-    Sigma = np.dot(np.dot(V, Lambda), V.T)
-
-    mu = (a[0, :]) / 2
+    mu = a[0,:]
     return Sigma, mu
 
 
@@ -127,7 +112,6 @@ def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_g
     ell_non_zero = L[np.nonzero(L)]
     theta_non_zero = T[np.nonzero(T)]
     delta_non_zero = delta[np.nonzero(delta)]
-    # all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
     all_pars = np.array(list(zip(gamma, ell_non_zero, delta_non_zero, theta_non_zero))).flatten()
     """
     success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
@@ -190,12 +174,10 @@ def HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size):
 def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_input, domain_size):
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
-    restricted_region_number = np.where(extended_region_number == regions_array)
-    if np.shape(restricted_region_number)[1] == 0:
+    if extended_region_number in regions_array:
+        return regions_array.index(extended_region_number)
+    else:
         return len(regions_array)
-    region_number = restricted_region_number[0][0]
-    return region_number
-
 
 def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indices_input, domain_size):
     def par_2_region(par_array):
@@ -291,6 +273,7 @@ if __name__ == "__main__":
 
     L, U, T = HillContpar_to_DSGRN(multistable_pars, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
     success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == multistable_region)
+    np.savez('single_multistable_point', multistable_par=multistable_pars)
 
     # Create initial distribution
     Sigma, mu = normal_distribution_around_point(np.reshape(multistable_pars, (1, -1)))
