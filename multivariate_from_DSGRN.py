@@ -168,10 +168,10 @@ def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_i
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     restricted_region_number = np.where(extended_region_number == regions_array)
-    if extended_region_number in regions_array:
-        return regions_array.index(extended_region_number)
-    else:
+    if np.shape(restricted_region_number)[1] == 0:
         return len(regions_array)
+    region_number = restricted_region_number[0][0]
+    return region_number
 
 
 def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indices_input, domain_size):

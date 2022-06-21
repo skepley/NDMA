@@ -178,12 +178,6 @@ def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_i
         return regions_array.index(extended_region_number)
     else:
         return len(regions_array)
-    #restricted_region_number = np.where(extended_region_number == regions_array)
-    #if np.shape(restricted_region_number)[1] == 0:
-    #    return len(regions_array)
-    #region_number = restricted_region_number[0][0]
-    #return region_number
-
 
 def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indices_input, domain_size):
     def par_2_region(par_array):

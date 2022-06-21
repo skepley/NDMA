@@ -29,17 +29,20 @@ emtParameters = emtData['data'].transpose()  # transpose to make into an arrow o
 Parameters = emtParameters[Idx]
 
 random_index_multistable = random.sample(Idx, n_sample)
-all_index = set(random_index_multistable)
-n_sample = len(all_index)
-data_subsample = emtParameters[all_index].transpose()
-region_subsample = emtRegions[all_index]
-n_sample = len(all_index)
+data_subsample = emtParameters[random_index_multistable].T
+region_subsample = emtRegions[random_index_multistable]
+n_sample = len(region_subsample)
+
+n_multistable = 0
 
 for d in range(0, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
     eqs = f.find_equilibria(3, 50, p)
     n_eqs = len(eqs)
-    printing_statement = 'Completion: ' + str(d + 1) + ' out of ' + str(n_sample) + '\n n_eqs = ' + n_eqs
+    if n_eqs > 1:
+        n_multistable = n_multistable + 1
+
+    printing_statement = 'Completion: ' + str(d + 1) + ' out of ' + str(n_sample) + '\n multistables = ' + str(n_multistable)
     sys.stdout.write('\r' + printing_statement)
     sys.stdout.flush()
