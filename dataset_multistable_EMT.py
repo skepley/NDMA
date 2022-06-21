@@ -29,14 +29,14 @@ def normal_distribution_around_point(a):
     V = np.identity(np.size(a, 1))
     index_info = np.argmax(v1)
     V[:, index_info] = v1
-    V[:, [0, index_info]] = V[:, [index_info, 0]]
+    #V[:, [0, index_info]] = V[:, [index_info, 0]]
 
     Lambda = np.identity(np.size(a, 1))
     Lambda = 10**-4 * lambda_1 * Lambda
-    Lambda[0, 0] = lambda_1
+    Lambda[0, 0] = 0.5
 
-    V = gram_schmidt(V.T)
-    V = V.T
+    #V = gram_schmidt(V.T)
+    #V = V.T
 
     Sigma = np.dot(np.dot(V, Lambda), V.T)
 
@@ -285,6 +285,8 @@ print(multistable_parameter)
 # extract sheer data??
 domain_size_EMT = 6
 multistable_pars, indices_domain_EMT, indices_input_EMT= from_string_to_Hill_data(multistable_parameter, domain_size_EMT, EMT_network, parameter_graph_EMT, multistable_region)
+
+np.savez('single_multistable_point', multistable_par = multistable_pars)
 
 L, U, T = HillContpar_to_DSGRN(multistable_pars, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
 success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == multistable_region)
