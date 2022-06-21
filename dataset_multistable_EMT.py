@@ -23,24 +23,9 @@ def gram_schmidt(vectors):
 
 
 def normal_distribution_around_point(a):
-    v1 = a
-    lambda_1 = np.linalg.norm(a) / 2
+    Sigma = 0.01*np.identity(np.size(a, 1))
 
-    V = np.identity(np.size(a, 1))
-    index_info = np.argmax(v1)
-    V[:, index_info] = v1
-    #V[:, [0, index_info]] = V[:, [index_info, 0]]
-
-    Lambda = np.identity(np.size(a, 1))
-    Lambda = 10**-4 * lambda_1 * Lambda
-    Lambda[0, 0] = 0.5
-
-    #V = gram_schmidt(V.T)
-    #V = V.T
-
-    Sigma = np.dot(np.dot(V, Lambda), V.T)
-
-    mu = (a[0, :]) / 2
+    mu = a[0,:]
     return Sigma, mu
 
 
@@ -189,11 +174,15 @@ def HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size):
 def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_input, domain_size):
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
-    restricted_region_number = np.where(extended_region_number == regions_array)
-    if np.shape(restricted_region_number)[1] == 0:
+    if extended_region_number in regions_array:
+        return regions_array.index(extended_region_number)
+    else:
         return len(regions_array)
-    region_number = restricted_region_number[0][0]
-    return region_number
+    #restricted_region_number = np.where(extended_region_number == regions_array)
+    #if np.shape(restricted_region_number)[1] == 0:
+    #    return len(regions_array)
+    #region_number = restricted_region_number[0][0]
+    #return region_number
 
 
 def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indices_input, domain_size):
@@ -259,6 +248,7 @@ for par_index in range(150):  # parameter_graph_EMT.size()
     num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
     if num_stable_FP >= 2:
         multistable_FP_parameters.append(par_index)
+        print(num_stable_FP)
         break
 
 num_parameters = parameter_graph_EMT.size()
@@ -286,7 +276,7 @@ print(multistable_parameter)
 domain_size_EMT = 6
 multistable_pars, indices_domain_EMT, indices_input_EMT= from_string_to_Hill_data(multistable_parameter, domain_size_EMT, EMT_network, parameter_graph_EMT, multistable_region)
 
-np.savez('single_multistable_point', multistable_par = multistable_pars)
+np.savez('single_multistable_point', multistable_par=multistable_pars)
 
 L, U, T = HillContpar_to_DSGRN(multistable_pars, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
 success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == multistable_region)
