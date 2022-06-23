@@ -19,6 +19,7 @@ def edge_parameter_from_DSGRN(edgeCount, parameter_string):
     (other than the Hill coefficient) then you must handle this separately."""
 
     num_node = len(edgeCount)
+
     def order_matches(tuple_list):
         idx, unordered_parm = np.array(
             list(zip(*[(int(tup[1]) * num_node + int(tup[0]), float(tup[2])) for tup in tuple_list])))
@@ -55,3 +56,27 @@ def parameter_from_DSGRN(dsgrnNetwork, parameterNodeIndex, edgeCount):
     edgeParameter = edge_parameter_from_DSGRN(edgeCount, parameterString)
     fullParameter = insert_trivial_decay(edgeCount, edgeParameter)
     return fullParameter
+
+
+def DSGRN_from_parameter(hillModel, parameter, edgeCount):
+    domain_size = len(edgeCount)
+
+    indices_gamma = 3 * np.cumsum(ezcat(0, edgeCount[:-1]))
+    gamma = parameter[indices_gamma]
+    ell_index = [i + 3 * np.cumsum(ezcat(0, edgeCount[:i])) + 3*j for i in range(domain_size) for j in range(edgeCount[i])]
+    ell = np.array(parameter[ell_index])
+    theta = np.array(parameter[ell_index+1])
+    delta = np.array(parameter[ell_index+2])
+    u = ell + delta
+
+    indices_domain = np.array([np.matlib.repmat(i, edgeCount[i]) for i in range(domain_size)])
+    indices_input = np.array([hillModel.parameterIndexByCoordinate(i) for i in range(domain_size)])
+    L = np.zeros((domain_size, domain_size))  # equation, input
+    T = np.zeros((domain_size, domain_size))
+    L[indices_domain, indices_input] = ell
+    T[indices_domain, indices_input] = theta
+    for i in range(np.shape(T)[0]):
+        T[i, :] = T[i, :]/gamma[i]
+    delta[indices_domain, indices_input] = delta
+    U = L + delta
+    return L, U, T
