@@ -7,7 +7,7 @@ Search for saddle-node bifurcations in the EMT model
 """
 from models.EMT_model import *
 from DSGRN import *
-from DSGRN_tools import parameter_from_DSGRN
+from DSGRN_tools import *
 
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
 edgeCounts = [2, 2, 2, 1, 3, 2]
@@ -32,9 +32,12 @@ for par_index in range(150):  # parameter_graph_EMT.size()
         multistable_FP_parameters.append(par_index)
         break
 
-best_candidate = multistable_FP_parameters
-multistable_region = best_candidate[0]
+multistable_region = multistable_FP_parameters[0]
 p = parameter_from_DSGRN(EMT_network, 127, edgeCounts)
+L, U, T = DSGRN_from_parameter(f, p, edgeCounts)
+region_test = par_to_region(p, [127], parameter_graph_EMT, f, edgeCounts)
+if region_test == 127:
+    print('success, probably')
 print(p)
 eq = f.find_equilibria(3, 100, p, uniqueRootDigits=3)
 print(eq)
