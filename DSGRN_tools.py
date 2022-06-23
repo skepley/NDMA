@@ -11,6 +11,7 @@ from hill_model import *
 from DSGRN import *
 import re
 
+
 def edge_parameter_from_DSGRN(edgeCount, parameter_string):
     """Input is a DSGRN parameter string which defines parameter values for L, U, T with edge labels
     defined by strings of the form Xi -> Xj. The output is the ordered parameter vector corresponding to the NDMA parameter
@@ -71,8 +72,10 @@ def DSGRN_from_parameter(hillModel, parameter, edgeCount):
     theta = np.array(parameter[ell_index+1])
     delta = np.array(parameter[ell_index+2])
 
-    indices_domain = np.array([np.matlib.repmat(i, edgeCount[i]) for i in range(domain_size)])
-    indices_input = np.array([hillModel.parameterIndexByCoordinate(i) for i in range(domain_size)])
+    indices_domain = np.array([np.tile(i, edgeCount[i])[j] for i in range(domain_size)
+                               for j in range(len(np.tile(i, edgeCount[i]))) ])
+    indices_input = np.array([hillModel.parameterIndexByCoordinate[i][j] for i in range(domain_size)
+                              for j in range(len(hillModel.parameterIndexByCoordinate[i]))])
     L = np.zeros((domain_size, domain_size))  # equation, input
     T = np.zeros((domain_size, domain_size))
     L[indices_domain, indices_input] = ell
