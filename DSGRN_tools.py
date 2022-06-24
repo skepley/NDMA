@@ -60,34 +60,48 @@ def parameter_from_DSGRN(dsgrnNetwork, parameterNodeIndex, edgeCount):
 
 
 def DSGRN_from_parameter(hillModel, parameter, edgeCount):
+    """takes a Hill Model, a parameter and the edgeCount, to reformat the parameter into a DSGRN parameter"""
+
     domain_size = len(edgeCount)
 
     indices_gamma = 3 * np.cumsum(ezcat(0, edgeCount[:-1]))
     gamma = parameter[indices_gamma]
 
-    ell_index = [i + 3 * int(np.sum(edgeCount[:i])) + 3*j
-                          for i in range(domain_size) for j in range(edgeCount[i])]
+    ell_index = [i + 3 * int(np.sum(edgeCount[:i])) + 3 * j
+                 for i in range(domain_size) for j in range(edgeCount[i])]
     ell_index = np.array(ell_index)
     ell = np.array(parameter[ell_index])
-    theta = np.array(parameter[ell_index+1])
-    delta = np.array(parameter[ell_index+2])
+    theta = np.array(parameter[ell_index + 1])
+    delta = np.array(parameter[ell_index + 2])
 
     indices_domain = np.array([np.tile(i, edgeCount[i])[j] for i in range(domain_size)
-                               for j in range(len(np.tile(i, edgeCount[i]))) ])
-    indices_input = np.array([hillModel.parameterIndexByCoordinate[i][j] for i in range(domain_size)
-                              for j in range(len(hillModel.parameterIndexByCoordinate[i]))])
+                               for j in range(len(np.tile(i, edgeCount[i])))])
+    indices_input = np.array([])
+    for i in range(domain_size):
+        if len(hillModel.productionIndex[i]) == edgeCount:
+            indices_input = ezcat(indices_input, np.array([hillModel.productionIndex[i][j]
+                    for j in range(len(hillModel.parameterIndexByCoordinate[i]))]))
+        else:
+            for j in range(len(hillModel.productionIndex[i]) - 1):
+                indices_input = ezcat(indices_input, np.array([hillModel.productionIndex[i][j + 1]]))
+    indices_input = indices_input.astype(int)
+
     L = np.zeros((domain_size, domain_size))  # equation, input
     T = np.zeros((domain_size, domain_size))
+    D = np.zeros((domain_size, domain_size))
     L[indices_domain, indices_input] = ell
     T[indices_domain, indices_input] = theta
     for i in range(np.shape(T)[0]):
-        T[i, :] = T[i, :]/gamma[i]
-    delta[indices_domain, indices_input] = delta
-    U = L + delta
+        T[i, :] = T[i, :] / gamma[i]
+    D[indices_domain, indices_input] = delta
+    U = L + D
     return L, U, T
 
 
 def par_to_region(parameter, regions_array, parameter_graph, hillModel, edgeCount):
+    """
+
+    """
     L, U, T = DSGRN_from_parameter(hillModel, parameter, edgeCount)
     # L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
@@ -99,6 +113,8 @@ def par_to_region(parameter, regions_array, parameter_graph, hillModel, edgeCoun
 
 def par_to_region_wrapper(regions_array, parameter_graph, hillModel, edgeCount):
     def par_2_region(par_array):
-        region_number = [par_to_region(par, regions_array, parameter_graph, hillModel, edgeCount) for par in par_array.T]
+        region_number = [par_to_region(par, regions_array, parameter_graph, hillModel, edgeCount) for par in
+                         par_array.T]
         return np.array(region_number)
+
     return par_2_region
