@@ -28,6 +28,8 @@ class EMT(HillModel):
             parameter - A length-6 list of parameter arrays of size K_i-by-4 where K_i is the number of incoming edges to
              node i. Each row of a parameter array has the form (ell, delta, theta, hill)."""
 
+        # TODO: The productionIndex specified here is wrong. It should only include nonlinear global indices.
+
         parameter = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
             np.nan]]).transpose()], axis=1), parameter))  # Insert a nan value into the Hill coefficient spot of the
         # HillComponent parameter list associated to every edge
