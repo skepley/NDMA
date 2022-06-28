@@ -5,7 +5,7 @@ A collection of functions for translating data, parameters, and models between D
    
     Author: Shane Kepley
     email: s.kepley@vu.nl
-    Date: 6/22/22; Last revision: 6/22/22
+    Date: 6/22/22
 """
 from hill_model import *
 from DSGRN import *
@@ -44,7 +44,7 @@ def insert_trivial_decay(edgeCount, edge_parameter):
     return full_parameter
 
 
-def parameter_from_DSGRN(dsgrnNetwork, parameterNodeIndex, edgeCount):
+def DSGRN_parameter_to_NDMA(dsgrnNetwork, parameterNodeIndex, edgeCount):
     """Return a parameter (without Hill coefficients) for an NDMA model associated with the DSGRN_network specified.
     This parameter will lie in the DSGRN parameter region specified by the given parameterNode which is the linear index
     for that region by DSGRN. edge_count is a vector of length (number of nodes) specifying the number of incoming edges
@@ -59,62 +59,55 @@ def parameter_from_DSGRN(dsgrnNetwork, parameterNodeIndex, edgeCount):
     return fullParameter
 
 
-def DSGRN_from_parameter(hillModel, parameter, edgeCount):
-    """takes a Hill Model, a parameter and the edgeCount, to reformat the parameter into a DSGRN parameter"""
+def network2matrix(dsgrnNetwork):
+    """Return the adjacency matrix for a DSGRN network where A[i][j] is nonzero iff there is
+      an edge from node j to node i. Note this is the transpose of the adjacency matrix for NDMA."""
 
-    domain_size = len(edgeCount)
+    labelMatch = re.compile(r"(.*) :")  # regex for matching DSGRN network labels
+    labels = labelMatch.findall(dsgrnNetwork.specification())  # get matches to identify node labels
+    edgeStrings = dsgrnNetwork.specification().split('\n')  # read interactions for each node as strings
+    adjDim = dsgrnNetwork.size()  # dimension of adjacency matrix
+    adjMatrix = np.zeros([adjDim, adjDim])
+    for (j, label) in enumerate(labels):
+        adjMatrix[:, j] = [s in edgeStrings[j] and s != label for s in labels]
 
-    indices_gamma = 3 * np.cumsum(ezcat(0, edgeCount[:-1]))
-    gamma = parameter[indices_gamma]
-
-    ell_index = [i + 3 * int(np.sum(edgeCount[:i])) + 3 * j
-                 for i in range(domain_size) for j in range(edgeCount[i])]
-    ell_index = np.array(ell_index)
-    ell = np.array(parameter[ell_index])
-    theta = np.array(parameter[ell_index + 1])
-    delta = np.array(parameter[ell_index + 2])
-
-    indices_domain = np.array([np.tile(i, edgeCount[i])[j] for i in range(domain_size)
-                               for j in range(len(np.tile(i, edgeCount[i])))])
-    indices_input = np.array([])
-    for i in range(domain_size):
-        if len(hillModel.productionIndex[i]) == edgeCount:
-            indices_input = ezcat(indices_input, np.array([hillModel.productionIndex[i][j]
-                    for j in range(len(hillModel.parameterIndexByCoordinate[i]))]))
-        else:
-            for j in range(len(hillModel.productionIndex[i]) - 1):
-                indices_input = ezcat(indices_input, np.array([hillModel.productionIndex[i][j + 1]]))
-    indices_input = indices_input.astype(int)
-
-    L = np.zeros((domain_size, domain_size))  # equation, input
-    T = np.zeros((domain_size, domain_size))
-    D = np.zeros((domain_size, domain_size))
-    L[indices_domain, indices_input] = ell
-    T[indices_domain, indices_input] = theta
-    for i in range(np.shape(T)[0]):
-        T[i, :] = T[i, :] / gamma[i]
-    D[indices_domain, indices_input] = delta
-    U = L + D
-    return L, U, T
+    return adjMatrix
 
 
-def par_to_region(parameter, regions_array, parameter_graph, hillModel, edgeCount):
-    """
+def NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, *parameter):
+    """Convert a given NDMA parameter into a DSGRN parameter region index. Input should be a full parameter which can be
+    parsed by the hillModel.parse_parameter method."""
 
-    """
-    L, U, T = DSGRN_from_parameter(hillModel, parameter, edgeCount)
-    # L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
-    extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
-    if extended_region_number in regions_array:
-        return regions_array.index(extended_region_number)
-    else:
-        return len(regions_array)
+    dim = hillModel.dimension
+    parameterByCoordinate = hillModel.unpack_parameter(
+        hillModel.parse_parameter(*parameter))  # concatenate all parameters into
+    # a vector and unpack by coordinate
 
+    # split up parameter vector into gamma, edge, and hill parameters
+    gamma_pars = np.array([])
+    edge_pars = []
+    for j in range(dim):
+        gamma, edge = np.split(parameterByCoordinate[j], [1])  # strip gamma, edge, and hill parameters for this coordinate
+        gamma_pars = ezcat(gamma_pars, gamma)  # append gamma_j
+        edge_pars.append(
+            np.reshape(edge, (edgeCount[j], 4))[:, :-1])  # reshape as column matrix: [L, D, T] and discard hill
 
-def par_to_region_wrapper(regions_array, parameter_graph, hillModel, edgeCount):
-    def par_2_region(par_array):
-        region_number = [par_to_region(par, regions_array, parameter_graph, hillModel, edgeCount) for par in
-                         par_array.T]
-        return np.array(region_number)
+    adjMatrix = network2matrix(dsgrnNetwork).transpose()  # transpose to index in NDMA format (rows identify incoming edges)
+    edge_pars = np.row_stack([edge for edge in edge_pars])  # stack and unpack L, D, T arrays
+    ell, delta, theta = edge_pars.transpose()
 
-    return par_2_region
+    # initialize DSGRN adjacency matrices and write the parameter data correctly
+    L = np.zeros([dim, dim])
+    U = np.zeros([dim, dim])
+    T = np.zeros([dim, dim])
+
+    L[adjMatrix.nonzero()] = ell
+    U[adjMatrix.nonzero()] = ell + delta
+    T[adjMatrix.nonzero()] = theta
+
+    # transpose back to match DSGRN adjacency format (columns identify incoming edges) and call DSGRN parameter lookup
+    L = L.transpose()
+    U = U.transpose()
+    T = gamma_pars * T.transpose()  # by definition, T = gamma * theta
+
+    return DSGRN.par_index_from_sample(DSGRN.ParameterGraph(dsgrnNetwork), L, U, T)
