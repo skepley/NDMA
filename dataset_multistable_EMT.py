@@ -86,11 +86,15 @@ def normal_distribution_around_many_points(a, *args):
     return Sigma, mu
 
 
-def par_to_region_wrapper(dsgrnNetwork, hillModel, edgeCount):
+def par_to_region_wrapper(dsgrnNetwork, hillModel, edgeCount, tracked_regions):
     def par_2_region(par_array):
         region_number = []
         for par in par_array.T:
-            region_number.append(NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, par))
+            DSGRN_region = NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, np.nan, par)
+            if DSGRN_region in tracked_regions:
+                region_number.append(np.where(tracked_regions == DSGRN_region)[0])
+            else:
+                region_number.append(len(tracked_regions)+1)
         return np.array(region_number)
     return par_2_region
 
@@ -241,9 +245,9 @@ if __name__ == "__main__":
     # production parameters as variable
     f = EMT(gammaVar, parameterVar)
 
-    assign_region = par_to_region_wrapper(EMT_network, f, edgeCounts)
+    assign_region = par_to_region_wrapper(EMT_network, f, edgeCounts, both_regions)
 
-    NDMA_parameter_to_DSGRN(EMT_network, f, edgeCounts, p0)
+    NDMA_parameter_to_DSGRN(EMT_network, f, edgeCounts, np.nan, p0)
 
     data_sample = np.zeros((42, 1))
     data_sample = multivariate_normal_distributions(mu, Sigma.flatten(), 10**4)

@@ -39,7 +39,7 @@ for par_index in range(150):  # parameter_graph_EMT.size()
 multistable_region = multistable_FP_parameters[0]  # linear DSGRN index e.g. 127
 p = DSGRN_parameter_to_NDMA(EMT_network, multistable_region, edgeCounts)
 # inverse action FAILS
-region_number = NDMA_parameter_to_DSGRN(EMT_network, f, edgeCounts, p)
+region_number = NDMA_parameter_to_DSGRN(EMT_network, f, edgeCounts, np.nan, p)
 if region_number is not multistable_region:
     raise NameError('Regions not compatible')
 
