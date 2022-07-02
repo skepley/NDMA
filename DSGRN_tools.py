@@ -111,3 +111,6 @@ def NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, *parameter):
     T = gamma_pars * T.transpose()  # by definition, T = gamma * theta
 
     return DSGRN.par_index_from_sample(DSGRN.ParameterGraph(dsgrnNetwork), L, U, T)
+
+
+

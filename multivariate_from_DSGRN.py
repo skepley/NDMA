@@ -231,7 +231,7 @@ bistable_FP_parameters = []
 multistable_FP_parameters = []
 good_candidate = []
 
-for par_index in range(1500):  # parameter_graph_EMT.size()
+for par_index in range(150):  # parameter_graph_EMT.size()
     parameter = parameter_graph_EMT.parameter(par_index)
     domain_graph = DSGRN.DomainGraph(parameter)
     morse_graph = DSGRN.MorseGraph(domain_graph)
