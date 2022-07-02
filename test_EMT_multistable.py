@@ -38,6 +38,11 @@ for par_index in range(150):  # parameter_graph_EMT.size()
 # check equilibria works correctly. In this region we should find > 1 equilibrium at "d = infty" and fewer as d becomes lower
 multistable_region = multistable_FP_parameters[0]  # linear DSGRN index e.g. 127
 p = DSGRN_parameter_to_NDMA(EMT_network, multistable_region, edgeCounts)
+# inverse action FAILS
+region_number = NDMA_parameter_to_DSGRN(EMT_network, f, edgeCounts, p)
+if region_number is not multistable_region:
+    raise NameError('Regions not compatible')
+
 print(len(f.find_equilibria(3, 100, p, uniqueRootDigits=3)))  # finds 3 equilibria
 print(len(f.find_equilibria(3, 10, p, uniqueRootDigits=3)))  # finds only 1 equilibrium
 
@@ -52,13 +57,13 @@ for d in hill:
     print(eq)
     nEq.append(np.shape(eq)[0])
 print('Equilibria found: {0}'.format(nEq))
-# equilibria counts are [1, 1, 3, 3, 3]
+# equilibria counts are [1, 1, 3, 3, 3, 3]
 
 
 # Saddle node bifurcation search for d in [10, 20]
 SNB = SaddleNode(f)
 snb = []
-for d in [10, 15, 20]
+for d in [10, 15, 20]:
     snb_d = SNB.find_saddle_node(0, d, p)
     if len(snb_d) > 0:
         snb.append(snb_d[0])
