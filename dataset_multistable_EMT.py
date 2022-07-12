@@ -92,9 +92,9 @@ def par_to_region_wrapper(dsgrnNetwork, hillModel, edgeCount, tracked_regions):
         for par in par_array.T:
             DSGRN_region = NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, np.nan, par)
             if DSGRN_region in tracked_regions:
-                region_number.append(np.where(tracked_regions == DSGRN_region)[0])
+                region_number.append(np.where(tracked_regions == DSGRN_region)[0][0])
             else:
-                region_number.append(len(tracked_regions)+1)
+                region_number.append(len(tracked_regions))
         return np.array(region_number)
     return par_2_region
 
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     # Create dataset
     n_parameter_region = 2
     size_dataset = 10**4
-    file_name = 'dataset_bistable_EMT.npz'
+    file_name = 'dataset_multistable_EMT.npz'
     initial_coef = np.append(mu, Sigma.flatten())
 
     gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables

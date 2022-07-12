@@ -251,8 +251,15 @@ def DSGRN_parameter_regionTS(parameter):
     return associate_parameter_regionTS(alpha, beta)
 
 
-def subsample(file_name, size_subsample):
+def subsample(file_name, size_subsample, wanted_regions=[]):
+    def flatten(xss):
+        return [x for xs in xss for x in xs]
+
     data, regions, coefs = load_dataset(file_name)
+    if wanted_regions:
+        indices = flatten([np.where(regions == wanted_regions[i])[0] for i in range(len(wanted_regions))])
+        regions = regions[indices]
+        data = data[:, indices]
     size_data = np.size(data, 1)
     if size_subsample > size_data:
         raise ValueError('Cannot ask more samples than the stored ones')

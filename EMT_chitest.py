@@ -18,27 +18,10 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
-dataFile = 'dataset_EMT.npz'
-file_storing = 'chi_test_EMT_1June22.npz'
-n_sample = 364
-
-emtData = np.load(dataFile)
-emtRegions = emtData['parameter_region']
-monostableIdx = [idx for idx in range(len(emtRegions)) if emtRegions[idx] == 0]
-bistableIdx = [idx for idx in range(len(emtRegions)) if emtRegions[idx] == 1]
-emtParameters = emtData['data'].transpose()  # transpose to make into an arrow of row vectors.
-monostableParameters = emtParameters[monostableIdx]
-bistableParameters = emtParameters[bistableIdx]
-
-random_index_monostable = random.sample(monostableIdx, n_sample)
-random_index_bistable = random.sample(bistableIdx, n_sample)
-all_index = set(random_index_monostable + random_index_bistable)
-n_sample = len(all_index)
-#all_index = random.sample(set(random_index_monostable + random_index_bistable), n_sample)
-all_index = random_index_bistable
-data_subsample = emtParameters[all_index].transpose()
-region_subsample = emtRegions[all_index]
-n_sample = len(all_index)
+dataFile = 'dataset_multistable_EMT.npz'
+file_storing = 'chi_test_EMT_12July22.npz'
+n_sample = 10
+data_subsample, region_subsample, coefs = subsample(dataFile, n_sample, [0, 1])
 
 #emtData = np.load(dataFile)
 #data_subsample = emtData['data']
@@ -74,7 +57,7 @@ n_bistable_bad_candidate = 0
 for d in range(0, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    SNParameters, badCandidates = saddle_node_search(f, [50, 500], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
     if SNParameters and SNParameters != 0:
         if region_j == 0:
             n_monostable_with_saddle = n_monostable_with_saddle + 1
