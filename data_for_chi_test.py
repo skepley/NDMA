@@ -18,12 +18,12 @@ SN = SaddleNode(f)
 
 # size of the sample
 n_sample = 10 ** 4
-file_name = 'TS_data_100000.npz'
+file_name = 'TS_data_1000000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
-    n = 100000
-    create_dataset_ToggleSwitch(100000, file_name)
+    n = 1000000
+    TS_region(n, file_name)
 
 file_storing = 'chi_test_data_100000.npz'
 
@@ -51,19 +51,19 @@ for j in range(n_sample):  # range(n_sample):
 
     ds = 0.01
     dsMinimum = 0.005
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 30, 40, 50, 75, 100], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
     # SNParameters, badCandidates = find_saddle_coef(f, [1, 10, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500], a_j)
     if SNParameters and SNParameters != 0:
         if region_j == 4:
-            if len(SNParameters) == 1 or len(SNParameters) == 3:
-                n_center_with_saddle = n_center_with_saddle + 1
-            else:
-                wrong_parity_center = wrong_parity_center + 1
+            #if len(SNParameters) == 1 or len(SNParameters) == 3:
+            n_center_with_saddle = n_center_with_saddle + 1
+            #else:
+            #    wrong_parity_center = wrong_parity_center + 1
         else:
-            if len(SNParameters) == 2:
-                n_donut_with_saddle = n_donut_with_saddle + 1
-            else:
-                wrong_parity_donut = wrong_parity_donut + 1
+            #if len(SNParameters) == 2:
+            n_donut_with_saddle = n_donut_with_saddle + 1
+            #else:
+            #    wrong_parity_donut = wrong_parity_donut + 1
     elif badCandidates and badCandidates != 0:
         if region_j == 4:
             n_center_bad_candidate = n_center_bad_candidate + 1
@@ -112,12 +112,10 @@ try:
 except:
     v_center_region = np.array([n_center_region])
     v_center_with_saddle = np.array([n_center_with_saddle])
-    v_wrong_parity_center = np.array([wrong_parity_center])
     v_center_without_saddle = np.array([n_center_without_saddle])
     v_center_bad_candidate = np.array([n_center_bad_candidate])
     v_donut = np.array([n_donut])
     v_donut_with_saddle = np.array([n_donut_with_saddle])
-    v_wrong_parity_donut = np.array([wrong_parity_donut])
     v_donut_without_saddle = np.array([n_donut_without_saddle])
     v_donut_bad_candidate = np.array([n_donut_bad_candidate])
     v_sample = np.array([n_sample])
@@ -129,8 +127,12 @@ np.savez(file_storing,
          v_donut_without_saddle=v_donut_without_saddle, v_donut_bad_candidate=v_donut_bad_candidate, v_sample=v_sample)
 
 data = np.load(file_storing)
+v_center_with_saddle = data.f.v_center_with_saddle
+v_center_without_saddle = data.f.v_center_without_saddle
+v_donut_with_saddle = data.f.v_donut_with_saddle
+v_donut_without_saddle = data.f.v_donut_without_saddle
 
-mat_for_chi_test = np.array([[np.sum(v_center_with_saddle)+np.sum(v_wrong_parity_center), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate)], [np.sum(v_donut_with_saddle)+np.sum(v_wrong_parity_donut), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate)]])
+mat_for_chi_test = np.array([[np.sum(v_center_with_saddle), np.sum(v_center_without_saddle)], [np.sum(v_donut_with_saddle), np.sum(v_donut_without_saddle)]])
 
 unused, p, a, b = chi2_contingency(mat_for_chi_test)
 

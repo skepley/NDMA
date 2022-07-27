@@ -22,13 +22,13 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 3  # testing on 3, final run on 4
-file_name = 'TS_data_100000.npz'
+n_sample = 10 ** 5
+file_name = 'TS_data_1000000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
-    n = 100000
-    create_dataset_ToggleSwitch(100000, file_name)
+    n = 1000000
+    TS_region(n, file_name)
 
 file_storing = 'heat_map.npz'
 
@@ -54,7 +54,7 @@ for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
     ds = 0.01
     dsMinimum = 0.005
-    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80, 100], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')

@@ -10,6 +10,9 @@ from saddle_finding_functionalities import *
 from create_dataset import *
 import sys
 from scipy.stats import chi2_contingency
+from time import time
+
+t = time()
 
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
 edgeCounts = [2, 2, 2, 1, 3, 2]
@@ -19,8 +22,8 @@ f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_multistable_EMT.npz'
-file_storing = 'chi_test_EMT_12July22.npz'
-n_sample = 10
+file_storing = 'chi_test_EMT_15July22.npz'
+n_sample = 1000
 data_subsample, region_subsample, coefs = subsample(dataFile, n_sample, [0, 1])
 
 #emtData = np.load(dataFile)
@@ -128,9 +131,9 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = np.array([[np.sum(v_monostable_with_saddle)+np.sum(v_wrong_parity_monostable), np.sum(v_monostable_without_saddle)], [np.sum(v_bistable_with_saddle)+np.sum(v_wrong_parity_bistable), np.sum(v_bistable_without_saddle)]])
+mat_for_chi_test = np.array([[np.sum(v_monostable_with_saddle), np.sum(v_monostable_without_saddle)], [np.sum(v_bistable_with_saddle), np.sum(v_bistable_without_saddle)]])
 
-print('Correlation matrix\n')
+print('\nCorrelation matrix\n')
 print(mat_for_chi_test)
 
 unused, p, a, b = chi2_contingency(mat_for_chi_test)
@@ -141,4 +144,7 @@ else:
     print('We cannot reject the null hypothesis: there is NO proven correlation between saddles and center region\n')
 
 print('p-value = ', p)
+toc = time()
+print(toc-t + ' sec Elapsed')
+
 print('It is the end!')
