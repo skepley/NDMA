@@ -8,6 +8,7 @@ verify_ssl = true
 [packages]
 scipy = "*"
 matplotlib = '3.5.0'
+dsgrn = "*"
 
 [requires]
 python_version = "3.9"
