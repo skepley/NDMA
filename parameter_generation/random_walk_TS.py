@@ -46,3 +46,44 @@ special_parameternode = parameter_graph_TS.parameter(parameterindex)
 sampler = DSGRN.ParameterSampler(TS_network)
 a = sampler.sample(special_parameternode)
 print(a)
+
+index = 0 # any number between 0 and 8 (or 1 and 9?)
+edgeCount = [1, 1]
+point0 = DSGRN_parameter_to_NDMA(TS_network, index, edgeCount)
+
+decay = np.array([1, np.nan], dtype=float)
+p1 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_1, delta_1, theta_1)
+p2 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_2, delta_2, theta_2)
+TS = ToggleSwitch(decay, [p1, p2])
+
+region = par_to_region_wrapper(TS_network, TS, edgeCount, range(9))
+
+region(point0)
+
+region(point0) == index
+
+bool_region = lambda x: region(x) == index
+
+point1 = restricted_random_step(point0, bool_region)
+print(99)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
