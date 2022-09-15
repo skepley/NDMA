@@ -86,19 +86,6 @@ def normal_distribution_around_many_points(a, *args):
     return Sigma, mu
 
 
-def par_to_region_wrapper(dsgrnNetwork, hillModel, edgeCount, tracked_regions):
-    def par_2_region(par_array):
-        region_number = []
-        for par in par_array.T:
-            DSGRN_region = NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, np.nan, par)
-            if DSGRN_region in tracked_regions:
-                region_number.append(np.where(tracked_regions == DSGRN_region)[0][0])
-            else:
-                region_number.append(len(tracked_regions))
-        return np.array(region_number)
-    return par_2_region
-
-
 def test_multivar():
     a = np.random.rand(1, 42)
     b = np.random.rand(1, 42)

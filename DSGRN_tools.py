@@ -59,6 +59,19 @@ def DSGRN_parameter_to_NDMA(dsgrnNetwork, parameterNodeIndex, edgeCount):
     return fullParameter
 
 
+def par_to_region_wrapper(dsgrnNetwork, hillModel, edgeCount, tracked_regions):
+    def par_2_region(par_array):
+        region_number = []
+        for par in par_array.T:
+            DSGRN_region = NDMA_parameter_to_DSGRN(dsgrnNetwork, hillModel, edgeCount, np.nan, par)
+            if DSGRN_region in tracked_regions:
+                region_number.append(np.where(tracked_regions == DSGRN_region)[0][0])
+            else:
+                region_number.append(len(tracked_regions))
+        return np.array(region_number)
+    return par_2_region
+
+
 def network2matrix(dsgrnNetwork):
     """Return the adjacency matrix for a DSGRN network where A[i][j] is nonzero iff there is
       an edge from node j to node i. Note this is the transpose of the adjacency matrix for NDMA."""

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plot
 import scipy.optimize as opt
 
+
 def simple_region(x, f):
     x1 = x[:, 0]
     x2 = x[:, 1]
@@ -54,6 +55,7 @@ def numerical_diff(f, x):
         h[i] = epsilon
         diff[i] = (f(x+h) - f(x))/epsilon
     return diff
+
 
 # definitions
 f_diag = lambda x, y: y < x

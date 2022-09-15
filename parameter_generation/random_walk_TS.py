@@ -1,25 +1,35 @@
 import DSGRN
 import numpy as np
+import sys
+import os
+import inspect
+from DSGRN_tools import *
+from models.TS_model import ToggleSwitch
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 
 
-def random_step(x, step_size = 0.1):
+def random_step(x, step_size=0.1):
     h = np.random.normal(0, step_size, len(x))
-    return x+h
+    return x + h
 
 
 def restricted_random_step(x, bool_region, step_size=0.1):
     h = np.random.normal(0, step_size, len(x))
     iter = 0
-    while iter<10 and bool_region(x+h) is False:
+    while iter < 10 and bool_region(x + h) is False:
         h = np.random.normal(0, step_size, len(x))
-        iter = iter+1
+        iter = iter + 1
         if iter == 10:
-            if step_size > 10**-6:
+            if step_size > 10 ** -6:
                 iter = 0
-                step_size = 0.1*step_size
+                step_size = 0.1 * step_size
             else:
                 AttributeError()
-    return x+h
+    return x + h
+
 
 # create network from file
 TS_network = DSGRN.Network("TS.txt")
