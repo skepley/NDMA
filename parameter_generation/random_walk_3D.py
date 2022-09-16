@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plot
+from tools_random_walk import *
 
 
 def regions3D(x, f_1, f_2, f_3):
@@ -14,6 +15,7 @@ def regions3D(x, f_1, f_2, f_3):
     return np.nan
 
 
+"""
 def random_change(step_size, x):
     h = np.random.normal(0, step_size, len(x))
     # adding a stronger likelihood of "coming back"
@@ -39,13 +41,13 @@ def restricted_random_step(x, bool_region, step_size=0.1):
     return x + h
 
 
-def one_figure(point0, ax, color, niter=10, step_size=0.2):
+def one_figure(point0, bool_region, ax, color, niter=10, step_size=0.2):
     for j in range(niter):
         point0 = restricted_random_step(point0, bool_region, step_size=step_size)
         ax.plot(point0[0],
                   point0[1], point0[2], '.', color=color)
     return
-
+"""
 
 f1 = lambda x, y, z: x
 f2 = lambda x, y, z: x + y
@@ -71,7 +73,7 @@ for region_index in range(3):
     bool_region = lambda x: regions3D(x, f1, f2, f3) == region_index
     point0[2] = y_point0[region_index]
     for i in range(10):
-        one_figure(point0, ax, color_options[region_index], niter=500)
+        one_figure(point0, bool_region, ax, color_options[region_index], niter=500)
 
 plot.show()
 

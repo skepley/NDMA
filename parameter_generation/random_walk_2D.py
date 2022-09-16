@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plot
 import scipy.optimize as opt
-
+from tools_random_walk import *
 
 def simple_region(x, *f):
     x1 = x[0]
@@ -11,50 +11,7 @@ def simple_region(x, *f):
     for i in range(len(f)):
         if x2 < f[i](x1):
             return i
-
     return len(f)
-
-
-def random_step(x, step_size=0.1):
-    h = np.random.normal(0, step_size, len(x))
-    return x + h
-
-
-def random_change(step_size, x):
-    h = np.random.normal(0, step_size, len(x))
-
-    # adding a stronger likelyhood of "coming back"
-    if np.linalg.norm(x) > 1 and np.log2(np.linalg.norm(x)) > abs(np.random.normal(0, 6)):
-        h = - np.abs(h)
-    return h
-
-
-def restricted_random_step(x, bool_region, step_size=0.1):
-    if bool_region(x) is False:
-        ValueError()
-    h = random_change(step_size, x)
-    iter = 0
-    while iter < 10 and bool_region(x + h) is False:
-        h = random_change(step_size, x)
-        iter = iter + 1
-        if iter == 10:
-            if step_size > 10 ** -6:
-                iter = 0
-                step_size = 0.1 * step_size
-            else:
-                AttributeError()
-
-    return x + h
-
-
-def one_figure(point0, ax, color, niter=1000):
-    for j in range(niter):
-        point1 = restricted_random_step(point0, bool_region)
-        ax.plot(np.array([point0[0], point1[0]]),
-                  np.array([point0[1], point1[1]]), '.', color=color)
-        point0 = point1
-
-    return
 
 
 f1 = lambda x: (x < 1) * (0.5 * x) + (x >= 1) * 0.5 * np.sqrt(np.abs(x))
@@ -78,7 +35,7 @@ for region_index in range(3):
     point0[1] = y_point0[region_index]
 
     for i in range(10):
-        one_figure(point0, ax, color_options[region_index])
+        one_figure(point0, bool_region, ax, color_options[region_index])
 
 plot.show()
 

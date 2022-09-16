@@ -12,6 +12,7 @@ sys.path.insert(0, parentdir)
 
 from create_dataset import *
 
+
 def random_step(x, step_size=0.1):
     h = np.random.normal(0, step_size, len(x))
     return x + h
@@ -50,7 +51,7 @@ sampler = DSGRN.ParameterSampler(TS_network)
 a = sampler.sample(special_parameternode)
 print(a)
 
-index = 0 # any number between 0 and 8 (or 1 and 9?)
+index = 0  # any number between 0 and 8 (or 1 and 9?)
 edgeCount = [1, 1]
 point0 = DSGRN_parameter_to_NDMA(TS_network, index, edgeCount)
 
@@ -69,24 +70,3 @@ bool_region = lambda x: region(x) == index
 
 point1 = restricted_random_step(point0, bool_region)
 print(99)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
