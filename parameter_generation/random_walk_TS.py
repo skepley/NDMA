@@ -10,6 +10,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
+from create_dataset import *
 
 def random_step(x, step_size=0.1):
     h = np.random.normal(0, step_size, len(x))
@@ -30,6 +31,8 @@ def restricted_random_step(x, bool_region, step_size=0.1):
                 AttributeError()
     return x + h
 
+
+# DOESN'T WORK - regions seem incompatible??
 
 # create network from file
 TS_network = DSGRN.Network("TS.txt")
@@ -58,7 +61,7 @@ TS = ToggleSwitch(decay, [p1, p2])
 
 region = par_to_region_wrapper(TS_network, TS, edgeCount, range(9))
 
-region(point0)
+DSGRN_parameter_regionTS(point0)
 
 region(point0) == index
 
