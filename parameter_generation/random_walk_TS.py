@@ -5,68 +5,45 @@ import os
 import inspect
 from DSGRN_tools import *
 from models.TS_model import ToggleSwitch
+from tools_random_walk import *
+import matplotlib.pyplot as plt
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 from create_dataset import *
+from toggle_switch_heat_functionalities import *
 
-
-def random_step(x, step_size=0.1):
-    h = np.random.normal(0, step_size, len(x))
-    return x + h
-
-
-def restricted_random_step(x, bool_region, step_size=0.1):
-    h = np.random.normal(0, step_size, len(x))
-    iter = 0
-    while iter < 10 and bool_region(x + h) is False:
-        h = np.random.normal(0, step_size, len(x))
-        iter = iter + 1
-        if iter == 10:
-            if step_size > 10 ** -6:
-                iter = 0
-                step_size = 0.1 * step_size
-            else:
-                AttributeError()
-    return x + h
-
-
-# DOESN'T WORK - regions seem incompatible??
-
-# create network from file
-TS_network = DSGRN.Network("TS.txt")
-# graph_TS = graphviz.Source(TS_network.graphviz())
-# graph_TS.view()
-parameter_graph_TS = DSGRN.ParameterGraph(TS_network)
-
-# look into a parameter region
-parameterindex = 1
-special_parameternode = parameter_graph_TS.parameter(parameterindex)
-# print(special_parameternode.inequalities())
-
-# sampling a special parameter node
-sampler = DSGRN.ParameterSampler(TS_network)
-a = sampler.sample(special_parameternode)
-print(a)
-
-index = 0  # any number between 0 and 8 (or 1 and 9?)
-edgeCount = [1, 1]
-point0 = DSGRN_parameter_to_NDMA(TS_network, index, edgeCount)
 
 decay = np.array([1, np.nan], dtype=float)
 p1 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_1, delta_1, theta_1)
 p2 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_2, delta_2, theta_2)
 TS = ToggleSwitch(decay, [p1, p2])
 
-region = par_to_region_wrapper(TS_network, TS, edgeCount, range(9))
+index = 0
+point0 = np.array([2, 1.25, 1.75, .25, .5])
 
-DSGRN_parameter_regionTS(point0)
+points0 = np.array([[2, 1.25, 1.75, .25, .5], [2, 1.25, 1.75, .25, .5]])
 
-region(point0) == index
+alphaMax = [10, 10]
 
-bool_region = lambda x: region(x) == index
+print(parameter_to_region(points0, alphaMax=alphaMax))
+print('This point should be in region 0!')
+parameter_to_region(point0, alphaMax=alphaMax)
+
+point0 = np.array([2, 1.25, 1.75, -.25, .5])
+print(parameter_to_region(point0, alphaMax=alphaMax))
+
+'''
+# following a random walk approach
+
+bool_region = lambda x:  parameter_to_region(x) == index
 
 point1 = restricted_random_step(point0, bool_region)
-print(99)
+
+many_points = brownian_motion_in_region(point0, bool_region, n_steps=10**4)
+
+dsgrn_plot(many_points.T, alphaMax=alphaMax)
+plt.show()
+'''

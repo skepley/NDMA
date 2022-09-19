@@ -1,6 +1,7 @@
 """
 Functionalities for plotting heat maps and contour plots for the Toggle Switch
 """
+import numpy as np
 
 from hill_model import *
 from scipy.interpolate import griddata
@@ -78,10 +79,14 @@ def DSGRN_coordinate(alpha, beta, alphaMax):
 
 def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
-    x = np.array(
-        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
-    y = np.array(
-        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
+    if is_vector(alpha1):
+        x = np.array(
+            [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
+        y = np.array(
+            [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
+    else:
+        x = DSGRN_coordinate(alpha2, beta2, alphaMax[0])
+        y = DSGRN_coordinate(alpha1, beta1, alphaMax[1])
     return x, y
 
 
@@ -107,6 +112,22 @@ def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
         alphaMax = np.array([np.max(alpha1), np.max(alpha2)])
 
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
+
+
+def parameter_to_region(parameterArray, alphaMax=None):
+    if (parameterArray < 0).any():
+        return np.nan
+    xArray, yArray = parameter_to_DSGRN_coord(parameterArray, alphaMax)
+    if (xArray < 0).any() or (yArray < 0).any():
+        print('This should never be triggered...')
+        return np.nan
+    region_mat = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    region = np.zeros_like(xArray)
+    if not is_vector(region):
+        return region_mat[np.minimum(2, np.floor(xArray)).astype(int)][np.minimum(2, np.floor(yArray)).astype(int)]
+    for i in range(len(xArray)):
+        region[i] = region_mat[np.minimum(2, np.floor(xArray[i])).astype(int)][np.minimum(2, np.floor(yArray[i])).astype(int)]
+    return region
 
 
 def grid_lines(ax=None):
@@ -164,7 +185,6 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=
         grid_lines(ax)
 
 
-
 def dsgrn_contour_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=True):
     if ax is None:
         fig = plt.gcf()
@@ -182,6 +202,7 @@ def dsgrn_contour_plot(parameterData, colorData, alphaMax=None, ax=None, gridLin
     CS = ax.contour(xGrid,yGrid,zGrid)
     ax.clabel(CS, inline=True, fontsize=10)
     ax.set_title('Simplest default with labels')
+
 
 """
 plt.close('all')

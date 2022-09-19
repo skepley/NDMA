@@ -31,6 +31,14 @@ def restricted_random_step(x, bool_region, step_size=0.1):
     return x + h
 
 
+def brownian_motion_in_region(x0, bool_region, n_steps=100, step_size=0.1):
+    x = np.zeros([np.alen(x0), n_steps])
+    x[:, 0] = x0
+    for i in range(1, n_steps):
+        x[:, i] = restricted_random_step(x[:, i-1], bool_region, step_size)
+    return x
+
+
 def one_figure(point0, bool_region, ax, color, niter=1000):
     for j in range(niter):
         point0 = restricted_random_step(point0, bool_region)
