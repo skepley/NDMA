@@ -1,7 +1,11 @@
 """
 Functionalities for plotting heat maps and contour plots for the Toggle Switch
 """
+import matplotlib.pyplot as plt
 import numpy as np
+import warnings
+
+warnings.simplefilter('once', UserWarning)
 
 from hill_model import *
 from scipy.interpolate import griddata
@@ -119,7 +123,7 @@ def parameter_to_region(parameterArray, alphaMax=None):
         return np.nan
     xArray, yArray = parameter_to_DSGRN_coord(parameterArray, alphaMax)
     if (xArray < 0).any() or (yArray < 0).any():
-        print('This should never be triggered...')
+        warnings.warn('This should never be triggered...')
         return np.nan
     region_mat = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
     region = np.zeros_like(xArray)
