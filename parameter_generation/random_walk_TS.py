@@ -22,18 +22,18 @@ p2 = np.array([np.nan, np.nan, 1], dtype=float)  # (ell_2, delta_2, theta_2)
 TS = ToggleSwitch(decay, [p1, p2])
 
 index = 0
-point0 = np.array([2, 1.25, 1.75, .25, .5])
+point_test = np.array([2, 1.25, 1.75, .25, .5])
 
-points0 = np.array([[2, 1.25, 1.75, .25, .5], [2, 1.25, 1.75, .25, .5]])
+points_test = np.array([[2, 1.25, 1.75, .25, .5], [2, 1.25, 1.75, .25, .5]])
 
 alphaMax = [2, 0.14]
 
-print(parameter_to_region(points0, alphaMax=alphaMax))
+print(parameter_to_region(points_test, alphaMax=alphaMax))
 print('This point should be in region 0!')
-parameter_to_region(point0, alphaMax=alphaMax)
+parameter_to_region(point_test, alphaMax=alphaMax)
 
-point0 = np.array([2, 1.25, 1.75, -.25, .5])
-print(parameter_to_region(point0, alphaMax=alphaMax))
+pointbad = np.array([2, 1.25, 1.75, -.25, .5])
+print(parameter_to_region(pointbad, alphaMax=alphaMax))
 
 # following a random walk approach
 
@@ -42,9 +42,14 @@ bool_region = lambda x:  parameter_to_region(x, alphaMax=alphaMax) == index
 point0 = np.array([2, 1.25, 1.75, .25, .5])
 point1 = restricted_random_step(point0, bool_region)
 
-many_points = brownian_motion_in_region(point0, bool_region, n_steps=10**6)
-
+many_points = brownian_motion_in_region(point0, bool_region, n_steps=10**4)
+# if alphaMax is fixed as previously, all points show up
 dsgrn_plot(many_points.T, alphaMax=alphaMax)
 plt.show()
+# otherwise, some of them get NEGATIVE!
+dsgrn_plot(many_points.T, alphaMax=None)
+plt.show()
+
+
 
 print(99)

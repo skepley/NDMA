@@ -155,8 +155,8 @@ def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
     ax.scatter(x, y, marker='o', s=4, **pyPlotOpts)
-    plt.xlim(0, 3)
-    plt.ylim(0, 3)
+    #plt.xlim(0, 3)
+    #plt.ylim(0, 3)
     grid_lines()
 
 
