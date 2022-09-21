@@ -45,11 +45,12 @@ point1 = restricted_random_step(point0, bool_region)
 many_points = brownian_motion_in_region(point0, bool_region, n_steps=10**4)
 # if alphaMax is fixed as previously, all points show up
 dsgrn_plot(many_points.T, alphaMax=alphaMax)
+plt.savefig('fixed_alphaMax.png')
 plt.show()
+
 # otherwise, some of them get NEGATIVE!
 dsgrn_plot(many_points.T, alphaMax=None)
+plt.savefig('None_alphaMax.png')
 plt.show()
-
-
 
 print(99)
