@@ -34,7 +34,6 @@ SN = SaddleNode(f)
 hill = 4.1
 p = np.array([1, 1, 5, 3, 1, 1, 6, 3], dtype=float)
 
-
 # x0Sol, v0Sol, rhoSol = [u0Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 # # compare to rhoSol = [ 4.55637172,  2.25827744,  0.82199933, -0.56948846,  3.17447061]
 
@@ -154,3 +153,13 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, range(1, len(nRange)),
                               interval=10, blit=True, init_func=init, repeat_delay=1000)
 plt.show()
+
+gamma = np.array([1, 1])
+parameter = [2 * [np.array([4 * [np.nan]])]]
+interactionSigns = [[-1], [-1]]
+interactionTypes = [[1], [1]]
+interactionIndex = [[1], [0]]
+f = HillModel(gamma, parameter, interactionSigns, interactionTypes, interactionIndex)
+SN = SaddleNode(f)
+p = np.array([1, 5, 3, 4, 1, 6, 3, 4])
+SNBifurcation = SN.find_saddle_node(0, p)
