@@ -36,11 +36,15 @@ def coverage_ratio(regions):
     return min_n_points / max_n_points
 
 
+def distribution(par, size, dim=2):
+    mean = par[:dim]
+    cov = np.reshape(par[dim:], [dim, dim])
+    return np.abs(np.random.multivariate_normal(mean, np.matmul(cov.transpose(), cov), size=size))
+
+
 def return_loss_function(dim=2, *f):
     def loss_function(par):
-        mean = par[:dim]
-        cov = np.reshape(par[dim:], [dim, dim])
-        points2D = np.abs(np.random.multivariate_normal(mean, np.matmul(cov.transpose(), cov), size=500))
+        points2D = distribution(par, 100000, dim)
         return coverage_ratio(many_regions(points2D, *f))
 
     return loss_function
@@ -61,7 +65,7 @@ def numerical_diff(f, x):
 f_diag = lambda x, y: y < x
 n = 2000
 f_square = lambda x, y: y ** 2 < x
-mean = np.zeros(2)
+mean = np.array([3,2])
 cov = 3 * np.identity(2)
 par = np.append(mean, np.reshape(cov, -1))
 
@@ -84,5 +88,8 @@ loss(par)
 
 res = opt.minimize(loss, par, method='BFGS', jac=lambda x: numerical_diff(loss, x), options={'disp': True})
 # covariance gets not positive-definite
+points2D = distribution(res.x, 5000, 2)
+scatter_plot(points2D, many_regions(points2D, f_diag, f_square))
+loss(res.x)
 
 print(99)
