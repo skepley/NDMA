@@ -131,7 +131,7 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = np.array([[np.sum(v_monostable_with_saddle), np.sum(v_monostable_without_saddle)], [np.sum(v_bistable_with_saddle), np.sum(v_bistable_without_saddle)]])
+mat_for_chi_test = np.array([[np.sum(v_bistable_with_saddle), np.sum(v_bistable_without_saddle)], [np.sum(v_monostable_with_saddle), np.sum(v_monostable_without_saddle)]])
 
 print('\nCorrelation matrix\n')
 print(mat_for_chi_test)

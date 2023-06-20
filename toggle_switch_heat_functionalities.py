@@ -10,6 +10,7 @@ warnings.simplefilter('once', UserWarning)
 from hill_model import *
 from scipy.interpolate import griddata
 
+
 # EQ: I don't think we should ever use the sampler, and if we do we should change it to create_dataset
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
@@ -66,9 +67,18 @@ def fiber_sampler(u, v, alpha_bar=10):
     return ezcat(ell_1, delta_1, gamma_2, ell_2, delta_2)
 
 
+def check_alphaMax(alphaMax):
+    if alphaMax is None:
+        return
+    if np.any(alphaMax <= 1):
+        raise ValueError('alphaMax needs to have both components bigger than 1')
+    return
+
+
 def DSGRN_coordinate(alpha, beta, alphaMax):
     """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
     alpha = ell / gamma and beta = (ell + delta) / gamma"""
+    check_alphaMax(alphaMax)
 
     if beta < 1:  # (ell + delta)/gamma < theta
         x = beta
@@ -83,6 +93,7 @@ def DSGRN_coordinate(alpha, beta, alphaMax):
 
 def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
+    check_alphaMax(alphaMax)
     if is_vector(alpha1):
         x = np.array(
             [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
@@ -111,14 +122,17 @@ def parameter_to_alpha_beta(parameterArray):
 
 def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
+    check_alphaMax(alphaMax)
     alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
     if alphaMax is None:
-        alphaMax = np.array([np.max(alpha1), np.max(alpha2)])
-
+        alphaMax = np.array([np.maximum(np.max(alpha1), 1.1), np.maximum(np.max(alpha2), 1.1)])
+        check_alphaMax(alphaMax)
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
 
 def parameter_to_region(parameterArray, alphaMax=None):
+    # these regions are NOT DSGRN parameter regions!
+    check_alphaMax(alphaMax)
     if (parameterArray < 0).any():
         return np.nan
     xArray, yArray = parameter_to_DSGRN_coord(parameterArray, alphaMax)
@@ -149,6 +163,7 @@ def grid_lines(ax=None):
 def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
+    check_alphaMax(alphaMax)
 
     if ax is None:
         fig = plt.gcf()
