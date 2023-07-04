@@ -1,13 +1,18 @@
+"""
+Functionalities for plotting heat maps and contour plots for the Toggle Switch
+"""
+
 from hill_model import *
 from scipy.interpolate import griddata
 
-
+# EQ: I don't think we should ever use the sampler, and if we do we should change it to create_dataset
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
      so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:
      (ell_1, delta_1, gamma_1, ell_2, delta_2).
      Takes a sample anywhere."""
 
+    raise TypeError('This functionality should not be used anymore! Use create_dataset instead')
     # pick ell_2, delta_2
     ell_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
     delta_1 = 1.5 * np.random.random_sample()  # sample in (0, 1.5)
@@ -74,9 +79,9 @@ def DSGRN_coordinate(alpha, beta, alphaMax):
 def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
     x = np.array(
-        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax) for j in range(len(alpha2))])
+        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
     y = np.array(
-        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax) for j in range(len(alpha1))])
+        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
     return x, y
 
 
@@ -99,7 +104,7 @@ def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
     alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
     if alphaMax is None:
-        alphaMax = np.max([np.max(alpha1), np.max(alpha2)])
+        alphaMax = np.array([np.max(alpha1), np.max(alpha2)])
 
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
 
@@ -125,6 +130,8 @@ def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
     ax.scatter(x, y, marker='o', s=4, **pyPlotOpts)
+    plt.xlim(0, 3)
+    plt.ylim(0, 3)
     grid_lines()
 
 
@@ -186,7 +193,4 @@ solutions = np.random.uniform(1, 1.5, n_sample)
 fig1 = plt.figure()
 dsgrn_heat_plot(parameter_full, solutions, 10)
 fig2 = plt.figure()
-<<<<<<< HEAD
-dsgrn_plot(parameter_full, 10)
 """
-#dsgrn_plot(parameter_full, 10, **{'c': 'k'})
