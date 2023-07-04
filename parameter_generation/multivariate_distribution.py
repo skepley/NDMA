@@ -3,7 +3,6 @@ import scipy
 import matplotlib.pyplot as plt
 import pylab #needed for DSGRN
 import DSGRN
-from create_dataset import create_dataset, multivariate_normal_distributions, generate_data_from_coefs
 import json
 from DSGRN_tools import *
 
@@ -53,16 +52,10 @@ def normal_distribution_around_points(a, b):
     return Sigma, mu
 
 
-def normal_distribution_around_many_points(a, *args):
-    size_subspace = len(args)
-    central_point = a
-    for vec in args:
-        central_point = central_point + vec
-    mean_point = central_point / (size_subspace+1)
-    average_distance = a - mean_point
-    for vec in args:
-        average_distance = average_distance + vec - mean_point
-    average_distance = average_distance / (size_subspace+1)
+def normal_distribution_around_many_points(points):
+    size_subspace = np.size(points)[1]
+    mean_point = np.mean(points, axis=1)
+    average_distance = np.mean(points - mean_point, axis=1)
 
     V = np.identity(np.size(a, 1))
     V[:,0] = a - mean_point
@@ -111,6 +104,34 @@ def test_multivar():
         ax.scatter([a[:, indeces_plot[2]], b[:, indeces_plot[2]], c[:, indeces_plot[2]]],
                    [a[:, indeces_plot[3]], b[:, indeces_plot[3]], c[:, indeces_plot[3]]], marker='*', s=100)
         ax.scatter(sample[:, indeces_plot[2]], sample[:, indeces_plot[3]], marker='o', s=4)
+
+
+def multivariate_normal_distributions(c1_vec, c2_vec, size):
+    # par = np.zeros([len(c1_vec), size])
+    mean = c1_vec
+    dim = len(mean)
+    cov = np.reshape(c2_vec, (dim, dim))
+    x = np.random.multivariate_normal(mean, cov, size)
+    par = np.abs(x).T
+    # abs ensures it's positive
+    return par
+
+
+def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters):
+    """
+    Takes the optimal coefficients and create a dataset out of them
+
+    INPUT
+    file_name       name of output file
+    optimal_coef    optimal coefficients for the Fisher distribution
+    sampler_global  way to sample from the correct distribution given the optimal parameters
+    size_dataset    integer, size of the wanted dataset
+    """
+
+    data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
+    parameter_region = assign_region(data)
+    np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
+    return file_name
 
 
 if __name__ == "__main__":

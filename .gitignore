@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 
 *.pdf
+
+parameter_generation/fixed_alphaMax.png
+
+parameter_generation/None_alphaMax.png

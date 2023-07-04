@@ -1,9 +1,15 @@
 """
 Functionalities for plotting heat maps and contour plots for the Toggle Switch
 """
+import matplotlib.pyplot as plt
+import numpy as np
+import warnings
+
+warnings.simplefilter('once', UserWarning)
 
 from hill_model import *
 from scipy.interpolate import griddata
+
 
 # EQ: I don't think we should ever use the sampler, and if we do we should change it to create_dataset
 def sampler():
@@ -61,9 +67,18 @@ def fiber_sampler(u, v, alpha_bar=10):
     return ezcat(ell_1, delta_1, gamma_2, ell_2, delta_2)
 
 
+def check_alphaMax(alphaMax):
+    if alphaMax is None:
+        return
+    if np.any(alphaMax <= 1):
+        raise ValueError('alphaMax needs to have both components bigger than 1')
+    return
+
+
 def DSGRN_coordinate(alpha, beta, alphaMax):
     """Returns the DSGRN heat map coordinates For a parameter of the form (alpha, beta) where
     alpha = ell / gamma and beta = (ell + delta) / gamma"""
+    check_alphaMax(alphaMax)
 
     if beta < 1:  # (ell + delta)/gamma < theta
         x = beta
@@ -78,10 +93,15 @@ def DSGRN_coordinate(alpha, beta, alphaMax):
 
 def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     """ take vectors of 4D coordinates and return vectors of x-coordinates and y-coordinates"""
-    x = np.array(
-        [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
-    y = np.array(
-        [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
+    check_alphaMax(alphaMax)
+    if is_vector(alpha1):
+        x = np.array(
+            [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
+        y = np.array(
+            [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
+    else:
+        x = DSGRN_coordinate(alpha2, beta2, alphaMax[0])
+        y = DSGRN_coordinate(alpha1, beta1, alphaMax[1])
     return x, y
 
 
@@ -102,11 +122,30 @@ def parameter_to_alpha_beta(parameterArray):
 
 def parameter_to_DSGRN_coord(parameterArray, alphaMax=None):
     """ takes a 5D parameter and returns a 2D DSGRN parameter"""
+    check_alphaMax(alphaMax)
     alpha1, beta1, alpha2, beta2 = parameter_to_alpha_beta(parameterArray)
     if alphaMax is None:
-        alphaMax = np.array([np.max(alpha1), np.max(alpha2)])
-
+        alphaMax = np.array([np.maximum(np.max(alpha1), 1.1), np.maximum(np.max(alpha2), 1.1)])
+        check_alphaMax(alphaMax)
     return DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax)
+
+
+def parameter_to_region(parameterArray, alphaMax=None):
+    # these regions are NOT DSGRN parameter regions!
+    check_alphaMax(alphaMax)
+    if (parameterArray < 0).any():
+        return np.nan
+    xArray, yArray = parameter_to_DSGRN_coord(parameterArray, alphaMax)
+    if (xArray < 0).any() or (yArray < 0).any():
+        warnings.warn('This should never be triggered...')
+        return np.nan
+    region_mat = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    region = np.zeros_like(xArray)
+    if not is_vector(region):
+        return region_mat[np.minimum(2, np.floor(xArray)).astype(int)][np.minimum(2, np.floor(yArray)).astype(int)]
+    for i in range(len(xArray)):
+        region[i] = region_mat[np.minimum(2, np.floor(xArray[i])).astype(int)][np.minimum(2, np.floor(yArray[i])).astype(int)]
+    return region
 
 
 def grid_lines(ax=None):
@@ -124,14 +163,15 @@ def grid_lines(ax=None):
 def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
     """A scatter plot in DSGRN coordinates of a M-by-5 dimensional array. These are nondimensional parameters with rows
     of the form: (ell_1, delta_1, gamma_2, ell_2, delta_2)."""
+    check_alphaMax(alphaMax)
 
     if ax is None:
         fig = plt.gcf()
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
     ax.scatter(x, y, marker='o', s=4, **pyPlotOpts)
-    plt.xlim(0, 3)
-    plt.ylim(0, 3)
+    #plt.xlim(0, 3)
+    #plt.ylim(0, 3)
     grid_lines()
 
 
@@ -164,7 +204,6 @@ def dsgrn_heat_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=
         grid_lines(ax)
 
 
-
 def dsgrn_contour_plot(parameterData, colorData, alphaMax=None, ax=None, gridLines=True):
     if ax is None:
         fig = plt.gcf()
@@ -182,6 +221,7 @@ def dsgrn_contour_plot(parameterData, colorData, alphaMax=None, ax=None, gridLin
     CS = ax.contour(xGrid,yGrid,zGrid)
     ax.clabel(CS, inline=True, fontsize=10)
     ax.set_title('Simplest default with labels')
+
 
 """
 plt.close('all')
