@@ -9,8 +9,8 @@ import numpy as np
 from scipy import optimize
 
 # ignore overflow and division by zero warnings:
-from coordinate.coordinate import Coordinate
-from model.model import Model
+# from coordinate.coordinate import Coordinate
+# from model.model import Model
 
 np.seterr(over='ignore', invalid='ignore')
 
@@ -134,6 +134,5 @@ def verify_call(func):
     return func_wrapper
 
 
-PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names
 
 
