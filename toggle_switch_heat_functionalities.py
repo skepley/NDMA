@@ -96,12 +96,12 @@ def DSGRN_coordinates(alpha1, beta1, alpha2, beta2, alphaMax):
     check_alphaMax(alphaMax)
     if is_vector(alpha1):
         x = np.array(
-            [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[0]) for j in range(len(alpha2))])
+            [DSGRN_coordinate(alpha2[j], beta2[j], alphaMax[1]) for j in range(len(alpha2))])
         y = np.array(
-            [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[1]) for j in range(len(alpha1))])
+            [DSGRN_coordinate(alpha1[j], beta1[j], alphaMax[0]) for j in range(len(alpha1))])
     else:
-        x = DSGRN_coordinate(alpha2, beta2, alphaMax[0])
-        y = DSGRN_coordinate(alpha1, beta1, alphaMax[1])
+        x = DSGRN_coordinate(alpha2, beta2, alphaMax[1])
+        y = DSGRN_coordinate(alpha1, beta1, alphaMax[0])
     return x, y
 
 
@@ -170,8 +170,8 @@ def dsgrn_plot(parameterData, alphaMax=None, ax=None, **pyPlotOpts):
         ax = fig.gca()
     x, y = parameter_to_DSGRN_coord(parameterData, alphaMax)
     ax.scatter(x, y, marker='o', s=4, **pyPlotOpts)
-    #plt.xlim(0, 3)
-    #plt.ylim(0, 3)
+    plt.xlim(0, 3)
+    plt.ylim(0, 3)
     grid_lines()
 
 
