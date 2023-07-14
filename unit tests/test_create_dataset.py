@@ -43,7 +43,7 @@ def third_simple_region(x):
     return assigned_region
 
 
-test_case = 3
+test_case = 2
 if test_case == 0:
     # a < b  ,  a > b
     name = 'simple_test.npz'
@@ -80,6 +80,7 @@ if test_case == 2:
     counter = np.zeros(n_regions_simple)
     for i in range(n_regions_simple):
         counter[i] = np.count_nonzero(regions_loc == i)
+    print('The number of samples in each region is ', counter, '.')
 
 
 if test_case == 3:

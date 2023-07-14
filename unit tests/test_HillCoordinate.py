@@ -115,8 +115,6 @@ print('\n')
 # yppx = f.dxdiff2(x, p)
 
 
-stopHere
-
 # ============= check derivatives defined by tensor contraction operations =============
 DP = f.diff_production(x, p, 1)  # 1-tensor
 D2P = f.diff_production(x, p, 2)  # 2-tensor
@@ -132,8 +130,8 @@ DxxxH = f.diff_production_component(x, p, [3, 0])  # 4-tensor
 
 # ============= build all derivatives via tensor contraction operations =============
 yx2 = np.einsum('i,ij', DP, DxH)
-yx2[f.index] -= gamma  # equal to yx. So DP and DxH are correct
-yp2 = ezcat(-x[f.index], np.einsum('i,ij', DP, DpH))  # equal to yp. So DpH is correct
+yx2[f.productionIndex] -= gammaVal  # equal to yx. So DP and DxH are correct
+yp2 = ezcat(-x[f.productionIndex], np.einsum('i,ij', DP, DpH))  # equal to yp. So DpH is correct
 yxx2 = np.einsum('ik,kl,ij', D2P, DxH, DxH) + np.einsum('i,ijk', DP, DxxH)  # equal to yxx. So D2P, DxxH are correct.
 
 # ============= I still don't think these are correct =============
@@ -159,10 +157,10 @@ yxx2 = np.einsum('ik,kl,ij', D2P, DxH, DxH) + np.einsum('i,ijk', DP, DxxH)  # eq
 # D3p = f.diff_interaction(x, p, 3)  # 3-tensor
 
 
-parameter2 = np.copy(componentParm)
+parameter2 = np.copy(parameter)
 p2Vars = [[0, -1], [1, 0]]  # set n_1, and ell_2 as variable parameters
-parameter2[0, -1] = parameter1[1, 0] = np.nan
-p2 = np.array([gamma, componentParm[0, -1], componentParm[1, 0]], dtype=float)
+parameter2[0, -1] = parameter[1, 0] = np.nan
+p2 = np.array([gammaVal, parameter[0, -1], parameter[1, 0]], dtype=float)
 f2 = HillCoordinate(parameter2, productionSign, productionType, [0, 1, 2])  # gamma is a variable parameter too
 print(f2(x, p2))
 print(f2.dx(x, p2))
@@ -171,12 +169,12 @@ print(f2.diff(x, p2, 1))
 print(f2.dx2(x, p2))
 
 # check that diff and dn produce equivalent derivatives
-parameter3 = np.copy(componentParm)
+parameter3 = np.copy(parameter)
 p3Vars = [[0, -1], [1, -1]]  # set n_1, and n_2 as variable parameters
 parameter3[0, -1] = parameter3[1, -1] = np.nan
-p3 = np.array([componentParm[0, -1], componentParm[1, -1]], dtype=float)
+p3 = np.array([parameter[0, -1], parameter[1, -1]], dtype=float)
 f3 = HillCoordinate(parameter3, productionSign, productionType, [0, 1, 2],
-                    gamma=gamma)  # gamma is a variable parameter too
+                    gamma=gammaVal)  # gamma is a variable parameter too
 print([f3.diff(x, p3, j) for j in range(f3.nParameter)])
 
 # check summand evaluations
@@ -184,7 +182,7 @@ parameter4 = np.repeat(np.nan, 12).reshape(3, 4)
 productionType = [2, 1]
 productionSign = [1, 1, -1]
 p4 = np.arange(12)
-f4 = HillCoordinate(parameter4, productionSign, productionType, [0, 1, 2, 3], gamma=gamma)
+f4 = HillCoordinate(parameter4, productionSign, productionType, [0, 1, 2, 3], gamma=gammaVal)
 print(f4.diff_production(x, p4, 1))
 print(f4.diff(x, p4))
 print(f4.dx2(x, p4))

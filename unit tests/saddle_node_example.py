@@ -7,6 +7,8 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Email: s.kepley@vu.nl
     Created: 4/24/2020 
 """
+from matplotlib import animation
+
 from hill_model import *
 from saddle_node import SaddleNode
 from models.TS_model import ToggleSwitch

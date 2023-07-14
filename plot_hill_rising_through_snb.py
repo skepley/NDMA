@@ -42,5 +42,3 @@ f.plot_nullcline(4.5, p0, ax=ax0)
 fig.suptitle('Toggle Switch nullclines along a Hill path')
 plt.show()
 fig.savefig('nullclines.png')
-
-I won 43 tournament-size chess sets (nooards) at auction for $14… what do I do with them ? ?
