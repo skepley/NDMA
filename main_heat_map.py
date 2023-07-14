@@ -4,11 +4,7 @@ The heat map indicates the value of the Hill coefficient in which a saddle node 
 It also consider the parameter projection into [0,3]x[0,3] thanks to the DSGRN region definition
 """
 
-from hill_model import *
 from saddle_finding_functionalities import *
-from toggle_switch_heat_functionalities import *
-import numpy as np
-import matplotlib.pyplot as plt
 from models.TS_model import ToggleSwitch
 import sys
 from create_dataset import *

@@ -2,12 +2,11 @@
 Functionalities for plotting heat maps and contour plots for the Toggle Switch
 """
 import matplotlib.pyplot as plt
-import numpy as np
 import warnings
 
 warnings.simplefilter('once', UserWarning)
 
-from hill_model import *
+from ndma.hill_model import *
 from scipy.interpolate import griddata
 
 

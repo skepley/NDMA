@@ -179,15 +179,6 @@ def region_sampler():
     output a sample
     """
 
-    def multivariate_normal_distributions(c1_vec, c2_vec, size):
-        # par = np.zeros([len(c1_vec), size])
-        mean = c1_vec
-        dim = len(mean)
-        cov = np.reshape(c2_vec, (dim, dim))
-        x = np.random.multivariate_normal(mean, cov, size)
-        par = np.abs(x).T
-        # abs ensures it's positive
-        return par
     return multivariate_normal_distributions
 
 

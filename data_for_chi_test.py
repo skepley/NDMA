@@ -1,9 +1,6 @@
-from hill_model import *
 from models.TS_model import ToggleSwitch
 from saddle_finding_functionalities import *
-from toggle_switch_heat_functionalities import *
 import sys
-from os.path import isfile
 from create_dataset import *
 from scipy.stats import chi2_contingency
 
