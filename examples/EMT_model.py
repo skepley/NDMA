@@ -7,11 +7,11 @@ An implementation of the 6 node EMT network as a Hill model
     Created: 1/15/2021
 """
 
-from hill_model import *
-from saddle_node import *
+from bifurcation.saddlenode import *
+from model.model import Model
 
 
-class EMT(HillModel):
+class EMT(Model):
     """Six-dimensional EMT model construction inherited as a HillModel where each node has free Hill coefficients. This
      has a total of 12 edges and 54 parameters. The nodes are ordered as follows:
     0. TGF_beta
