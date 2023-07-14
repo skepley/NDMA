@@ -34,7 +34,7 @@ print(H2(x0, [delta, n]))
 print(H3(x0, [ell, delta, theta, n]))
 
 # check derivative function calls
-print(H1.dx(x0))
+print(H1.dx(x0, []))
 print(H2.dx(x0, [delta, n]))
 print(H3.dx(x0, [ell, delta, theta, n]))
 
@@ -42,12 +42,10 @@ print(H1.dx2(x0, []))
 print(H2.dx2(x0, [delta, n]))
 print(H3.dx2(x0, [ell, delta, theta, n]))
 
-print(H1.dn(x0))
-print(H2.dn(x0, [delta, n]))
-print(H2.diff(1, x0, [delta, n]))
-print(H3.dn(x0, [ell, delta, theta, n]))
-print(H3.diff(1, x0, [ell, delta, theta, n]))
+#print(H1.dn(x0)) # HANDLE THIS EXCEPTION
+print(H2.diff(x0, [delta, n], 0))
+print(H3.diff(x0, [ell, delta, theta, n], 1))
 
-print(H1.dndx(x0))
-print(H2.dndx(x0, [delta, n]))
-print(H3.dndx(x0, [ell, delta, theta, n]))
+# print(H1.dndx(x0))
+print(H2.dxdiff(x0, [delta, n], 0))
+print(H3.dxdiff(x0, [ell, delta, theta, n], 1))
