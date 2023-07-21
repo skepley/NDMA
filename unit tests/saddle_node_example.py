@@ -48,7 +48,7 @@ fig = plt.figure(tight_layout=True, figsize=(15., 9.))
 allSol = []
 fullParameter = ezcat(rho, p)
 
-for j in range(9):
+for j in range(9): # put back range 9 for test
     fig.add_subplot(3, 3, j + 1)
     jSearchNodes = np.linspace(fullParameter[j] / 10, 10 * fullParameter[j], 25)
     print(jSearchNodes)
@@ -70,85 +70,22 @@ for hillC in np.linspace(1, 3, 5):
 # ==== This one finds a pitchfork bifurcation instead
 p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
 
-v1 = np.array([1, -.7])
-eq1 = f.find_equilibria(10, n0, p1)
-x1 = eq1[:, -1]
-u1 = np.concatenate((x1, v1, np.array(n0)), axis=None)
-u1Sol = SN_call_temp(SN, p1, u1)
+n0 = 10
+eq1 = f.find_equilibria(4, n0, p1)
+n1Sol = SN.find_saddle_node(0, n0, p1, freeParameterValues=[3, 4, 5])
+# n1Sol should be between 3.1 and 3.2, roughly 3.17, and indicates a pitchfork
 # print(u1Sol)
-x1Sol, v1Sol, n1Sol = [u1Sol.x[idx] for idx in [[0, 1], [2, 3], [4]]]
 
 # plot nullclines
 plt.figure()
 f.plot_nullcline(n0, p1)
-plt.title('p = {0}; n = {1}'.format(p1, u0[-1]))
+plt.title('p = {0}; n = {1}'.format(p1, n0))
 plt.figure()
 f.plot_nullcline(n1Sol, p1)
-plt.title('p = {0}; n = {1}'.format(p1, n1Sol[0]))
+plt.title('p = {0}; n = {1}'.format(p1, n1Sol))
+plt.figure()
+#epsilon = 0.01
+#f.plot_nullcline(n1Sol+epsilon, p1)
+#plt.title('p = {0}; n = {1}'.format(p1, n1Sol+epsilon))
 
-
-# ==== Animation of continuation in N
-# create a an array of Hill coefficients to plot
-nFrame = 25
-nRange = np.linspace(5, n1Sol, nFrame)
-nNodes = 100
-domainBounds = (10, 10)
-Xp = np.linspace(0, domainBounds[0], nNodes)
-Yp = np.linspace(0, domainBounds[1], nNodes)
-
-fig = plt.figure()
-ax = fig.add_subplot(111, autoscale_on=False, xlim=(0, domainBounds[0]), ylim=(0, domainBounds[1]))
-ax.set_aspect('equal')
-
-N1, = ax.plot([], [], lw=2)
-N2, = ax.plot([], [], lw=2)
-eq, = ax.plot([], [], 'o')
-time_template = 'N = %.4f'
-time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
-
-
-def snapshot_data(hillModel, N, parameter):
-    """Get nullcline and equilibria data at a value of N and parameter"""
-
-    equi = hillModel.find_equilibria(10, N, parameter)
-    Z = np.zeros_like(Xp)
-
-    # unpack decay parameters separately
-    gamma = np.array(list(map(lambda f_i, parm: f_i.curry_gamma(parm)[0], hillModel.coordinates,
-                              hillModel.unpack_parameter(hillModel.parse_parameter(N, parameter)))))
-    null1 = (hillModel(np.row_stack([Z, Yp]), N, parameter) / gamma[0])[0, :]  # f1 = 0 nullcline
-    null2 = (hillModel(np.row_stack([Xp, Z]), N, parameter) / gamma[1])[1, :]  # f2 = 0 nullcline
-
-    return null1, null2, equi
-
-
-def init():
-    N1.set_data([], [])
-    N2.set_data([], [])
-    eq.set_data([], [])
-    time_text.set_text('')
-    return N1, N2, eq, time_text
-
-
-parm = p1
-
-
-def animate(i):
-    null1, null2, equilibria = snapshot_data(SN.model, nRange[i], parm)
-
-    N1.set_data(Xp, null2)
-    N2.set_data(null1, Yp)
-    if equilibria.ndim == 0:
-        pass
-    elif equilibria.ndim == 1:
-        eq.set_data([equilibria[0], equilibria[1]])
-    else:
-        eq.set_data(equilibria[0, :], equilibria[1, :])
-    time_text.set_text(time_template % nRange[i])
-
-    return N1, N2, eq, time_text
-
-
-ani = animation.FuncAnimation(fig, animate, range(1, len(nRange)),
-                              interval=10, blit=True, init_func=init, repeat_delay=1000)
 plt.show()
