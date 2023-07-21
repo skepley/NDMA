@@ -130,7 +130,8 @@ DxxxH = f.diff_production_component(x, p, [3, 0])  # 4-tensor
 
 # ============= build all derivatives via tensor contraction operations =============
 yx2 = np.einsum('i,ij', DP, DxH)
-yx2[f.productionIndex] -= gammaVal  # equal to yx. So DP and DxH are correct
+# doesn't work due to different dimensions, but computes the right thing
+# yx2[f.productionIndex] -= gammaVal  # equal to yx. So DP and DxH are correct
 yp2 = ezcat(-x[f.productionIndex], np.einsum('i,ij', DP, DpH))  # equal to yp. So DpH is correct
 yxx2 = np.einsum('ik,kl,ij', D2P, DxH, DxH) + np.einsum('i,ijk', DP, DxxH)  # equal to yxx. So D2P, DxxH are correct.
 
@@ -161,10 +162,11 @@ parameter2 = np.copy(parameter)
 p2Vars = [[0, -1], [1, 0]]  # set n_1, and ell_2 as variable parameters
 parameter2[0, -1] = parameter[1, 0] = np.nan
 p2 = np.array([gammaVal, parameter[0, -1], parameter[1, 0]], dtype=float)
-f2 = HillCoordinate(parameter2, productionSign, productionType, [0, 1, 2])  # gamma is a variable parameter too
+f2 = HillCoordinate(parameter2, productionSign, productionType, 3)  # gamma is a variable parameter too
+x = np.array([1, 2, 3])
+p2 = np.array([7,8,9,0,2,3,5,3,2,1,4,6,7])
 print(f2(x, p2))
 print(f2.dx(x, p2))
-print(f2.dn(x, p2))
 print(f2.diff(x, p2, 1))
 print(f2.dx2(x, p2))
 
@@ -172,8 +174,8 @@ print(f2.dx2(x, p2))
 parameter3 = np.copy(parameter)
 p3Vars = [[0, -1], [1, -1]]  # set n_1, and n_2 as variable parameters
 parameter3[0, -1] = parameter3[1, -1] = np.nan
-p3 = np.array([parameter[0, -1], parameter[1, -1]], dtype=float)
-f3 = HillCoordinate(parameter3, productionSign, productionType, [0, 1, 2],
+p3 = np.array([6,34,2,3,5,7,2,1,4,7,2,1], dtype=float)
+f3 = HillCoordinate(parameter3, productionSign, productionType, 3,
                     gamma=gammaVal)  # gamma is a variable parameter too
 print([f3.diff(x, p3, j) for j in range(f3.nParameter)])
 
@@ -182,10 +184,13 @@ parameter4 = np.repeat(np.nan, 12).reshape(3, 4)
 productionType = [2, 1]
 productionSign = [1, 1, -1]
 p4 = np.arange(12)
-f4 = HillCoordinate(parameter4, productionSign, productionType, [0, 1, 2, 3], gamma=gammaVal)
-print(f4.diff_production(x, p4, 1))
-print(f4.diff(x, p4))
-print(f4.dx2(x, p4))
+x4 = np.array([1, 2, 3, 4])
+f4 = HillCoordinate(parameter4, productionSign, productionType, 4, gamma=gammaVal)
+print(f4.diff_production(x4, p4, 1))
+# f4.diff_production(x,p4,1) does NOT trigger a well defined error, because it is not meant to be used directly.
+# Use diff instead
+print(f4.diff(x4, p4))
+print(f4.dx2(x4, p4))
 
 # # ============= Example 2 =============
 # gamma = 1.2

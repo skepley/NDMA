@@ -121,11 +121,11 @@ def verify_call(func):
                             '0}'.format(type(hillObj)))
 
         if len(x) != N:  # make sure state input is the correct size
-            raise IndexError(
+            raise ValueError(
                 'State vector for this evaluation should be size {0} but received a vector of size {1}'.format(N,
                                                                                                                len(x)))
         elif len(parameter) != hillObj.nParameter:
-            raise IndexError(
+            raise ValueError(
                 'Parsed parameter vector for this evaluation should be size {0} but received a vector of '
                 'size {1}'.format(
                     hillObj.nParameter, len(parameter)))
