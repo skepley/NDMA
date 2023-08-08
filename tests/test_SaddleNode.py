@@ -8,10 +8,10 @@ Function and design testing for the SaddleNode class
     Email: s.kepley@vu.nl
     Created: 4/13/2020 
 """
-from hill_model import *
-from models.TS_model import ToggleSwitch
-from saddle_node import SaddleNode
-
+from ndma.hill_model import *
+from ndma.examples.TS_model import ToggleSwitch
+from ndma.bifurcation.saddlenode import SaddleNode
+import matplotlib.pyplot as plt
 
 # set some parameters to test using MATLAB toggle switch for ground truth
 #decay = np.array([1, 1], dtype=float)

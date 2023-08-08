@@ -9,7 +9,7 @@ Function and design testing for the HillComponent class
     Created: 4/3/2020 
 """
 import numpy as np
-from ndma.hill_model import HillComponent
+from ndma.activation.hill import HillActivation
 
 # set some parameters to test
 ell = 1
@@ -20,13 +20,13 @@ x0 = np.array([3, 4, 5, 6])
 # x0 = 3
 
 # test Hill component code
-H1 = HillComponent(-1, ell=ell, theta=theta, delta=delta,
-                   hillCoefficient=n)  # A function of x with all parameters fixed
-H2 = HillComponent(-1, ell=ell, theta=theta)  # A function of x with callable variable parameters: {delta, n}
+H1 = HillActivation(-1, ell=ell, theta=theta, delta=delta,
+                    hillCoefficient=n)  # A function of x with all parameters fixed
+H2 = HillActivation(-1, ell=ell, theta=theta)  # A function of x with callable variable parameters: {delta, n}
 pp0 = np.array([delta, n])
-H3 = HillComponent(-1)  # A function of x with all parameters callable
+H3 = HillActivation(-1)  # A function of x with all parameters callable
 parameterDict = {'ell': ell, 'theta': theta}
-H4 = HillComponent(-1, **parameterDict)  # Test construction by dictionary
+H4 = HillActivation(-1, **parameterDict)  # Test construction by dictionary
 
 # check function calls
 print(H1(x0))
@@ -42,7 +42,7 @@ print(H1.dx2(x0, []))
 print(H2.dx2(x0, [delta, n]))
 print(H3.dx2(x0, [ell, delta, theta, n]))
 
-#print(H1.dn(x0)) # HANDLE THIS EXCEPTION
+# print(H1.dn(x0)) # HANDLE THIS EXCEPTION
 print(H2.diff(x0, [delta, n], 0))
 print(H3.diff(x0, [ell, delta, theta, n], 1))
 

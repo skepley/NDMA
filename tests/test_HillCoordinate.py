@@ -9,7 +9,10 @@ Function and design testing for the HillComponent class
     Created: 4/3/2020 
 """
 
-from ndma.hill_model import *
+from ndma.coordinate import Coordinate
+from ndma.activation.hill import HillActivation
+from ndma.hill_model import ezcat
+import numpy as np
 
 
 def nan_array(m, n):
@@ -50,11 +53,11 @@ productionVals = ezcat(*len(productionSign) * [pHill])
 gammaVal = 10
 p = ezcat(gammaVal, productionVals)
 x = np.array([1, 4, 3, 2], dtype=float)
-f = HillCoordinate(parameter, productionSign, productionType, nStateVariables, gamma=np.nan)
+f = Coordinate(parameter, productionSign, productionType, nStateVariables, gamma=np.nan)
 
 # set up callable copy of Hill function which makes up all production terms
 # H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
-H = HillComponent(1)
+H = HillActivation(1)
 
 
 # check f
@@ -160,7 +163,7 @@ parameter2 = np.copy(parameter)
 p2Vars = [[0, -1], [1, 0]]  # set n_1, and ell_2 as variable parameters
 parameter2[0, -1] = parameter[1, 0] = np.nan
 p2 = np.array([gammaVal, parameter[0, -1], parameter[1, 0]], dtype=float)
-f2 = HillCoordinate(parameter2, productionSign, productionType, 3)  # gamma is a variable parameter too
+f2 = Coordinate(parameter2, productionSign, productionType, 3)  # gamma is a variable parameter too
 x = np.array([1, 2, 3])
 p2 = np.array([7,8,9,0,2,3,5,3,2,1,4,6,7])
 print(f2(x, p2))
@@ -173,7 +176,7 @@ parameter3 = np.copy(parameter)
 p3Vars = [[0, -1], [1, -1]]  # set n_1, and n_2 as variable parameters
 parameter3[0, -1] = parameter3[1, -1] = np.nan
 p3 = np.array([6,34,2,3,5,7,2,1,4,7,2,1], dtype=float)
-f3 = HillCoordinate(parameter3, productionSign, productionType, 3,
+f3 = Coordinate(parameter3, productionSign, productionType, 3,
                     gamma=gammaVal)  # gamma is a variable parameter too
 print([f3.diff(x, p3, j) for j in range(f3.nParameter)])
 
@@ -183,7 +186,7 @@ productionType = [2, 1]
 productionSign = [1, 1, -1]
 p4 = np.arange(12)
 x4 = np.array([1, 2, 3, 4])
-f4 = HillCoordinate(parameter4, productionSign, productionType, 4, gamma=gammaVal)
+f4 = Coordinate(parameter4, productionSign, productionType, 4, gamma=gammaVal)
 print(f4.diff_production(x4, p4, 1))
 # f4.diff_production(x,p4,1) does NOT trigger a well defined error, because it is not meant to be used directly.
 # Use diff instead

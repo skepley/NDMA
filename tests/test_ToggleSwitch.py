@@ -9,7 +9,8 @@ Testing and analysis of the ToggleSwitch model
 """
 
 from ndma.hill_model import *
-from models.TS_model import ToggleSwitch
+from ndma.examples.TS_model import ToggleSwitch
+import matplotlib.pyplot as plt
 
 # TESTING FOR TOGGLE SWITCH
 # ============= set up the toggle switch example to test on =============
@@ -44,3 +45,4 @@ print(f(x, hill, p))
 print(f.diff(x, hill, p, diffIndex=0))
 eq = f.find_equilibria(10, hill, p)
 f.plot_nullcline(hill, p)
+plt.show()

@@ -7,11 +7,13 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Email: s.kepley@vu.nl
     Created: 4/24/2020 
 """
-from matplotlib import animation
 
-from hill_model import *
-from saddle_node import SaddleNode
-from models.TS_model import ToggleSwitch
+from ndma.hill_model import *
+from ndma.model import Model
+from ndma.examples.TS_model import ToggleSwitch
+from ndma.bifurcation.saddlenode import SaddleNode
+import matplotlib.pyplot as plt
+
 
 np.set_printoptions(precision=2, floatmode='maxprec_equal')
 

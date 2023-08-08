@@ -8,6 +8,7 @@ An implementation of the 2 node Toggle Switch network as a Hill model
 """
 from ndma.hill_model import *
 from ndma.model.model import Model
+import matplotlib.pyplot as plt
 
 
 class ToggleSwitch(Model):
