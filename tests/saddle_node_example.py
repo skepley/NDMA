@@ -72,16 +72,15 @@ for hillC in np.linspace(1, 3, 5):
 # ==== This one finds a pitchfork bifurcation instead
 p1 = np.array([1, 1, 5, 3, 1, 1, 5, 3], dtype=float)
 
-n0 = 10
+n0 = 3.179
 eq1 = f.find_equilibria(4, n0, p1)
-n1Sol = SN.find_saddle_node(0, n0, p1, freeParameterValues=[3, 4, 5])
-# n1Sol should be between 3.1 and 3.2, roughly 3.17, and indicates a pitchfork
-# print(u1Sol)
+n1Sol = SN.find_saddle_node(0, n0, p1)
 
 # plot nullclines
 plt.figure()
 f.plot_nullcline(n0, p1)
 plt.title('p = {0}; n = {1}'.format(p1, n0))
+plt.show()
 plt.figure()
 f.plot_nullcline(n1Sol, p1)
 plt.title('p = {0}; n = {1}'.format(p1, n1Sol))
