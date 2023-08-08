@@ -26,7 +26,7 @@ class HillActivation:
 
         self.sign = productionSign
         self.parameterValues = np.zeros(4)  # initialize vector of parameter values
-        parameterNames = PARAMETER_NAMES.copy()  # ordered list of possible parameter names
+        parameterNames = self.PARAMETER_NAMES.copy()  # ordered list of possible parameter names
         parameterCallIndex = {parameterNames[j]: j for j in range(4)}  # calling index for parameter by name
         for parameterName, parameterValue in kwargs.items():
             setattr(self, parameterName, parameterValue)  # fix input parameter

@@ -72,8 +72,8 @@ class Model:
         # TODO: Class constructor should not do work!
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
-        self.coordinates = [Coordinate(np.squeeze(productionParameter[j]), productionSign[j],
-                                       productionType[j], coordinateDims[j], gamma=gamma[j]) for j in
+        self.coordinates = [Coordinate(gamma[j], np.squeeze(productionParameter[j]), productionSign[j],
+                                       productionType[j], coordinateDims[j], activationFunction) for j in
                             range(
                                 self.dimension)]  # A list of HillCoordinates specifying each coordinate of the vector field
         self.productionIndex = productionIndex  # store the list of global indices which contribute to the production term of each coordinate.
