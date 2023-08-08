@@ -6,14 +6,10 @@ Author: Elena Queirolo
 Created: 1st March 2021
 Modified: 1st March 2021
 """
-from hill_model import *
-import numpy as np
 from toggle_switch_heat_functionalities import *
 import random
-from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from datetime import datetime
-import warnings
 from models.TS_model import ToggleSwitch
 import matplotlib.pyplot as plt
 

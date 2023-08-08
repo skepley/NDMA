@@ -9,7 +9,7 @@ Function and design testing for the HillComponent class
     Created: 4/3/2020 
 """
 import numpy as np
-from hill_model import HillComponent
+from ndma.hill_model import HillComponent
 
 # set some parameters to test
 ell = 1

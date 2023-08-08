@@ -7,7 +7,7 @@ A collection of functions for translating data, parameters, and models between D
     email: s.kepley@vu.nl
     Date: 6/22/22
 """
-from hill_model import *
+from ndma.hill_model import *
 from DSGRN import *
 import re
 

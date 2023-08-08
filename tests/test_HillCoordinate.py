@@ -9,9 +9,7 @@ Function and design testing for the HillComponent class
     Created: 4/3/2020 
 """
 
-import numpy as np
-from hill_model import *
-from itertools import product
+from ndma.hill_model import *
 
 
 def nan_array(m, n):

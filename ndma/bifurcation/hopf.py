@@ -1,68 +1,46 @@
 """
-A saddle-node bifurcation class and related functionality.
+A Hopf bifurcation class and related functionality.
 
-    Author: Shane Kepley
-    Email: s.kepley@vu.nl
-    Created: 5/18/2020
+    Author: Elena Queirolo
+    Email: elena.queirolo@tum.de
+    Created: 16.06.2023
 """
-from hill_model import *
+
+from ndma.hill_model import *
 
 
-def SN_candidates_from_bisection(equilibria):
-    """Given an array whose columns are equilibria, return the center of the midpoint between the two equilibria nearest
-    to one another."""
-
-    if is_vector(equilibria):
-        equilibria = equilibria[np.newaxis, :]
-
-    try:
-        nEquilibria = np.shape(equilibria)[0]  # count rows of equilibrium data
-    except:
-        print(22)
-    if nEquilibria == 1:
-        return equilibria
-
-    minDistance = np.inf  # initialize distance between nearest equilibrium pair
-    eqPair = (0, 0)  # initialize indices for nearest equilibrium pair
-
-    for idx1 in range(nEquilibria):
-        for idx2 in range(idx1 + 1, nEquilibria):
-            eqDistance = np.linalg.norm(equilibria[idx1, :] - equilibria[idx2, :])
-            if eqDistance < minDistance:
-                minDistance = eqDistance
-                eqPair = (idx1, idx2)
-    return np.column_stack(
-        (equilibria[eqPair[0], :] + equilibria[eqPair[1], :]) / 2)  # return midpoint between 2 closest equilibria
-
-
-class SaddleNode:
+class Hopf:
     """A constraint class for working with HillModels along surfaces of saddle-node bifurcations"""
 
-    def __init__(self, hillModel, phaseCondition=lambda v: np.linalg.norm(v) - 1,
-                 phaseConditionDerivative=lambda v: v / np.linalg.norm(v)):
+    def __init__(self, hillModel, phaseCondition=lambda v, w: np.linalg.norm(v) + np.linalg.norm(w) - 1,
+                 phaseConditionDerivative=lambda v, w: v / np.linalg.norm(v) + w / np.linalg.norm(w)):
         """Construct an instance of a saddle-node problem for specified HillModel"""
 
         self.model = hillModel
-        self.phaseCondition = phaseCondition
+        self.phaseCondition = phaseCondition # check for Hopf!
         self.diffPhaseCondition = phaseConditionDerivative
-        self.mapDimension = 2 * hillModel.dimension + 1  # degrees of freedom of the constraint
+        self.mapDimension = 3 * hillModel.dimension + 1  # degrees of freedom of the constraint
 
     def __call__(self, u):
         """Evaluation function for the saddle-node bifurcation constraints. This is a map of the form
-        g: R^{2n + m} ---> R^{2n + 1} which is zero if and only if u corresponds to a saddle-node bifurcation point.
+        g: R^{3n + m} ---> R^{3n + 1} which is zero if and only if u corresponds to a saddle-node bifurcation point.
 
-        INPUT: u = (x, v, p) where x is a state vector, v a tangent vector, and p a parameter vector."""
+        INPUT: u = (x, Re v, Imag v, Imag l, p) where x is a state vector, v a tangent vector, and p a parameter vector."""
 
-        stateVector, tangentVector, fullParameter = self.unpack_components(u)  # unpack input vector
+        stateVector, RealEigenvector, ImagEigenvector, ImagEigenvalue, fullParameter = self.unpack_components(u)  # unpack input vector
         g1 = self.model(stateVector,
                         fullParameter)  # this is zero iff x is an equilibrium for the system at parameter value n
 
         g2 = self.model.dx(stateVector,
-                           fullParameter) @ tangentVector  # this is zero iff v lies in the kernel of Df(x, n)
-        g3 = self.phaseCondition(tangentVector)  # this is zero iff v satisfies the phase condition
-        return ezcat(g1, g2, g3)
+                           fullParameter) @ RealEigenvector + ImagEigenvalue * ImagEigenvector
 
-    def find_saddle_node(self, freeParameterIndex, *parameter, equilibria=None, freeParameterValues=None,
+        g3 = self.model.dx(stateVector,
+                           fullParameter) @ ImagEigenvector + ImagEigenvalue * RealEigenvector
+        # this is zero iff v is an eigenvector of DF and lambda is an imaginary eigenvalue
+        g4 = self.phaseCondition(RealEigenvector, ImagEigenvector)  # this is zero iff v satisfies the phase condition
+        return ezcat(g1, g2, g3, g4)
+
+    def find_Hopf(self, freeParameterIndex, *parameter, equilibria=None, freeParameterValues=None,
                          uniqueDigits=5, flag_return=0):
         """Attempt to find isolated saddle-node points along the direction of the parameter at the
         freeParameterIndex. All other parameters are fixed. This is done by Newton iteration starting at each
@@ -87,21 +65,16 @@ class SaddleNode:
             freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
 
         def curry_parameters(u):
-            x, v, p0 = self.unpack_components(u)  # layout productionComponents in (R^n, R^n, R)
-            return ezcat(x, v, np.insert(fixedParameter, freeParameterIndex,
+            x, v1, v2, ilambda, p0 = self.unpack_components(u)  # layout productionComponents in (R^n, R^n, R)
+            return ezcat(x, v1, v2, ilambda, np.insert(fixedParameter, freeParameterIndex,
                                          p0))  # embed into (R^n, R^n, R^m) by currying fixed Parameters
 
-        def init_eigenvector(equilibrium, rho):
+        def init_complex_eigenpair(equilibrium, rho):
             """Choose an initial eigenvector for the saddle-node root finding problem"""
             p = np.insert(fixedParameter, freeParameterIndex, rho)
             dp_f = self.model.diff(equilibrium, p, diffIndex=freeParameterIndex)  # partial derivative with respect to
-            # the free parameter only
-            tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p), dp_f)
-            # in R, we still have one choice of orientation once we fix the norm - this is done by checking the sign of
-            # the first element of the eigenvector. If we extend to C, more work will be needed
-            if tangentVector[0] < 0:
-                tangentVector = - tangentVector
-            return tangentVector / np.linalg.norm(tangentVector)
+            [eigenValues, eigenVectors] = np.linalg.eig();
+            return np.real(tangentVector / np.linalg.norm(tangentVector)), np.imag(tangentVector / np.linalg.norm(tangentVector)), np.imag(eigenvalue)
 
         def root(u0):
             """Attempts to return a single root of the SaddleNode root finding problem"""
@@ -121,7 +94,7 @@ class SaddleNode:
 
         for parmValue in freeParameter:
             saddleNodeZeros = list(filter(lambda soln: soln.success,
-                                          [root(ezcat(equilibria[j, :], init_eigenvector(equilibria[j, :], parmValue),
+                                          [root(ezcat(equilibria[j, :], init_complex_eigenpair(equilibria[j, :], parmValue),
                                                       parmValue))
                                            for j in
                                            range(equilibria.shape[0])]))  # return equilibria which converged

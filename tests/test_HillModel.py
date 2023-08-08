@@ -9,12 +9,9 @@ Function and design testing for the HillModel class
     Email: s.kepley@vu.nl
     Created: 4/6/2020 
 """
-
-import numpy as np
-import matplotlib.pyplot as plt
-from itertools import product
-from hill_model import *
-
+from ndma.hill_model import *
+from ndma.model import Model
+from ndma.activation import HillActivation
 
 def nan_array(m, n):
     """Return an m-by-n numpy array or vector of np.nan values"""
@@ -37,7 +34,7 @@ productionTypes = [[3], [2], [1]]  # all production terms in a single summand
 productionIndex = [[0, 1, 2], [0, 2], [0]]
 parameter = [nan_array(len(productionIndex[idx]), 4) for idx in range(nCoordinate)]
 
-f = HillModel(gamma, parameter, productionSigns, productionTypes, productionIndex)  # define HillModel
+f = Model(gamma, parameter, productionSigns, productionTypes, productionIndex)  # define HillModel
 # get easy access to Hill productionComponents
 f0 = f.coordinates[0]
 f1 = f.coordinates[1]
@@ -50,7 +47,7 @@ pVals = [ezcat(*len(productionIndex[idx]) * [pHill]) for idx in range(nCoordinat
 x = np.array([4, 3, 2], dtype=float)
 p = ezcat(*[ezcat(*tup) for tup in zip(gammaVals, pVals)])  # this only works when all parameters are variable
 # set up callable copy of Hill function which makes up all production terms
-H = HillComponent(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
+H = HillActivation(1, ell=pHill[0], delta=pHill[1], theta=pHill[2], hillCoefficient=pHill[3])
 
 # check f evaluation
 print('f eval')

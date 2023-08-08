@@ -1,7 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from DSGRN_tools import *
-from models.TS_model import ToggleSwitch
+from ndma.parameter_generation.DSGRN_tools import *
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 

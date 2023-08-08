@@ -6,10 +6,11 @@ An implementation of the 2 node Toggle Switch network as a Hill model
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from hill_model import *
+from ndma.hill_model import *
+from ndma.model.model import Model
 
 
-class ToggleSwitch(HillModel):
+class ToggleSwitch(Model):
     """Two-dimensional toggle switch construction inherited as a HillModel where each node has free (but identical)
     Hill coefficients, hill_1 = hill_2 = hill, and possibly some other parameters free. This is the simplest test case
     for analysis and also a canonical example of how to implement a HillModel in which some parameters are constrained

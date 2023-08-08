@@ -7,10 +7,11 @@ A separate file to store important HillModel subclasses for analysis or testing
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from hill_model import *
+from ndma.hill_model import *
+from ndma.model.model import Model
 
 
-class ToggleSwitchPlus(HillModel):
+class ToggleSwitchPlus(Model):
     """Two-dimensional toggle switch with one gene self activating/repressing inherited as a HillModel. Each edge has
     free (but identical) Hill coefficients, hill_1 = hill_2 = hill_3 = hill, and possibly some other parameters free. This is the simplest test case
     for analysis and also a canonical example of how to implement a HillModel in which some parameters are constrained

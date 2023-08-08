@@ -7,10 +7,11 @@ A separate file to store important HillModel subclasses for analysis or testing
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from hill_model import *
+from ndma.hill_model import *
+from ndma.model.model import Model
 
 
-class Network12(HillModel):
+class Network12(Model):
     """The best performing consistent 3-node network for producing robust hysteresis. Each edge has
     free (but identical) Hill coefficients, hill_1 = hill_2 = hill_3 = hill, and possibly some other parameters free."""
 

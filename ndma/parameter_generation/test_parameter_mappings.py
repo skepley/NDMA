@@ -9,7 +9,7 @@ Test and debug functions which map back and forth between NDMA and DSGRN paramet
     Date: 6/28/22; Last revision: 6/28/22
 """
 from models.EMT_model import *
-from DSGRN_tools import *
+from ndma.parameter_generation.DSGRN_tools import *
 
 
 def marcio_dict(par_idx, sampler):

@@ -8,7 +8,7 @@ Testing and analysis of the ToggleSwitch model
     Created: 6/9/2020 
 """
 
-from hill_model import *
+from ndma.hill_model import *
 from models.TS_model import ToggleSwitch
 
 # TESTING FOR TOGGLE SWITCH

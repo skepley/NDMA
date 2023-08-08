@@ -1,14 +1,7 @@
-import time
-
-import DSGRN
-import numpy as np
-import sys
-import os
 import inspect
-from DSGRN_tools import *
+from ndma.parameter_generation.DSGRN_tools import *
 from models.TS_model import ToggleSwitch
 from tools_random_walk import *
-import matplotlib.pyplot as plt
 from test_distribution import check_convergence, convergence_rate
 import time
 
@@ -16,7 +9,6 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from create_dataset import *
 from toggle_switch_heat_functionalities import *
 
 

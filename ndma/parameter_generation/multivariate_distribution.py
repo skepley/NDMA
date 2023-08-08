@@ -1,10 +1,5 @@
-import numpy as np
-import scipy
 import matplotlib.pyplot as plt
-import pylab #needed for DSGRN
-import DSGRN
-import json
-from DSGRN_tools import *
+from ndma.parameter_generation.DSGRN_tools import *
 
 
 # let a and be be two vectors in high dimensions, we want to create a distribution that approximately give points along
