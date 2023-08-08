@@ -6,33 +6,7 @@ A saddle-node bifurcation class and related functionality.
     Created: 5/18/2020
 """
 from ndma.hill_model import *
-
-
-def SN_candidates_from_bisection(equilibria):
-    """Given an array whose columns are equilibria, return the center of the midpoint between the two equilibria nearest
-    to one another."""
-
-    if is_vector(equilibria):
-        equilibria = equilibria[np.newaxis, :]
-
-    try:
-        nEquilibria = np.shape(equilibria)[0]  # count rows of equilibrium data
-    except:
-        print(22)
-    if nEquilibria == 1:
-        return equilibria
-
-    minDistance = np.inf  # initialize distance between nearest equilibrium pair
-    eqPair = (0, 0)  # initialize indices for nearest equilibrium pair
-
-    for idx1 in range(nEquilibria):
-        for idx2 in range(idx1 + 1, nEquilibria):
-            eqDistance = np.linalg.norm(equilibria[idx1, :] - equilibria[idx2, :])
-            if eqDistance < minDistance:
-                minDistance = eqDistance
-                eqPair = (idx1, idx2)
-    return np.column_stack(
-        (equilibria[eqPair[0], :] + equilibria[eqPair[1], :]) / 2)  # return midpoint between 2 closest equilibria
+import warnings
 
 
 class SaddleNode:
@@ -73,7 +47,8 @@ class SaddleNode:
             equilibria - Specify a list of equilibria to use as initial guesses. If none are specified it uses any equilibria
             which are found using the find_equilibria method.
         flag_return asks for complete info on the parameters and solutions at the saddle node"""
-
+        if freeParameterValues is not None:
+            warnings.warn("deprecated", DeprecationWarning)
         if equilibria is None:  # start the saddle node search at the equilibria returned by the find_equilbria method
             equilibria = self.model.find_equilibria(3, *parameter)
         if equilibria is None:
@@ -81,10 +56,7 @@ class SaddleNode:
             return []
         fullParameter = ezcat(*parameter)  # concatenate input parameter to full ordered parameter vector
         fixedParameter = fullParameter[[idx for idx in range(len(fullParameter)) if idx != freeParameterIndex]]
-        if freeParameterValues is None:
-            freeParameter = [fullParameter[freeParameterIndex]]
-        else:
-            freeParameter = ezcat(fullParameter[freeParameterIndex], freeParameterValues)
+        freeParameter = [fullParameter[freeParameterIndex]]
 
         def curry_parameters(u):
             x, v, p0 = self.unpack_components(u)  # layout productionComponents in (R^n, R^n, R)

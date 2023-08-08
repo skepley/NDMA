@@ -5,7 +5,9 @@ It also consider the parameter projection into [0,3]x[0,3] thanks to the DSGRN r
 """
 
 from saddle_finding_functionalities import *
-from models.TS_model import ToggleSwitch
+from ndma.examples.TS_model import ToggleSwitch
+from ndma.bifurcation.saddlenode import SaddleNode
+import matplotlib.pyplot as plt
 import sys
 from create_dataset import *
 
