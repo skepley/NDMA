@@ -12,7 +12,7 @@ import textwrap
 from itertools import permutations, product
 
 import numpy as np
-from ndma.activation import HillActivation
+# from ndma.activation import HillActivation
 from ndma.hill_model import ezcat, is_vector
 
 
@@ -60,7 +60,7 @@ class Coordinate:
     x' = -gamma*x + p(H_1, H_2,...,H_K)
     where H_1 depends on x and H_2,...,H_K depend on a state variable y_i != x."""
 
-    def __init__(self, parameter, productionSign, productionType, nStateVariables, gamma=np.nan):
+    def __init__(self, gamma, parameter, productionSign, productionType, nStateVariables, activationFunction):
         """Hill Coordinate instantiation with the following syntax:
         INPUTS:
             gamma - (float) decay rate for this coordinate or NaN if gamma is a variable parameter which is callable as
@@ -69,9 +69,11 @@ class Coordinate:
                 Entries which are NaN are variable parameters which are callable in the function and all derivatives.
             productionSign - (list) A vector in F_2^K carrying the sign type for each Hill component
             productionType - (list) A vector describing the interaction type of the interaction function specified as an
-                    ordered integer partition of K.
+                ordered integer partition of K.
             nStateVariables - (integer) Report how many state variables this HillCoordinate depends on. All evaluation methods will expect a state vector of
-            this size. """
+                this size.
+            activationFunction - The name of the activation function for all nonlinear production terms.
+            """
 
         # TODO: 1. Class constructor should not do work!
         self.gammaIsVariable = np.isnan(gamma)
@@ -85,6 +87,7 @@ class Coordinate:
                                                              1)])  # state variable selection for the production term are the trailing
         # K variables. If this coordinate has a self edge this is the entire vector, otherwise, it selects all state
         # variables except the first state variable.
+        self.activation = activationFunction
         self.productionComponents, self.nParameterByProductionIndex, self.productionParameterIndexRange = self.set_production(
             parameter, productionSign)
         self.productionType = productionType  # specified as an integer partition of K
@@ -704,14 +707,14 @@ class Coordinate:
 
         def row2dict(row):
             """convert ordered row of parameter matrix to kwarg"""
-            return {PARAMETER_NAMES[j]: row[j] for j in range(4) if
+            return {self.activation.PARAMETER_NAMES[j]: row[j] for j in range(len(self.activation.PARAMETER_NAMES)) if
                     not np.isnan(row[j])}
 
         # set up production Hill component functions
         if self.nProduction == 1:
-            productionComponents = [HillActivation(productionSign[0], **row2dict(parameter))]
+            productionComponents = [self.activation(productionSign[0], **row2dict(parameter))]
         else:
-            productionComponents = [HillActivation(productionSign[k], **row2dict(parameter[k, :])) for k in
+            productionComponents = [self.activation(productionSign[k], **row2dict(parameter[k, :])) for k in
                                     range(self.nProduction)]  # list of ordered HillComponents for the production term
 
         # get a list of the number of variable parameters for each component in the production term.
@@ -761,3 +764,6 @@ class Coordinate:
                 rectangle[:, 1]) / gamma  # max(f) = p(ell_1 + delta_1,...,ell_K + delta_K)
 
         return [minProduction, maxProduction]
+
+
+h_const = HillActivation

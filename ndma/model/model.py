@@ -48,16 +48,16 @@ def verify_call(func):
 
 
 class Model:
-    """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
+    """Define a NDMA model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and the state variables influencing
-    its production nonlinearly represented as a HillCoordinate. The vector field is defined coordinate-wise as a vector
-    of HillCoordinate instances."""
+    its production nonlinearly represented by an activation function. For this model all activation functions are the same.
+    The vector field is defined coordinate-wise as a vector of Coordinate instances."""
 
-    def __init__(self, gamma, parameter, productionSign, productionType, productionIndex):
+    def __init__(self, gamma, productionParameter, productionSign, productionType, productionIndex, activationFunction):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^n of linear decay rates
-            parameter - A length n list of K_i-by-4 parameter arrays
+            productionParameter - A length n list of K_i-by-4 parameter arrays
                     Note: If K_i = 1 then productionSign[i] should be a vector, not a matrix i.e. it should have shape
                     (4,) as opposed to (1,4). If the latter case then the result will be squeezed since otherwise HillCoordinate
                     will throw an exception during construction of that coordinate.
@@ -66,12 +66,13 @@ class Model:
             productionIndex - A length n list whose i^th element is a length K_i list of global indices for the nonlinear
                 interactions for node i. These are specified in any order as long as it is the same order used for productionSign
                 and the rows of parameter. IMPORTANT: The exception to this occurs if node i has a self edge. In this case i must appear as the first
-                index."""
+                index.
+            activationFunction - The name of the activation function to use for all nonlinear production terms."""
 
         # TODO: Class constructor should not do work!
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
-        self.coordinates = [Coordinate(np.squeeze(parameter[j]), productionSign[j],
+        self.coordinates = [Coordinate(np.squeeze(productionParameter[j]), productionSign[j],
                                        productionType[j], coordinateDims[j], gamma=gamma[j]) for j in
                             range(
                                 self.dimension)]  # A list of HillCoordinates specifying each coordinate of the vector field
