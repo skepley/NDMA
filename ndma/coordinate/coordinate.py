@@ -766,4 +766,3 @@ class Coordinate:
         return [minProduction, maxProduction]
 
 
-h_const = HillActivation

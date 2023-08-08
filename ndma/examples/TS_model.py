@@ -9,6 +9,7 @@ An implementation of the 2 node Toggle Switch network as a Hill model
 from ndma.hill_model import *
 from ndma.model.model import Model
 import matplotlib.pyplot as plt
+from ndma.activation.hill import HillActivation
 
 
 class ToggleSwitch(Model):
@@ -30,7 +31,7 @@ class ToggleSwitch(Model):
         productionType = [[1], [1]]
         productionIndex = [[1], [0]]
         super().__init__(gamma, parameter, productionSign, productionType,
-                         productionIndex)  # define HillModel for toggle switch by inheritance
+                         productionIndex, HillActivation)  # define HillModel for toggle switch by inheritance
         # insertion indices for HillCoefficients to expand the truncated parameter vector to a full parameter vector
         self.hillIndex = np.array([self.parameterIndexByCoordinate[i][-1] for i in range(2)])  # indices of Hill
         # coefficient parameters in the full parameter vector
