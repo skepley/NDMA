@@ -18,7 +18,7 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
-dataFile = 'dataset_EMT_old.npz'
+dataFile = 'dataset_EMT.npz'
 file_storing = 'chi_test_EMT.npz'
 n_sample = 200
 

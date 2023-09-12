@@ -393,8 +393,8 @@ if make_figure2:
     ax.scatter([a[indeces_plot[2]], b[indeces_plot[2]]], [a[indeces_plot[3]], b[indeces_plot[3]]], marker='*', s=100)
 
 sampler_global = region_sampler()
-# generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters) # done with range 10
+generate_data_from_coefs(file_name, initial_coef, sampler_global, assign_region, size_dataset, n_parameters) # done with range 10
 
-# file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
+file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)
 
-stophere
+#stophere
