@@ -67,7 +67,7 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 # production parameters as variable
 f = EMT(gammaVar, parameterVar)
 
-niter = 500
+niter = 30
 file_storing = 'EMT_nonlocal_chitest.npz'
 
 # create network from file
@@ -96,14 +96,21 @@ mono_manysaddles = 0
 bi_nosaddle = 0
 bi_saddle = 0
 bi_manysaddles = 0
-for par_index in range(niter):  # parameter_graph_EMT.size()
+par_index = 0
+n_regions = 0
+while n_regions < niter:
     parameternode = parameter_graph_EMT.parameter(par_index)
+    par_index = par_index + 1
     domain_graph = DSGRN.DomainGraph(parameternode)
     morse_graph = DSGRN.MorseGraph(domain_graph)
     morse_nodes = range(morse_graph.poset().size())
     num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
     if num_stable_FP > 2:
         continue
+    if mono_saddle+mono_nosaddle>niter*2/3 and num_stable_FP == 1:
+        continue # enough monostable regions
+    if bi_saddle+bi_nosaddle>niter*2/3 and num_stable_FP == 2:
+        continue # enough bistable regions
     p = sampler.sample(parameternode)
     domain_size_EMT = 6
     Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
@@ -111,20 +118,21 @@ for par_index in range(niter):  # parameter_graph_EMT.size()
     SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,
                                                      maxIteration=100, gridDensity=3, bisectionBool=True)
     if num_stable_FP == 1:
-        if (SNParameters) == 0:
+        if SNParameters == 0:
             mono_nosaddle = mono_nosaddle + 1
-        elif (SNParameters) == 1:
+        elif SNParameters == 1:
             mono_saddle = mono_saddle + 1
         else:
             mono_manysaddles = mono_manysaddles + 1
     else:
-        if (SNParameters) == 0:
+        if SNParameters == 0:
             bi_nosaddle = bi_nosaddle + 1
-        elif (SNParameters) == 1:
+        elif SNParameters == 1:
             bi_saddle = bi_saddle + 1
         else:
             bi_manysaddles = bi_manysaddles + 1
-    printing_statement = 'Completion: ' + str(par_index + 1) + ' out of ' + str(niter)
+    n_regions = n_regions + 1
+    printing_statement = 'Completion: ' + str(n_regions) + ' out of ' + str(niter)
     sys.stdout.write('\r' + printing_statement)
     sys.stdout.flush()
 
@@ -149,21 +157,27 @@ mat_for_chi_test = np.array(
     [[mono_nosaddle, mono_saddle],
      [bi_nosaddle, bi_saddle]])
 print('Correlation matrix\n')
-print(mat_for_chi_test)
+print(mat_for_chi_test_LARGE)
 
-unused, p, a, b = chi2_contingency(mat_for_chi_test_LARGE)
-print('Results with multiple saddles:\n')
-if p <= 0.05:
-    print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
-else:
-    print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+try:
+    unused, p, a, b = chi2_contingency(mat_for_chi_test_LARGE)
+    print('Results with multiple saddles:\n')
+    if p <= 0.05:
+        print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
+    else:
+        print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+except:
+    print('chi test failed')
 
-unused, p, a, b = chi2_contingency(mat_for_chi_test)
-print('\nResults without multiple saddles:\n')
-if p <= 0.05:
-    print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
-else:
-    print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+try:
+    unused, p, a, b = chi2_contingency(mat_for_chi_test)
+    print('\nResults without multiple saddles:\n')
+    if p <= 0.05:
+        print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
+    else:
+        print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+    print('p-value = ', p)
+except:
+    print('chi test failed')
 
-print('p-value = ', p)
 print('It is the end!')
