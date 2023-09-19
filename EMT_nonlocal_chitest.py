@@ -67,7 +67,7 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 # production parameters as variable
 f = EMT(gammaVar, parameterVar)
 
-niter = 30
+niter = 500
 file_storing = 'EMT_nonlocal_chitest.npz'
 
 # create network from file
