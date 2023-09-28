@@ -5,6 +5,8 @@ Search for saddle-node bifurcations in the EMT model
     Email: elena.queirolo@tum.de
     Created: 12/09/2023
 """
+import warnings
+
 from models.EMT_model import *
 from saddle_finding_functionalities import *
 from create_dataset import *
@@ -61,13 +63,14 @@ def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_g
     """
     return all_pars, indices_domain, indices_input
 
+
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
 edgeCounts = [2, 2, 2, 1, 3, 2]
 parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts]  # set all
 # production parameters as variable
 f = EMT(gammaVar, parameterVar)
 
-niter = 500
+niter = 50
 file_storing = 'EMT_nonlocal_chitest.npz'
 
 # create network from file
@@ -87,6 +90,90 @@ sampler.sample(special_parameternode)
 
 isFP = lambda morse_node: morse_graph.annotation(morse_node)[0].startswith('FP')
 
+'''
+Here, we select the parameter regions we will want to research
+'''
+
+monostable_FP_parameters = []
+bistable_FP_parameters = []
+multistable_FP_parameters = []
+good_candidate = []
+par_index = -1
+while len(good_candidate) < niter*3:
+    par_index = par_index + 1 # parameter_graph_EMT.size()
+    parameter = parameter_graph_EMT.parameter(par_index)
+    domain_graph = DSGRN.DomainGraph(parameter)
+    morse_graph = DSGRN.MorseGraph(domain_graph)
+    morse_nodes = range(morse_graph.poset().size())
+    num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
+    if num_stable_FP == 1:
+        monostable_FP_parameters.append(par_index)
+        adjacent_nodes = parameter_graph_EMT.adjacencies(par_index)
+        for adjacent in adjacent_nodes:
+            parameter_adjacent = parameter_graph_EMT.parameter(adjacent)
+            domain_graph_adjacent = DSGRN.DomainGraph(parameter_adjacent)
+            morse_graph = DSGRN.MorseGraph(domain_graph_adjacent)
+            morse_nodes_adjacent = range(morse_graph.poset().size())
+            num_stable_FP_adjacent = sum(1 for node in morse_nodes_adjacent if isFP(node))
+            if num_stable_FP_adjacent == 2:
+                good_candidate.append((par_index, adjacent))
+    elif num_stable_FP == 2:
+        bistable_FP_parameters.append(par_index)
+    elif num_stable_FP > 2:
+        multistable_FP_parameters.append(par_index)
+
+num_parameters = parameter_graph_EMT.size()
+num_monostable_params = len(monostable_FP_parameters)
+num_bistable_params = len(bistable_FP_parameters)
+num_multistable_params = len(multistable_FP_parameters)
+num_candidates = len(good_candidate)
+
+print('Number of parameters in the parameter graph: ' + str(num_parameters))
+print('Monostable parameters in the parameter graph: ' + str(num_monostable_params))
+print('Bistable parameters in the parameter graph: ' + str(num_bistable_params))
+print('Multistable parameters in the parameter graph: ' + str(num_multistable_params))
+print('Good parameters in the parameter graph: ' + str(num_candidates))
+print(good_candidate)
+
+
+# refine the search: to each good candidate count the number of monostable adjacent nodes / number of adjacent nodes and
+# the same for the bistable node: we want as many monostable nodes close to the monostable node and as many bistable
+# nodes near the bistable node
+grade_candidate = np.array([])
+for index in range(num_candidates):
+    par_index_monostable = good_candidate[index][0]
+    monostable_node = parameter_graph_EMT.parameter(par_index_monostable)
+    adjacent_nodes = parameter_graph_EMT.adjacencies(par_index_monostable)
+    num_loc_monostable = 0
+    for adjacent in adjacent_nodes:
+        parameter_adjacent = parameter_graph_EMT.parameter(adjacent)
+        domain_graph_adjacent = DSGRN.DomainGraph(parameter_adjacent)
+        morse_graph = DSGRN.MorseGraph(domain_graph_adjacent)
+        morse_nodes_adjacent = range(morse_graph.poset().size())
+        num_stable_FP_adjacent = sum(1 for node in morse_nodes_adjacent if isFP(node))
+        if num_stable_FP_adjacent == 1:
+            num_loc_monostable = num_loc_monostable+1
+    ratio_monostable = num_loc_monostable/len(adjacent_nodes)
+
+    par_index_bistable = good_candidate[index][1]
+    bistable_node = parameter_graph_EMT.parameter(par_index_bistable)
+    adjacent_nodes = parameter_graph_EMT.adjacencies(par_index_bistable)
+    num_loc_bistable = 0
+    for adjacent in adjacent_nodes:
+        parameter_adjacent = parameter_graph_EMT.parameter(adjacent)
+        domain_graph_adjacent = DSGRN.DomainGraph(parameter_adjacent)
+        morse_graph = DSGRN.MorseGraph(domain_graph_adjacent)
+        morse_nodes_adjacent = range(morse_graph.poset().size())
+        num_stable_FP_adjacent = sum(1 for node in morse_nodes_adjacent if isFP(node))
+        if num_stable_FP_adjacent == 2:
+            num_loc_bistable = num_loc_bistable+1
+    ratio_bistable = num_loc_bistable/len(adjacent_nodes)
+    grade_candidate = np.append(grade_candidate, ratio_monostable**2+ratio_bistable**2)
+
+index_param = np.argsort(-grade_candidate)
+grade_candidate = grade_candidate[index_param]
+good_candidate = np.array(good_candidate)[index_param]
+
 ds = []
 dsMinimum = []
 
@@ -98,43 +185,46 @@ bi_saddle = 0
 bi_manysaddles = 0
 par_index = 0
 n_regions = 0
-while n_regions < niter:
-    parameternode = parameter_graph_EMT.parameter(par_index)
-    par_index = par_index + 1
-    domain_graph = DSGRN.DomainGraph(parameternode)
-    morse_graph = DSGRN.MorseGraph(domain_graph)
-    morse_nodes = range(morse_graph.poset().size())
-    num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
-    if num_stable_FP > 2:
-        continue
-    if mono_saddle+mono_nosaddle>niter*2/3 and num_stable_FP == 1:
-        continue # enough monostable regions
-    if bi_saddle+bi_nosaddle>niter*2/3 and num_stable_FP == 2:
-        continue # enough bistable regions
-    p = sampler.sample(parameternode)
-    domain_size_EMT = 6
-    Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
-                                                   parameter_graph_EMT, parameternode)
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,
-                                                     maxIteration=100, gridDensity=3, bisectionBool=True)
-    if num_stable_FP == 1:
-        if SNParameters == 0:
-            mono_nosaddle = mono_nosaddle + 1
-        elif SNParameters == 1:
-            mono_saddle = mono_saddle + 1
-        else:
-            mono_manysaddles = mono_manysaddles + 1
-    else:
-        if SNParameters == 0:
-            bi_nosaddle = bi_nosaddle + 1
-        elif SNParameters == 1:
-            bi_saddle = bi_saddle + 1
-        else:
-            bi_manysaddles = bi_manysaddles + 1
-    n_regions = n_regions + 1
-    printing_statement = 'Completion: ' + str(n_regions) + ' out of ' + str(niter)
-    sys.stdout.write('\r' + printing_statement)
-    sys.stdout.flush()
+for n_regions in range(niter):
+    for par_index in good_candidate[n_regions]:
+        parameternode = parameter_graph_EMT.parameter(par_index)
+        par_index = par_index + 1
+        domain_graph = DSGRN.DomainGraph(parameternode)
+        morse_graph = DSGRN.MorseGraph(domain_graph)
+        morse_nodes = range(morse_graph.poset().size())
+        p = sampler.sample(parameternode)
+        domain_size_EMT = 6
+        num_stable_FP = sum(1 for node in morse_nodes if isFP(node))
+
+        Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
+                                              parameter_graph_EMT, parameternode)
+
+        try:
+            SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,
+                                                         maxIteration=100, gridDensity=3, bisectionBool=True)
+            if num_stable_FP == 1:
+                if SNParameters == 0:
+                    mono_nosaddle = mono_nosaddle + 1
+                elif SNParameters == 1:
+                    mono_saddle = mono_saddle + 1
+                else:
+                    mono_manysaddles = mono_manysaddles + 1
+            else:
+                if SNParameters == 0:
+                    bi_nosaddle = bi_nosaddle + 1
+                elif SNParameters == 1:
+                    bi_saddle = bi_saddle + 1
+                else:
+                    bi_manysaddles = bi_manysaddles + 1
+
+            printing_statement = 'Completion: ' + str(n_regions) + ' out of ' + str(niter) + ', region number ' + str(
+                par_index)
+            sys.stdout.write('\r' + printing_statement)
+            sys.stdout.flush()
+        except Exception as error:
+            # handle the exception
+            # this doesn't work: warnings.WarningMessage(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
+            warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
 
 try:
     data = np.load(file_storing, allow_pickle=True)
@@ -151,7 +241,7 @@ if old_niter < niter:
              bi_manysaddles=bi_manysaddles, niter=niter)
 
 mat_for_chi_test_LARGE = np.array(
-    [[mono_nosaddle, mono_saddle,  mono_manysaddles],
+    [[mono_nosaddle, mono_saddle, mono_manysaddles],
      [bi_nosaddle, bi_saddle, bi_manysaddles]])
 mat_for_chi_test = np.array(
     [[mono_nosaddle, mono_saddle],
@@ -165,7 +255,8 @@ try:
     if p <= 0.05:
         print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
     else:
-        print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+        print(
+            'We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
 except:
     print('chi test failed')
 
@@ -175,7 +266,8 @@ try:
     if p <= 0.05:
         print('We reject the null hypothesis: there is correlation between DSGRN and numerical saddles\n')
     else:
-        print('We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
+        print(
+            'We cannot reject the null hypothesis: there is NO proven correlation between DSGRN and numerical saddles\n')
     print('p-value = ', p)
 except:
     print('chi test failed')
