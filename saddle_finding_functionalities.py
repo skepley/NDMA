@@ -5,10 +5,12 @@ first variable parameter in the Hill model.
 
 Main function: saddle_node_search
 """
+import warnings
 
 from saddle_node import *
 from scipy.linalg import null_space
 from models.TS_model import *
+from warnings import warn
 
 
 # Implementation of pseudo-arc length continuation for finding saddle-node bifurcations
@@ -252,7 +254,10 @@ def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
         hill = hill0
     else:
         hill = hill1
-    eq = from_eqs_select_saddle_eq(Eq0, Eq1)
+    try:
+        eq = from_eqs_select_saddle_eq(Eq0, Eq1)
+    except:
+        warn('\nproblem  in bisection: probably no equilibrium found for a parameter value (at least one equilibrium needed for continuation\n')
     SNB = SN.find_saddle_node(0, hill, p, equilibria=eq)
     if len(SNB) > 0:
         return eq, SNB[0]
