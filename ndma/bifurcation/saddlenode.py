@@ -11,6 +11,10 @@ import warnings
 # TODO: saddle node search still returns 0,0 if no saddle node is found!
 # important TODO
 
+# TODO: what happens when we only find 0 equilibria??
+# in the saddle node search, the bisection method might not return any equilibria, thus breaking the bisection search
+# this breaks the bisection method and breaks all higher level calls
+
 class SaddleNode:
     """A constraint class for working with HillModels along surfaces of saddle-node bifurcations"""
 
