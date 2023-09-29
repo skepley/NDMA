@@ -342,7 +342,7 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
     """
     candidateIntervals = saddle_node_intervals(hillModel, hillRange, parameter, gridDensity=3)
     if len(candidateIntervals) == 0:  # signature of monostability
-        return 0, 0
+        return 0, 0 # TODO: THIS IS HORRIBLE!!!
     else:
         badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
         SNParameters = []

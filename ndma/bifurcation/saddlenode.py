@@ -8,6 +8,8 @@ A saddle-node bifurcation class and related functionality.
 from ndma.hill_model import *
 import warnings
 
+# TODO: saddle node search still returns 0,0 if no saddle node is found!
+# important TODO
 
 class SaddleNode:
     """A constraint class for working with HillModels along surfaces of saddle-node bifurcations"""
