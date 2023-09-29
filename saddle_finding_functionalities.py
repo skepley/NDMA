@@ -319,7 +319,7 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
     if len(candidateIntervals) == 0:  # signature of monostability
         return 0, 0
     else:
-        badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
+        unknownBifurcation = []  # list for parameters which pass the candidate check but fail to find a saddle node
         SNParameters = []
         for interval in candidateIntervals:
             if bisectionBool:
@@ -330,9 +330,9 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
             if SNB is not None:
                 SNParameters.append(SNB)
             else:
-                badCandidates.append((parameter, interval))
+                unknownBifurcation.append((parameter, interval))
 
-        return SNParameters, badCandidates
+        return SNParameters, unknownBifurcation
 
 
 if __name__ == "__main__":
