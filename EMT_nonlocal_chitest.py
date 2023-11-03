@@ -81,7 +81,7 @@ sampler = DSGRN.ParameterSampler(EMT_network)
 num_parameters = parameter_graph_EMT.size()
 domain_size_EMT = 6
 
-niter = 5
+niter = 100
 file_storing = 'EMT_nonlocal_chitest.npz'
 
 
@@ -162,8 +162,12 @@ ds = []
 dsMinimum = []
 
 correlation_matrix = np.array([[0, 0, 0], [0, 0, 0]])
+print('\nstarting saddle node computations \n\n')
 for n_regions in range(niter):
-    for par_index in good_candidate[n_regions]:
+    #for par_index in good_candidate[n_regions][1]:
+    for i in range(1):
+        par_index = good_candidate[n_regions][1]
+        print('Iteration', n_regions)
         parameternode = parameter_graph_EMT.parameter(par_index)
         par_index = par_index + 1
         p = sampler.sample(parameternode)
@@ -171,15 +175,25 @@ for n_regions in range(niter):
 
         Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
                                                   parameter_graph_EMT, parameternode)
-
+        gridDensity = 3
+        nEq1, _ = count_eq_with_eq(f, 1, Hill_par, gridDensity)
+        nEq100, _ = count_eq_with_eq(f, 100, Hill_par, gridDensity)
+        if nEq1 != 1:
+            print('n. eqs at hill coef = 1 is unexpectedly ', nEq1, '\n')
+        if nEq100 == 1:
+            print('n. eqs at hill coef = 75 is unexpectedly ', nEq100, '\n')
+            print('Trying with more details')
+            nEq100, _ = count_eq_with_eq(f, 100, Hill_par, gridDensity)
+            print(nEq100, "\n")
+        continue
         try:
-            SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,
+            SNParameters, otherBif = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,
                                                              maxIteration=100, gridDensity=3, bisectionBool=True)
             if SNParameters == 0:
-                n_saddles = 0
+                n_saddles_idx = 0
             else:
-                n_saddles = np.max([len(SNParameters), 2])  # 2 = many
-            correlation_matrix[num_stable_FP - 1, n_saddles] += 1
+                n_saddles_idx = np.max([len(SNParameters)-1, 2])  # more than 0 = many
+            correlation_matrix[num_stable_FP - 1, n_saddles_idx] += 1
 
             printing_statement = 'Completion: ' + str(n_regions) + ' out of ' + str(niter) + ', region number ' + str(
                 par_index)
@@ -188,6 +202,7 @@ for n_regions in range(niter):
         except Exception as error:
             # turn an error into a warning and print the associated tag
             warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
+stop
 
 try:
     data = np.load(file_storing, allow_pickle=True)
@@ -198,7 +213,7 @@ except:
 if old_niter < niter:
     np.savez(file_storing, correlation_matrix=correlation_matrix, niter=niter)
 
-print('Correlation matrix\n')
+print('\n\nCorrelation matrix\n')
 print(correlation_matrix)
 
 
@@ -212,17 +227,21 @@ def print_pvalue_comment(p):
 
 
 try:
-    _, p, _, _ = chi2_contingency(correlation_matrix)
     print('Results with multiple saddles:\n')
+    _, p, _, _ = chi2_contingency(correlation_matrix)
     print_pvalue_comment(p)
-except:
-    print('chi test failed')
+except Exception as error:
+    # turn an error into a warning and print the associated tag
+    warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
+    print('Chi2 test failed')
 
 try:
-    _, p, _, _ = chi2_contingency(correlation_matrix[:, 0:1])
     print('\nResults without multiple saddles:\n')
+    _, p, _, _ = chi2_contingency(correlation_matrix[:, 0:1])
     print_pvalue_comment(p)
-except:
-    print('chi test failed')
+except Exception as error:
+    # turn an error into a warning and print the associated tag
+    warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
+    print('Chi2 test failed')
 
 print('It is the end!')

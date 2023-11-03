@@ -52,11 +52,49 @@ def ezcat(*coordinates):
 def find_root(f, Df, initialGuess, diagnose=False):
     """Default root finding method to use if one is not specified"""
 
-    solution = optimize.root(f, initialGuess, jac=Df, method='hybr')  # set root finding algorithm
-    if diagnose:
-        return solution  # return the entire solution object including iterations and diagnostics
-    else:
-        return solution.x  # return only the solution vector
+    solution = optimize.root(f, initialGuess, jac=Df, method='hybr', tol=10**-10)  # set root finding algorithm
+    if solution.success:
+        solution.x = skinny_newton(f, Df, solution.x, maxDefect=1e-10)
+        # return solution # return the entire solution object including iterations and diagnostics
+    #else:
+    return solution  # return only the solution vector
+
+
+def skinny_newton(f, Df, x0, maxDefect=1e-13):
+    """A full Newton based root finding algorithm"""
+
+    def is_singular(matrix, rank):
+        """Returns true if the derivative becomes singular for any reason"""
+        return np.isnan(matrix).any() or np.isinf(matrix).any() or np.linalg.matrix_rank(matrix) < rank
+
+    fDim = len(x0)  # dimension of the domain/image of f
+    maxIterate = 10
+
+    if not is_vector(x0):  # an array whose columns are initial guesses
+        print('not implemented yet')
+
+    else:  # x0 is a single initial guess
+        # initialize iteration
+        x = x0.copy()
+        y = f(x)
+        Dy = Df(x)
+        iDefect = np.linalg.norm(y)  # initialize defect
+        iIterate = 1
+        while iDefect > maxDefect and iIterate < maxIterate:
+            if fDim == 1:
+                x -= y / Dy
+            else:
+                x -= np.linalg.solve(Dy, y)  # update x
+
+            y = f(x)  # update f(x)
+            Dy = Df(x)  # update Df(x)
+            iDefect = np.linalg.norm(y)  # initialize defect
+            iIterate += 1
+
+        if iDefect < maxDefect or iDefect < np.linalg.norm(f(x0)):
+            return x
+        else:
+            return x0
 
 
 def full_newton(f, Df, x0, maxDefect=1e-13):
@@ -1508,7 +1546,11 @@ class HillModel:
         A = np.linalg.inv(DF_x)
         Y_bound = np.linalg.norm(A @ F(equilibrium))
         Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
-        Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
+        def operator_norm(T):
+            # takes a 3D tensor and returns the operator norm - any size
+            norm_T = np.max(np.max(np.sum(np.abs(D2F_x), axis=2), axis=1), axis=0)
+            return norm_T
+        Z2_bound = np.linalg.norm(A) * operator_norm(D2F_x)
         if Z2_bound < 1e-16:
             Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
         delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
