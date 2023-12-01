@@ -53,11 +53,19 @@ def find_root(f, Df, initialGuess, diagnose=False):
     """Default root finding method to use if one is not specified"""
 
     solution = optimize.root(f, initialGuess, jac=Df, method='hybr', tol=10**-10)  # set root finding algorithm
-    if solution.success:
-        solution.x = skinny_newton(f, Df, solution.x, maxDefect=1e-10)
-        # return solution # return the entire solution object including iterations and diagnostics
-    #else:
-    return solution  # return only the solution vector
+    x = skinny_newton(f, Df, solution.x, maxDefect=1e-10)
+    if np.any(x != solution.x):  # sign that Newton converged
+        if diagnose:
+            solution.x = x
+            solution.success = True
+            solution.message = 'Used skinny_newton for convergence'
+            # TODO: fix the other attributes
+            return solution
+        return x
+    if diagnose:
+        return solution  # return the entire solution object including iterations and diagnostics
+    else:
+        return solution.x  # return only the solution vector
 
 
 def skinny_newton(f, Df, x0, maxDefect=1e-13):
@@ -72,29 +80,28 @@ def skinny_newton(f, Df, x0, maxDefect=1e-13):
 
     if not is_vector(x0):  # an array whose columns are initial guesses
         print('not implemented yet')
+        return np.NAN
 
-    else:  # x0 is a single initial guess
-        # initialize iteration
-        x = x0.copy()
-        y = f(x)
-        Dy = Df(x)
-        iDefect = np.linalg.norm(y)  # initialize defect
-        iIterate = 1
-        while iDefect > maxDefect and iIterate < maxIterate:
-            if fDim == 1:
-                x -= y / Dy
-            else:
-                x -= np.linalg.solve(Dy, y)  # update x
-
-            y = f(x)  # update f(x)
-            Dy = Df(x)  # update Df(x)
-            iDefect = np.linalg.norm(y)  # initialize defect
-            iIterate += 1
-
-        if iDefect < maxDefect or iDefect < np.linalg.norm(f(x0)):
-            return x
+    # initialize iteration
+    x = x0.copy()
+    y = f(x)
+    Dy = Df(x)
+    iDefect = np.linalg.norm(y)  # initialize defect
+    iIterate = 1
+    while iDefect > maxDefect and iIterate < maxIterate:
+        if fDim == 1:
+            x -= y / Dy
         else:
-            return x0
+            x -= np.linalg.solve(Dy, y)  # update x
+        y = f(x)  # update f(x)
+        Dy = Df(x)  # update Df(x)
+        iDefect = np.linalg.norm(y)  # initialize defect
+        iIterate += 1
+
+    if iDefect < maxDefect or iDefect < np.linalg.norm(f(x0)):
+        return x
+    else:
+        return x0
 
 
 def full_newton(f, Df, x0, maxDefect=1e-13):

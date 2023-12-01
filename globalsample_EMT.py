@@ -49,11 +49,12 @@ a_pars, indices_domain_EMT, indices_input_EMT = from_string_to_Hill_data(a_param
 
 size_L = 12
 size_sample = 20
-mu, sigma = .5, 1. # mean and standard deviation
-# best to get bistability : .5, 1. with lognormal distribution and means scaled 1-10-100
+mu, sigma = .5, .1 # mean and standard deviation
+# good to get bistability : .5, 1. with lognormal distribution and means scaled 1-10-100
+# best to get bistability : .5, .1 with lognormal distribution and means scaled 1-4-8
 L_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))
-U_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*10
-T_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*100
+U_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*4
+T_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*8
 gamma = np.ones([size_sample, 6])
 global_sample = np.concatenate((gamma, L_sample, U_sample, T_sample), axis=1)
 # print(global_sample[1])
@@ -85,21 +86,22 @@ for Hill_par in global_sample:
     gridDensity = 3
     try:
         hill_coef = 2
-        #print('Testing at hill coef = ', hill_coef)
-        #nEq1, _ = count_eq_with_eq(f, hill_coef, Hill_par, gridDensity)
+        # print('Testing at hill coef = ', hill_coef)
+        #nEq1, b = count_equilibria(f, hill_coef, Hill_par, gridDensity)
         #if nEq1 != 1:
-        #    print('n. eqs is unexpectedly ', nEq1)
+        #print('at Hill coef', hill_coef, 'n. eqs is ', nEq1)
     except Exception as error:
         print('failed due to ', str(type(error).__name__ + "–" + str(error)))
 
     try:
-        hill_coef = 5
-        print('Testing at hill coef = ', hill_coef)
-        nEq100, _ = count_eq_with_eq(f, hill_coef, Hill_par, gridDensity)
-        if nEq100 >= 0:
-            print('n. eqs is ', nEq100, '\n')
+        hill_coef = 50
+        # print('Testing at hill coef = ', hill_coef)
+        nEq100, _ = count_equilibria(f, hill_coef, Hill_par, gridDensity)
+        print('at Hill coef', hill_coef, 'n. eqs is ', nEq100)
+        # if nEq100 >= 0:
+            #print('n. eqs is ', nEq100, '\n')
             #print('Trying with more details')
-            #nEq100, _ = count_eq_with_eq(f, 100, Hill_par, gridDensity)
+            #nEq100, _ = count_equilibria(f, 100, Hill_par, gridDensity)
             #print(nEq100, "\n")
     except Exception as error:
         print('failed due to ', str(type(error).__name__ + "–" + str(error)))
@@ -122,4 +124,5 @@ for Hill_par in global_sample:
     except Exception as error:
         # turn an error into a warning and print the associated tag
         warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
+
 

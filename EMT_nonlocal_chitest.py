@@ -176,15 +176,17 @@ for n_regions in range(niter):
         Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
                                                   parameter_graph_EMT, parameternode)
         gridDensity = 3
-        nEq1, _ = count_eq_with_eq(f, 1, Hill_par, gridDensity)
-        nEq100, _ = count_eq_with_eq(f, 100, Hill_par, gridDensity)
-        if nEq1 != 1:
-            print('n. eqs at hill coef = 1 is unexpectedly ', nEq1, '\n')
-        if nEq100 == 1:
-            print('n. eqs at hill coef = 75 is unexpectedly ', nEq100, '\n')
-            print('Trying with more details')
-            nEq100, _ = count_eq_with_eq(f, 100, Hill_par, gridDensity)
-            print(nEq100, "\n")
+        nEq1, _ = count_equilibria(f, 1, Hill_par, gridDensity)
+        nEq100, _ = count_equilibria(f, 100, Hill_par, gridDensity)
+        print('n. eqs at hill coef = 1 is ', nEq1)
+        print('n. eqs at hill coef = 100 is ', nEq100)
+        # if nEq1 != 1:
+        #    print('n. eqs at hill coef = 1 is unexpectedly ', nEq1, '\n')
+        # if nEq100 == 1:
+            # print('n. eqs at hill coef = 100 is unexpectedly ', nEq100, '\n')
+            # print('Trying with more details')
+            # nEq100, _ = count_equilibria(f, 100, Hill_par, gridDensity+1)
+            # print(nEq100, "\n")
         continue
         try:
             SNParameters, otherBif = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], Hill_par, ds, dsMinimum,

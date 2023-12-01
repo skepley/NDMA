@@ -40,12 +40,12 @@ def count_eq(hillModel, hill, p, gridDensity=5):
                     return len(equilibria)
 
 
-def count_eq_with_eq(hillModel, hill, p, gridDensity=5):
+def count_equilibria(hillModel, hill, p, gridDensity=5):
     """Count the number of equilibria found for a Hill Model with identified Hill coefficients at a given parameter
     of the form (hill, p)."""
 
-    if is_vector(hill):  # vectorize function call to compute equilibria count for a vetor of Hill Coefficients
-        countVector = [hillModel.count_eq(hill_j, p, gridDensity=gridDensity) for hill_j in hill]
+    if is_vector(hill):  # vectorize function call to compute equilibria count for a vector of Hill Coefficients
+        countVector = [count_equilibria(hill_j, p, gridDensity=gridDensity) for hill_j in hill]
         return countVector
     else:
         if issubclass(type(hillModel), ToggleSwitch):
@@ -233,13 +233,13 @@ def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
     if n_steps == 0:
         n_steps = 1
     SN = SaddleNode(hillModel)
-    nEq0, Eq0 = count_eq_with_eq(hillModel, hill0, p, gridDensity)
-    nEq1, Eq1 = count_eq_with_eq(hillModel, hill1, p, gridDensity)
+    nEq0, Eq0 = count_equilibria(hillModel, hill0, p, gridDensity)
+    nEq1, Eq1 = count_equilibria(hillModel, hill1, p, gridDensity)
     if nEq0 == nEq1:
         print('problem')
     for i in range(n_steps):
         hill_middle = (hill0 + hill1) / 2
-        nEqmiddle, EqMiddle = count_eq_with_eq(hillModel, hill_middle, p, gridDensity)
+        nEqmiddle, EqMiddle = count_equilibria(hillModel, hill_middle, p, gridDensity)
         if nEqmiddle == nEq0:
             hill0 = hill_middle
             nEq0 = nEqmiddle
