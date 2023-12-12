@@ -222,16 +222,16 @@ class ToggleSwitch(HillModel):
         """Plot the nullclines for the toggle switch at a given parameter"""
 
         X1, X2 = np.meshgrid(np.linspace(*domainBounds[0], nNodes), np.linspace(*domainBounds[1], nNodes))
-        flattenNodes = np.array([np.ravel(X1), np.ravel(X2)])
+        flattenNodes = np.array([np.ravel(X1), np.ravel(X2)]).T
         p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
-        Z1 = np.reshape(self.coordinates[0](flattenNodes, p1), 2 * [nNodes])
-        Z2 = np.reshape(self.coordinates[1](flattenNodes, p2), 2 * [nNodes])
-        cs1 = plt.contour(X1, X2, Z1, [0], colors='g', alpha=0)
-        cs2 = plt.contour(X1, X2, Z2, [0], colors='r', alpha=0)
-        x1 = cs1.collections[0].get_paths()[0].vertices[:,0]
-        y1 = cs1.collections[0].get_paths()[0].vertices[:,1]
-        x2 = cs2.collections[0].get_paths()[0].vertices[:,0]
-        y2 = cs2.collections[0].get_paths()[0].vertices[:,1]
+        Z1 = np.reshape(np.array(list(map(lambda x: self.coordinates[0](x, p1), flattenNodes))), 2 * [nNodes])
+        Z2 = np.reshape(np.array(list(map(lambda x: self.coordinates[1](x, p2), flattenNodes[:, ::-1]))), 2 * [nNodes])
+        cs1 = plt.contour(X1, X2, Z1, [0], colors='g')
+        cs2 = plt.contour(X1, X2, Z2, [0], colors='r')
+        x1 = cs1.collections[0].get_paths()[0].vertices[:, 0]
+        y1 = cs1.collections[0].get_paths()[0].vertices[:, 1]
+        x2 = cs2.collections[0].get_paths()[0].vertices[:, 0]
+        y2 = cs2.collections[0].get_paths()[0].vertices[:, 1]
         return x1, y1, x2, y2
 
 
