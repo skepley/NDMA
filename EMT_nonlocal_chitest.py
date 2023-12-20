@@ -14,54 +14,7 @@ import sys
 from scipy.stats import chi2_contingency
 import DSGRN
 import json
-
-
-def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_graph, region):
-    D = network.size()
-    gamma = np.ones(D)
-    L = np.zeros([D, D])
-    U = np.zeros([D, D])
-    T = np.zeros([D, D])
-    indices_domain = []
-    indices_input = []
-    sample_dict = json.loads(DSGRN_par_string)
-    for key, value in sample_dict['Parameter'].items():
-        # Get parameter (L, U, or T)
-        par_type = key[0]
-        # Extract variable names
-        node_names = [name.strip() for name in key[2:-1].split('->')]
-        node_indices = [network.index(node) for node in node_names]
-        if par_type == 'L':
-            L[tuple(node_indices)] = value
-            indices_domain.append(node_indices[0])
-            indices_input.append(node_indices[1])
-        elif par_type == 'U':
-            U[tuple(node_indices)] = value
-        else:  # T
-            T[tuple(node_indices)] = value
-
-    delta = U - L
-    ell_non_zero = L[np.nonzero(L)]
-    theta_non_zero = T[np.nonzero(T)]
-    delta_non_zero = delta[np.nonzero(delta)]
-    all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
-    """
-    success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
-    if not success:
-        raise ValueError('Debugging error')
-    L_new, U_new, T_new = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
-    pars_Hill, index_dom, index_in = DSGRNpar_to_HillCont(L_new, T_new, U_new )
-    if np.max(np.abs(pars_Hill - all_pars))>10**-7:
-        raise ValueError('Debugging error')
-    if DSGRN.par_index_from_sample(parameter_graph, L_new, U_new, T_new) != region:
-        raise ValueError('Debugging error')
-
-    L, U, T = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
-    success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
-    if not success:
-        raise ValueError('Debugging error')
-    """
-    return all_pars, indices_domain, indices_input
+from DSGRN_functionalities import from_string_to_Hill_data
 
 
 # set EMT-specific elements
@@ -173,8 +126,7 @@ for n_regions in range(niter):
         p = sampler.sample(parameternode)
         num_stable_FP = DSGRN_FP_per_index(par_index)
 
-        Hill_par, _, _ = from_string_to_Hill_data(p, domain_size_EMT, EMT_network,
-                                                  parameter_graph_EMT, parameternode)
+        Hill_par, _, _ = from_string_to_Hill_data(p, EMT_network)
         gridDensity = 3
         nEq1, _ = count_equilibria(f, 1, Hill_par, gridDensity)
         nEq100, _ = count_equilibria(f, 100, Hill_par, gridDensity)

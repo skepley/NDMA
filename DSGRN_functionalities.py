@@ -4,6 +4,16 @@ import json
 
 
 def from_string_to_Hill_data(DSGRN_par_string, network):
+    """
+    extract Hill parameters from a DSGRN parameter string and the network info, returns additional network info
+    INPUT
+    DSGRN_par_string : string of DSGRN parameters
+    network : DSGRN network
+    OUTPUT
+    all_pars : vector with all the parameter in NDMA format
+    indices_domain : indices defining the network structure, in particular the source of each edge in the DSGRN order
+    indices_input : indices defining the network structure, in particular the target of each edge in the DSGRN order
+    """
     # OLD:
     # def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_graph, region):
     D = network.size()
@@ -34,26 +44,19 @@ def from_string_to_Hill_data(DSGRN_par_string, network):
     theta_non_zero = T[np.nonzero(T)]
     delta_non_zero = delta[np.nonzero(delta)]
     all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
-    """
-    success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
-    if not success:
-        raise ValueError('Debugging error')
-    L_new, U_new, T_new = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
-    pars_Hill, index_dom, index_in = DSGRNpar_to_HillCont(L_new, T_new, U_new )
-    if np.max(np.abs(pars_Hill - all_pars))>10**-7:
-        raise ValueError('Debugging error')
-    if DSGRN.par_index_from_sample(parameter_graph, L_new, U_new, T_new) != region:
-        raise ValueError('Debugging error')
-
-    L, U, T = HillContpar_to_DSGRN(all_pars, indices_domain, indices_input, domain_size)
-    success = (DSGRN.par_index_from_sample(parameter_graph, L, U, T) == region)
-    if not success:
-        raise ValueError('Debugging error')
-    """
     return all_pars, indices_domain, indices_input
 
 
 def DSGRNpar_to_HillCont(L, T, U):
+    """
+    takes the standard DSGRN parameters (3 vectors) and returns NDMA parameter vector, together with some info on the network
+    INPUT
+    L, T, U : np.array with the ell, theta and u data
+    OUTPUT
+    all_pars : vector with all the parameter in NDMA format
+    indices_domain : indices defining the network structure, in particular the source of each edge in the DSGRN order
+    indices_input : indices defining the network structure, in particular the target of each edge in the DSGRN order
+    """
     gamma = np.ones(shape=(1, np.shape(L)[0]))
     indices = np.array(np.nonzero(L))
     indices_domain = indices[0, :]
@@ -67,6 +70,16 @@ def DSGRNpar_to_HillCont(L, T, U):
 
 
 def HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size):
+    """
+    given a parameter array and some network data, returns DSGRN parameters ell, theta and u
+    INPUT
+    par : NDMA vector of parameters
+    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_input : vector with all the edges targets in DSGRN order
+    domain_size : dimension of the network
+    OUTPUT
+    L, T, U : arrays of ell, theta and u values
+    """
     data_size = int((len(par) - domain_size)/3)
     gamma = par[0:domain_size]
     L = np.zeros((domain_size, domain_size))  # equation, input
@@ -93,6 +106,18 @@ def HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size):
 
 
 def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_input, domain_size):
+    """
+    associate to a NDMA parameter the corresponding DSGRN region number
+    INPUT
+    par : vector of NDMA parameters
+    regions_array : list of possible regions to chose from
+    paramter_graph : DSGRN parameter graph
+    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_input : vector with all the edges targets in DSGRN order
+    domain_size : dimension of the network
+    OUTPUT
+
+    """
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     restricted_region_number = np.where(extended_region_number == regions_array)
@@ -112,12 +137,31 @@ def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indice
 
 
 def global_par_to_region(par, parameter_graph, indices_domain, indices_input, domain_size):
+    """
+    takes a NDMA parameter and return a DSGNR region number
+    INPUT
+    par : vector of NDMA parameters
+    parameter_graph : DSGRN parameter graph
+    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_input : vector with all the edges targets in DSGRN order
+    domain_size : dimension of the network
+    OUTPUT
+    return_region_number : DSGRN region number
+    """
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     return return_region_number
 
 
 def DSGRN_FP_per_index(par_index, parameter_graph):
+    """
+    returns the number of Fixed Points in a given parameter region in DSGRN
+    INPUT
+    par_index : the parameter region index
+    parameter_graph : the DSGRN parameter graph
+    OUTPUT
+    num_stable_FP : int number of stable fixed points
+    """
     parameter = parameter_graph.parameter(par_index)
     domain_graph = DSGRN.DomainGraph(parameter)
     morse_graph = DSGRN.MorseGraph(domain_graph)
@@ -128,6 +172,17 @@ def DSGRN_FP_per_index(par_index, parameter_graph):
 
 
 def par_to_n_eqs(par, parameter_graph, indices_domain, indices_input, domain_size):
+    """
+    given a NDMA parameter, returns the expected number of fixed points according to DSGRN
+    INPUT
+    par : NDMA parameter
+    parameter_graph : DSGRN parameter graph
+    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_input : vector with all the edges targets in DSGRN order
+    domain_size : dimension of the network
+    OUTPUT
+    num_stable_FP : int number of stable fixed points
+    """
     L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
     return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     if return_region_number<0:

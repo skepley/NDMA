@@ -267,9 +267,7 @@ class HillComponent:
             fraction_power = (x / theta) ** hillCoefficient
         else:
             fraction_power = (theta / x) ** hillCoefficient
-        if np.abs(x * (1 / fraction_power + 2 + fraction_power))<10 ** -4 or fraction_power<10**-4:
-            print('x = ', x, 'theta = ', theta, 'hillCoefficient = ', hillCoefficient)
-            print(fraction_power)
+
         return self.sign * hillCoefficient * delta / (x * (1 / fraction_power + 2 + fraction_power))
 
     def dx2(self, x, parameter):
