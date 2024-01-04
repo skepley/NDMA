@@ -48,7 +48,7 @@ a_pars, indices_domain_EMT, indices_input_EMT = from_string_to_Hill_data(a_param
 # len(indices_domain_EMT) = 12
 
 size_L = 12
-size_sample = 20
+size_sample = 10
 mu, sigma = .5, .1 # mean and standard deviation
 # good to get bistability : .5, 1. with lognormal distribution and means scaled 1-10-100
 # best to get bistability : .5, .1 with lognormal distribution and means scaled 1-4-8
@@ -82,10 +82,13 @@ for Hill_par in global_sample:
     #for par_index in good_candidate[n_regions][1]:
     num_stable_FP = par_to_n_eqs(Hill_par, parameter_graph_EMT, indices_domain_EMT, indices_input_EMT, domain_size_EMT)
     if num_stable_FP != 2:
+        print('parameter monostable - skipped')
         continue
     gridDensity = 3
     try:
         hill_coef = 2
+        nEq1, _ = count_equilibria(f, hill_coef, Hill_par, gridDensity)
+        print('at Hill coef', hill_coef, 'n. eqs is ', nEq1)
         # print('Testing at hill coef = ', hill_coef)
         #nEq1, b = count_equilibria(f, hill_coef, Hill_par, gridDensity)
         #if nEq1 != 1:
@@ -94,7 +97,7 @@ for Hill_par in global_sample:
         print('failed due to ', str(type(error).__name__ + "–" + str(error)))
 
     try:
-        hill_coef = 50
+        hill_coef = 100
         # print('Testing at hill coef = ', hill_coef)
         nEq100, _ = count_equilibria(f, hill_coef, Hill_par, gridDensity)
         print('at Hill coef', hill_coef, 'n. eqs is ', nEq100)

@@ -268,6 +268,9 @@ class HillComponent:
         else:
             fraction_power = (theta / x) ** hillCoefficient
 
+        if fraction_power == 0:
+            return 0
+
         return self.sign * hillCoefficient * delta / (x * (1 / fraction_power + 2 + fraction_power))
 
     def dx2(self, x, parameter):
@@ -280,6 +283,8 @@ class HillComponent:
             fraction_power = (x / theta) ** hillCoefficient
         else:
             fraction_power = (theta / x) ** hillCoefficient
+        if fraction_power == 0:
+            return 0
 
         return hillCoefficient * delta / x ** 2 * (
                 2 * hillCoefficient / (1 / fraction_power ** 2 + 3 / fraction_power + 3 + fraction_power) +

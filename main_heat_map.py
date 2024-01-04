@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 3  # testing on 3, final run on 4
+n_sample = 4 * 10 ** 2  # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -30,7 +30,7 @@ except FileNotFoundError:
     n = 100000
     create_dataset_ToggleSwitch(100000, file_name)
 
-file_storing = 'heat_map.npz'
+file_storing = 'heat_map_verysmall.npz'
 
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = np.transpose(data_subsample)
@@ -75,7 +75,7 @@ for j in range(n_sample):  # range(n_sample):
     if SNParameters == 0 and badCandidates == 0:
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
-np.savez('heat_map_data',
+'''np.savez('heat_map_data',
          u=u, v=v, a=a, parameter_full=parameter_full, lowest_hill=lowest_hill, bad_parameters=bad_parameters,
          bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample,
          multiple_saddles=multiple_saddles)
@@ -88,6 +88,7 @@ n_sample = data.f.n_sample
 parameter_full = data.f.parameter_full
 lowest_hill = data.f.lowest_hill
 multiple_saddles = data.f.multiple_saddles
+'''
 
 print('\nNumber of bad candidates', len(bad_parameters), 'out of ', n_sample)
 print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)

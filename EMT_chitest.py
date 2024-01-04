@@ -11,6 +11,7 @@ from create_dataset import *
 import sys
 from scipy.stats import chi2_contingency
 
+
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
 edgeCounts = [2, 2, 2, 1, 3, 2]
 parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts]  # set all
@@ -19,8 +20,8 @@ f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_EMT.npz'
-file_storing = 'chi_test_EMT.npz'
-n_sample = 200
+file_storing = 'chi_test_EMT_small.npz'
+n_sample = 50
 
 emtData = np.load(dataFile)
 emtRegions = emtData['parameter_region']
