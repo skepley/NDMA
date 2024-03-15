@@ -11,3 +11,4 @@ matplotlib = '3.5.0'
 
 [requires]
 python_version = "3"
+itertools = "*"
