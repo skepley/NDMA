@@ -257,7 +257,7 @@ def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
     try:
         eq = from_eqs_select_saddle_eq(Eq0, Eq1)
     except:
-        warn('\nproblem  in bisection: probably no equilibrium found for a parameter value (at least one equilibrium needed for continuation\n')
+        warn('\nproblem  in bisection: probably no equilibrium found for a parameter value (at least one equilibrium needed for continuation)\n')
     SNB = SN.find_saddle_node(0, hill, p, equilibria=eq)
     if len(SNB) > 0:
         return eq, SNB[0]

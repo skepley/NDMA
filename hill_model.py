@@ -1588,43 +1588,14 @@ class HillModel:
             """Return true if and only if an equlibrium is positive"""
             return np.all(equilibrium > 0)
 
-        # def radii_uniqueness_existence(equilibrium):
-        #     DF_x = DF(equilibrium)
-        #     D2F_x = self.dx2(equilibrium, *parameter)
-        #     A = np.linalg.inv(DF_x)
-        #     Y_bound = np.linalg.norm(A @ F(equilibrium))
-        #     Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
-        #     Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
-        #     if Z2_bound < 1e-16:
-        #         Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
-        #     delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
-        #     if delta < 0:
-        #         return 0, 0
-        #     max_rad = (1 + np.sqrt(delta)) / (2 * Z2_bound)
-        #     min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
-        #     return max_rad, min_rad
+        def remove_doubles(solutions):
+            equilibria_pruned = np.row_stack([root.x for root in solutions])  # extra equilibria as vectors in R^n
+            equilibria_pruned = np.unique(np.round(equilibria_pruned, uniqueRootDigits), axis=0)  # remove duplicates
+            # equilibria_pruned = np.unique(np.round(equilibria_pruned/10**np.ceil(log(equilibria_pruned)),
+            #                                uniqueRootDigits)*10**np.ceil(log(equilibria_pruned)), axis=0)
 
-        # build a grid of initial data for Newton algorithm
-        if eqBound is None:  # use the trivial equilibrium bounds
-            eqBound = np.array(
-                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
-        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
-        evalGrid = np.meshgrid(*coordinateIntervals)
-        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
-
-        # Apply rootfinding algorithm to each initial condition
-        solns = list(
-            filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
-                                                                          for x in
-                                                                          X]))  # return equilibria which converged
-        if solns:
-            equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-            equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
-            # equilibria = np.unique(np.round(equilibria/10**np.ceil(log(equilibria)),
-            #                                uniqueRootDigits)*10**np.ceil(log(equilibria)), axis=0)
-
-            if len(equilibria) > 1:
-                all_equilibria = equilibria
+            if len(equilibria_pruned) > 1:
+                all_equilibria = equilibria_pruned
                 radii = np.zeros(len(all_equilibria))
                 unique_equilibria = all_equilibria
                 for i in range(len(all_equilibria)):
@@ -1646,8 +1617,32 @@ class HillModel:
                             radii2 = np.delete(radii2, j, 0)
                         else:
                             j = j + 1
-                equilibria = unique_equilibria
-            return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
+                equilibria_pruned = unique_equilibria
+            return equilibria_pruned
+
+        # build a grid of initial data for Newton algorithm
+        if eqBound is None:  # use the trivial equilibrium bounds
+            eqBound = np.array(
+                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
+        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
+        evalGrid = np.meshgrid(*coordinateIntervals)
+        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
+
+        # Apply rootfinding algorithm to each initial condition
+        solns = list(
+            filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
+                                                                          for x in
+                                                                          X]))  # return equilibria which converged
+        if solns:
+            equilibria = remove_doubles(solns)
+            better_solutions = list(filter(lambda root: eq_is_positive(root.x),
+                                            [find_root(F, DF, x, diagnose=True)
+                                            for x in equilibria]))
+            if better_solutions:
+                equilibria = remove_doubles(better_solutions)
+            else:
+                return None
+            return equilibria # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
         else:
             return None
 

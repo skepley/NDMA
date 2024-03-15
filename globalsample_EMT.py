@@ -48,13 +48,13 @@ a_pars, indices_domain_EMT, indices_input_EMT = from_string_to_Hill_data(a_param
 # len(indices_domain_EMT) = 12
 
 size_L = 12
-size_sample = 10
-mu, sigma = .5, .1 # mean and standard deviation
+size_sample = 1000
+mu, sigma = .5, 1. # mean and standard deviation
 # good to get bistability : .5, 1. with lognormal distribution and means scaled 1-10-100
 # best to get bistability : .5, .1 with lognormal distribution and means scaled 1-4-8
 L_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))
-U_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*4
-T_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*8
+U_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*10
+T_sample = np.abs(np.random.lognormal(mu, sigma, [size_sample, size_L]))*100
 gamma = np.ones([size_sample, 6])
 global_sample = np.concatenate((gamma, L_sample, U_sample, T_sample), axis=1)
 # print(global_sample[1])
@@ -72,6 +72,8 @@ n_Bistable = sum(FP_random_pars==2)
 print('Number monostable parameters = ', n_Monostable)
 print('Number bistable parameters = ', n_Bistable)
 print('Regions numbers sample = ', regions[:10])
+
+# sys.exit()
 
 ds = []
 dsMinimum = []

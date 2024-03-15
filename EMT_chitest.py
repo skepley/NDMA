@@ -21,7 +21,7 @@ f = EMT(gammaVar, parameterVar)
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_EMT.npz'
 file_storing = 'chi_test_EMT_small.npz'
-n_sample = 50
+n_sample = 10
 
 emtData = np.load(dataFile)
 emtRegions = emtData['parameter_region']
@@ -31,6 +31,8 @@ emtParameters = emtData['data'].transpose()  # transpose to make into an arrow o
 monostableParameters = emtParameters[monostableIdx]
 bistableParameters = emtParameters[bistableIdx]
 
+# TODO: remove on actual run
+random.seed(10)
 random_index_monostable = random.sample(monostableIdx, n_sample)
 random_index_bistable = random.sample(bistableIdx, n_sample)
 all_index = set(random_index_monostable + random_index_bistable)
@@ -60,11 +62,15 @@ wrong_parity_bistable = 0
 n_bistable_without_saddle = 0
 n_bistable_bad_candidate = 0
 
-for d in range(0, n_sample):
+hill_par_at_saddle = []
+
+for d in range(10, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 35, 50, 75, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 50, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
+
     if SNParameters and SNParameters != 0:
+        hill_par_at_saddle.append(SNParameters)
         if region_j == 0:
             n_monostable_with_saddle = n_monostable_with_saddle + 1
         else:

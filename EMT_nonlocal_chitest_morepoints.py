@@ -95,7 +95,7 @@ for index in range(num_candidates):
 
     # checking bistability around bistable node
     bistable_adjacent_nodes = parameter_graph_EMT.adjacencies(good_candidate[index][1])
-    ratio_bistable = neighbors_of_given_stability(bistable_adjacent_nodes, 2) / len(bistable_adjacent_nodes)
+    ratio_bistable = neighbors_of_given_stability(bistable_adjacent_nodes, 1) / len(bistable_adjacent_nodes)
 
     grade_candidate = np.append(grade_candidate, ratio_monostable ** 2 + ratio_bistable ** 2)
 
@@ -120,32 +120,33 @@ for n_regions in range(niter):
 
         # Hill_par, _, _ = from_string_to_Hill_data(p, EMT_network)
 
-        point_cloud = random_in_region(par_index, EMT_network, parameter_graph_EMT, 6)
+        point_cloud = random_in_region(par_index, EMT_network, parameter_graph_EMT, 1)
 
         for Hill_par in point_cloud:
-            gridDensity = 3
+            gridDensity = 2
             #nEq1, _ = count_equilibria(f, 1, Hill_par, gridDensity)
             nEq100, _ = count_equilibria(f, 100, Hill_par, gridDensity)
             #print('n. eqs at hill coef = 1 is ', nEq1)
             print('n. eqs at hill coef = 100 is ', nEq100)
-        continue
-        for Hill_par in point_cloud:
-            SNParameters, otherBif = saddle_node_search(f, [1, 10, 20, 50, 100], Hill_par, ds, dsMinimum,
-                                                        maxIteration=100, gridDensity=3, bisectionBool=True)
+            #continue
+            #for Hill_par in point_cloud:
+            #SNParameters, otherBif = saddle_node_search(f, [1, 10, 20, 50, 100], Hill_par, ds, dsMinimum,
+            #                                            maxIteration=100, gridDensity=3, bisectionBool=True)
             try:
-                if SNParameters == 0:
+                if nEq100 == 1:#SNParameters == 0:
                     n_saddles_idx = 0
                 else:
-                    n_saddles_idx = np.max([len(SNParameters)-1, 2])  # more than 0 = many
+                    # n_saddles_idx = np.max([len(SNParameters)-1, 2])  # more than 0 = many
+                    n_saddles_idx = 1
                 if n_saddles_idx > 0:
-                    print('There are ', len(SNParameters)-1, ' saddles \n')
+                    print('There are ', nEq100, ' equilibria \n')
                 correlation_matrix[num_stable_FP - 1, n_saddles_idx] += 1
 
             except Exception as error:
                 # turn an error into a warning and print the associated tag
                 warnings.warn(str("An exception occurred:" + type(error).__name__ + "–" + str(error)))
     printing_statement = 'Completion: ' + str(n_regions + 1) + ' out of ' + str(niter) + ', region number ' + str(
-        par_index) + '\n'
+        good_candidate[n_regions]) + '\n'
     sys.stdout.write('\r' + printing_statement)
     sys.stdout.flush()
 # sys.exit()
@@ -161,7 +162,7 @@ if old_niter < niter:
 
 print('\n\nCorrelation matrix\n')
 print(correlation_matrix)
-
+print('Rows: number of DSGRN fixed points, Columns: number of found equilibria or saddle node')
 
 def print_pvalue_comment(p):
     if p <= 0.05:
