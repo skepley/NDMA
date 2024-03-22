@@ -53,9 +53,14 @@ def phi_func(n, par, gamma):
     return phi
 
 
-def convergence(F, xminus, xplus):
-    tol = 10 ** -7
+def is_degenerate(xminus, xplus, tol=10**-7):
     if np.linalg.norm(xminus - xplus) < tol:
+        return True
+    return False
+
+
+def convergence(F, xminus, xplus, tol=10 ** -7):
+    if is_degenerate(xminus, xplus, tol):
         return True
     zero_corners = 0
     allx = list(itertools.product(*zip(xminus, xplus)))
@@ -79,7 +84,7 @@ def which_corner(F, xminus, xplus):
             print(np.linalg.norm(F(allx[i])))
 
 
-def boxy_box_from_pars(n, par, gamma, maxiter=180):
+def boxy_box_from_pars(n, par, gamma, maxiter=2000):
     # define the mapping
 
     gplus, gminus = gpm_func(n, par)
@@ -123,8 +128,58 @@ def corners_of_box(xminus, xplus):
     return np.array(all_corners)
 
 
+def approx_saddle_node_with_boxy_box(hill_comb, par_NDMA):
+    """ by going through all hill coefficients stored in hill_comb, we look for changes in the number of equilibria and
+    return approximate saddle nodes"""
+    def outlier(xminus, xplus, hill_iter, old_xminus, old_xplus, old_hill, tol=10**-7):
+        """ select the corner that is disappearing during the saddle node"""
+        if is_degenerate(old_xminus, old_xplus, tol=tol):
+            return outlier(old_xminus, old_xplus, old_hill, xminus, xplus, hill_iter, tol=tol)
+        degenerate_x = xminus
+        hill = hill_iter
+        approx_saddle_position = 0 * degenerate_x
+        for i in range(np.size(degenerate_x)):
+            if np.abs(degenerate_x[i] - old_xminus[i]) > np.abs(degenerate_x[i] - old_xplus[i]):
+                approx_saddle_position[i] = old_xminus[i]
+            else:
+                approx_saddle_position[i] = old_xplus[i]
+        return approx_saddle_position, hill
 
-if __name__ == "__main__":
+    if np.size(hill_comb) == 2:
+        low_hill = min(hill_comb)
+        high_hill = max(hill_comb)
+        hill_comb = np.linspace(high_hill, low_hill, 50)
+
+    old_hill, par, gamma = NDMApars_to_boxyboxpars(hill_comb[0], par_NDMA)
+    success, old_xminus, old_xplus, remainder = boxy_box_from_pars(old_hill, par, gamma, maxiter=300)
+    approx_saddle_position, approx_saddle_hill = [], []
+    for hill_iter in hill_comb:
+        success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=300)
+        if is_degenerate(xminus, xplus, tol=10**-3) != is_degenerate(old_xminus, old_xplus, tol=10**-3):
+            coord, hill_val = outlier(xminus, xplus, hill_iter, old_xminus, old_xplus, old_hill, tol=10**-3)
+            approx_saddle_position.append(coord)
+            approx_saddle_hill.append(hill_val)
+        old_xminus, old_xplus, old_hill = xminus, xplus, hill_iter
+
+    return approx_saddle_position, approx_saddle_hill
+
+
+def saddle_node_with_boxybox(saddle_node_problem, hill_comb, par_NDMA):
+    """ for the EMT saddle node problem taken a selection of hill coefficients and a parameter, it finds all saddle nodes"""
+    if np.size(hill_comb) == 2:
+        low_hill = min(hill_comb)
+        high_hill = max(hill_comb)
+        hill_comb = np.linspace(high_hill, low_hill, 50)
+    approx_saddle_position, old_hill = approx_saddle_node_with_boxy_box(hill_comb, par_NDMA)
+    par_of_SNbif = []
+    for i in range(len(old_hill)):
+        par_of_SNbif.append(saddle_node_problem.find_saddle_node(0, old_hill[i], par_NDMA, equilibria=approx_saddle_position[i]))
+    return par_of_SNbif
+
+
+def test1():
+    ##### TEST 1: run the boxy box (no guarantee on the right hand side)
+    print('##### TEST 1: run the boxy box (no guarantee on the right hand side)')
     failed_iters = 0
     bistability = 0
     n = 15.
@@ -150,6 +205,10 @@ if __name__ == "__main__":
     print('Bistability found ', bistability, 'times out of', j + 1)
     print('not_coplanar found ', not_coplanar, 'times out of', j + 1)
 
+
+if __name__ == "__main__":
+    ##### TEST 2: compare boxy box and EMT (test guarantee on the right hand side)
+    print('##### TEST 2: compare boxy box and EMT (test guarantee on the right hand side)')
     # set EMT-specific elements
     gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
     edgeCounts = [2, 2, 2, 1, 3, 2]
@@ -157,14 +216,17 @@ if __name__ == "__main__":
     # production parameters as variable
     f = EMT(gammaVar, parameterVar)
 
-    par_NDMA = np.abs(np.random.random(42))
-    hill = 3.2
-    n, par, gamma = NDMApars_to_boxyboxpars(hill, par_NDMA)
-    print(hill, par_NDMA)
-    print(n, par, gamma)
-    success, xminus, xplus, remainder = boxy_box_from_pars(n, par, gamma)
-    all_corners = corners_of_box(xminus, xplus)
-    norms = [np.linalg.norm(f(all_corners[i, :], hill, par_NDMA)) for i in range(np.size(all_corners, 1))]
+    xminus, xplus = 0, 0
+    success = False
+    while np.linalg.norm(xminus- xplus)< 10**-1 or not success:
+        par_NDMA = np.abs(np.random.random(42))
+        hill = 3.2
+        n, par, gamma = NDMApars_to_boxyboxpars(hill, par_NDMA)
+        #print(hill, par_NDMA)
+        #print(n, par, gamma)
+        success, xminus, xplus, remainder = boxy_box_from_pars(n, par, gamma)
+        all_corners = corners_of_box(xminus, xplus)
+        norms = [np.linalg.norm(f(all_corners[i, :], hill, par_NDMA)) for i in range(np.size(all_corners, 1))]
     print('norms = ', norms)
 
     F_box = F_func(n, par, gamma)
@@ -223,4 +285,46 @@ if __name__ == "__main__":
     par_of_SNbif = saddle_node_problem.find_saddle_node(0, hill_iter, par_NDMA, equilibria=saddle_candidate)
     print('found saddle node bifurcation', par_of_SNbif)
 
+    ##### TEST 5: smoother code to find saddle nodes
+    print('##### TEST 5: smoother code to find saddle nodes')
+    # for now, keep the same parameter as earlier
+    #par_NDMA = np.abs(np.random.random(42))
+    high_hill = 10
+    low_hill = 1
 
+    high_hill, par, gamma = NDMApars_to_boxyboxpars(high_hill, par_NDMA)
+    success, old_xminus, old_xplus, remainder = boxy_box_from_pars(high_hill, par, gamma, maxiter=300)
+    old_hill = high_hill
+    degeneracy_coef = np.linalg.norm(old_xminus - old_xplus)
+    if is_degenerate(old_xminus, old_xplus):
+        print('Parameter is monostable at high hill')
+    else:
+        for hill_iter in np.linspace(high_hill, low_hill, 50):
+            success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=300)
+            if is_degenerate(xminus, xplus, tol=degeneracy_coef/2):
+                break
+            old_xminus, old_xplus, old_hill = xminus, xplus, hill_iter
+            degeneracy_coef = np.linalg.norm(old_xminus - old_xplus)
+    print('approximate saddle node found between hill = ', old_hill, hill_iter)
+    print('old bounds = ', old_xminus, old_xplus, '\nnew bounds = ', xminus, xplus)
+
+    new_eq = xminus
+    approx_saddle_position = 0*xminus
+    for i in range(np.size(xminus)):
+        if np.abs(xminus[i] - old_xminus[i]) > np.abs(xminus[i] - old_xplus[i]):
+            approx_saddle_position[i] = old_xminus[i]
+        else:
+            approx_saddle_position[i] = old_xplus[i]
+    print('equilibria undergoing saddle = ', approx_saddle_position)
+
+    saddle_node_problem = SaddleNode(f)
+    par_of_SNbif = saddle_node_problem.find_saddle_node(0, old_hill, par_NDMA, equilibria=approx_saddle_position)
+    print('found saddle node bifurcation', par_of_SNbif)
+
+    #### TEST 6: run search function
+    print('#### TEST 6: run search function automatically')
+    approx_saddle_position, old_hill = approx_saddle_node_with_boxy_box([1, 10], par_NDMA)
+    print('aproximate saddle node position = ', approx_saddle_position, '\n approximate hill = ', old_hill)
+    saddle_node_problem = SaddleNode(f)
+    par_of_SNbif = saddle_node_problem.find_saddle_node(0, old_hill[0], par_NDMA, equilibria=approx_saddle_position[0])
+    print('found saddle node bifurcation', par_of_SNbif)
