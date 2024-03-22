@@ -1572,6 +1572,11 @@ class HillModel:
         return max_rad, min_rad
 
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
+        # TODO : refactor to non-deprecated name
+        warnings.warn('DEPRECATED - call global_equilibrium_search instead')
+        return self.global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=5, eqBound=None)
+
+    def global_equilibrium_search(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
             *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
@@ -1592,14 +1597,14 @@ class HillModel:
         X = np.column_stack([G_i.flatten() for G_i in evalGrid])
 
         # Apply rootfinding algorithm to each initial condition
-        solns = self.local_equilibria(parameter, X)
+        solns = self.local_equilibrium_search(X, parameter)
         # list(
         # filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
         #                                                              for x in
         #                                                              X]))  # return equilibria which converged
         if solns:
             equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits)
-            better_solutions = self.local_equilibria(parameter, equilibria)
+            better_solutions = self.local_equilibrium_search(equilibria, parameter)
             # list(filter(lambda root: eq_is_positive(root.x),
             #             [find_root(F, DF, x, diagnose=True)
             #             for x in equilibria]))
@@ -1611,7 +1616,7 @@ class HillModel:
         else:
             return None
 
-    def local_equilibria(self, *parameter, eqApprox):
+    def local_equilibrium_search(self, eqApprox, *parameter):
         """Return equilibria for the Hill Model by applying a Newton variant to the approximate equilibrium given.
         INPUT:
             *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
@@ -1640,16 +1645,17 @@ class HillModel:
             filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
                                                                           for x in
                                                                           eqApprox]))
+
+        solutions = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
         # return equilibria which converged
-        return solns
+        return solutions
 
     def remove_doubles(self, solutions, *parameter, uniqueRootDigits=5):
         """
         for a list of equilibria, it returns a smaller list eliminating all doubles - it uses a comination
         of radii polynomial and considering only up to a finite number of relevant digits
         """
-        equilibria_pruned = np.row_stack([root.x for root in solutions])  # extra equilibria as vectors in R^n
-        equilibria_pruned = np.unique(np.round(equilibria_pruned, uniqueRootDigits), axis=0)  # remove duplicates
+        equilibria_pruned = np.unique(np.round(solutions, uniqueRootDigits), axis=0)  # remove duplicates
         # equilibria_pruned = np.unique(np.round(equilibria_pruned/10**np.ceil(log(equilibria_pruned)),
         #                                uniqueRootDigits)*10**np.ceil(log(equilibria_pruned)), axis=0)
 

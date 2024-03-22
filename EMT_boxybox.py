@@ -168,5 +168,59 @@ if __name__ == "__main__":
     print('norms = ', norms)
 
     F_box = F_func(n, par, gamma)
-    print('F_box =' ,F_box(all_corners[0, :]), '\nF_ndma =', f(all_corners[0, :], hill, par_NDMA))
+    print('F_box =', F_box(all_corners[0, :]), '\nF_ndma =', f(all_corners[0, :], hill, par_NDMA))
+    print('minimal_norm = ', np.min(norms))
+
+    ##### TEST 3: find equilibria from boxy box results
+    print('##### TEST 3: find equilibria from boxy box results')
+    eqs = f.local_equilibrium_search(all_corners, hill, par_NDMA)
+    # print(eqs)
+
+    eqs = f.remove_doubles(eqs, hill, par_NDMA)
+    print(eqs)
+
+    # small test: are equilibria on the corners?
+    #distance_to_nearest_corner = [np.linalg.norm(eqs[i, :]-all_corners[j, :]) for i in range(2) for j in range(64)]
+    #print(distance_to_nearest_corner)
+
+
+    ##### TEST 4: find change in number of equilibria
+    print('##### TEST 4: find change in number of equilibria')
+    def count_eqs(all_corners, hill, par_NDMA):
+        eqs = f.local_equilibrium_search(all_corners, hill, par_NDMA)
+        eqs = f.remove_doubles(eqs, hill, par_NDMA)
+        number_of_eqs = np.size(eqs[:, 0])
+        return eqs, number_of_eqs
+
+
+    old_eqs, starting_n_eqs = count_eqs(all_corners, hill, par_NDMA)
+    print('starting number of equilibria = ', starting_n_eqs)
+    for hill_iter in np.linspace(hill, 1, 50):
+        success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma)
+        all_corners = corners_of_box(xminus, xplus)
+        eqs, n_eqs = count_eqs(all_corners, hill_iter, par_NDMA)
+        if n_eqs < 2:
+            break
+        old_eqs = eqs
+    print('approximate saddle node found at hill = ', hill_iter)
+
+    print('equilibria before and after the bifurcation')
+    print(old_eqs, eqs)
+
+    def select_saddle(old_eqs, new_eqs):
+        if np.size(new_eqs[:, 1]) > 1:
+            print('Not monostability')
+            return None
+        distances = [np.linalg.norm(x - new_eqs) for x in old_eqs]
+        distance_index = np.argmin(distances)
+        old_eqs = np.delete(old_eqs, distance_index, axis=0)
+        return old_eqs
+
+    saddle_candidate = select_saddle(old_eqs, eqs)
+    print('equilibria undergoing saddle = ', saddle_candidate)
+
+    saddle_node_problem = SaddleNode(f)
+    par_of_SNbif = saddle_node_problem.find_saddle_node(0, hill_iter, par_NDMA, equilibria=saddle_candidate)
+    print('found saddle node bifurcation', par_of_SNbif)
+
 
