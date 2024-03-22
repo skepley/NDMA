@@ -357,17 +357,19 @@ class HillComponent:
         elif diffParameter0 == 'theta':
             if diffParameter1 == 'theta':
                 dH = 2 * hillCoefficient / (1 / fraction_power ** 2 + 3 / fraction_power + 3 + fraction_power) - (
-                            hillCoefficient -self.sign) / (fraction_power + 2 + 1 / fraction_power)
+                        hillCoefficient - self.sign) / (fraction_power + 2 + 1 / fraction_power)
                 dH = dH * delta * hillCoefficient / theta ** 2
             if diffParameter1 == 'hillCoefficient':
                 dH = self.sign * 2 * delta * hillCoefficient * log(fraction) / theta / (fraction_power + 3 +
-                                3 / fraction_power + 1 / fraction_power ** 2) - self.sign * delta * (
-                                1 + hillCoefficient * log(fraction)) / theta / (fraction_power + 2 + 1 / fraction_power)
+                                                                                        3 / fraction_power + 1 / fraction_power ** 2) - self.sign * delta * (
+                             1 + hillCoefficient * log(fraction)) / theta / (fraction_power + 2 + 1 / fraction_power)
                 # dH = self.sign * -delta * hillCoefficient * xPower * thetaPowerSmall / ((thetaPower + xPower) ** 2)
 
         elif diffParameter0 == 'hillCoefficient':
             # then diffParameter1 = 'hillCoefficient'
-            dH = 2 * delta * log(fraction)**2/(fraction_power+3+3/fraction_power+1/fraction_power**2) - delta * log(fraction)/(fraction_power+2+1/fraction_power)
+            dH = 2 * delta * log(fraction) ** 2 / (
+                        fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2) - delta * log(fraction) / (
+                             fraction_power + 2 + 1 / fraction_power)
 
         return dH
 
@@ -392,15 +394,18 @@ class HillComponent:
                 fraction_power = (theta / x) ** hillCoefficient
 
         if diffParameter == 'delta':
-            ddH = self.sign * hillCoefficient / x / (fraction_power + 2 + 1/fraction_power)
+            ddH = self.sign * hillCoefficient / x / (fraction_power + 2 + 1 / fraction_power)
 
         elif diffParameter == 'theta':
-            ddH = - 2/(fraction_power + 3 + 3/fraction_power + 1/fraction_power**2) + 1/(fraction_power+2+1/fraction_power)
-            ddH = ddH * delta * hillCoefficient**2 /(theta*x)
+            ddH = - 2 / (fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2) + 1 / (
+                        fraction_power + 2 + 1 / fraction_power)
+            ddH = ddH * delta * hillCoefficient ** 2 / (theta * x)
 
         elif diffParameter == 'hillCoefficient':
-            ddH = -self.sign * 2 * delta * hillCoefficient * log(fraction)/x/(fraction_power+3+3/fraction_power+1/fraction_power**2) - \
-                  -self.sign * delta * (hillCoefficient * log(fraction)+1)/x/(fraction_power+2+1/fraction_power)
+            ddH = -self.sign * 2 * delta * hillCoefficient * log(fraction) / x / (
+                        fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2) - \
+                  -self.sign * delta * (hillCoefficient * log(fraction) + 1) / x / (
+                              fraction_power + 2 + 1 / fraction_power)
         return ddH
 
     def dx2diff(self, x, parameter, diffIndex):
@@ -425,23 +430,25 @@ class HillComponent:
             fraction = theta / x
             fraction_power = (theta / x) ** hill
 
-
         if diffParameter == 'delta':
-            d3H = 2 * hill / (fraction_power + 3 + 3/fraction_power + 1/fraction_power**2) - (hill - self.sign)/(fraction_power+2+1/fraction_power)
-            d3H = hill/x**2 * d3H
+            d3H = 2 * hill / (fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2) - (
+                        hill - self.sign) / (fraction_power + 2 + 1 / fraction_power)
+            d3H = hill / x ** 2 * d3H
 
         elif diffParameter == 'theta':
-            third_power = fraction_power + 3 + 3/fraction_power + 1/fraction_power**2
-            fourth_power = fraction_power + 4 + 6/fraction_power + 4/fraction_power**2 + 1/fraction_power**3
-            d3H = -self.sign * 6 * hill /fourth_power + (self.sign * hill + 2)/third_power
-            d3H = delta * hill**2/(theta * x**2) * d3H
+            third_power = fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2
+            fourth_power = fraction_power + 4 + 6 / fraction_power + 4 / fraction_power ** 2 + 1 / fraction_power ** 3
+            d3H = -self.sign * 6 * hill / fourth_power + (self.sign * hill + 2) / third_power
+            d3H = delta * hill ** 2 / (theta * x ** 2) * d3H
 
         elif diffParameter == 'hillCoefficient':
-            third_power = fraction_power + 3 + 3/fraction_power + 1/fraction_power**2
-            fourth_power = fraction_power + 4 + 6/fraction_power + 4/fraction_power**2 + 1/fraction_power**3
+            third_power = fraction_power + 3 + 3 / fraction_power + 1 / fraction_power ** 2
+            fourth_power = fraction_power + 4 + 6 / fraction_power + 4 / fraction_power ** 2 + 1 / fraction_power ** 3
             log_frac = log(fraction)
-            d3H = - 6 * hill * log_frac/fourth_power + (6 * hill* log_frac + self.sign * 2 * log_frac + 4)/third_power + log_frac *(-hill - self.sign)/(fraction_power + 2 + 1/fraction_power)
-            d3H = delta * hill/(x**2) * d3H
+            d3H = - 6 * hill * log_frac / fourth_power + (
+                        6 * hill * log_frac + self.sign * 2 * log_frac + 4) / third_power + log_frac * (
+                              -hill - self.sign) / (fraction_power + 2 + 1 / fraction_power)
+            d3H = delta * hill / (x ** 2) * d3H
 
         return d3H
 
@@ -1576,6 +1583,46 @@ class HillModel:
         parameterByCoordinate = self.unpack_parameter(
             self.parse_parameter(*parameter))  # unpack variable parameters by component
 
+        # build a grid of initial data for Newton algorithm
+        if eqBound is None:  # use the trivial equilibrium bounds
+            eqBound = np.array(
+                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
+        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
+        evalGrid = np.meshgrid(*coordinateIntervals)
+        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
+
+        # Apply rootfinding algorithm to each initial condition
+        solns = self.local_equilibria(parameter, X)
+        # list(
+        # filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
+        #                                                              for x in
+        #                                                              X]))  # return equilibria which converged
+        if solns:
+            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits)
+            better_solutions = self.local_equilibria(parameter, equilibria)
+            # list(filter(lambda root: eq_is_positive(root.x),
+            #             [find_root(F, DF, x, diagnose=True)
+            #             for x in equilibria]))
+            if better_solutions:
+                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits)
+            else:
+                return None
+            return equilibria  # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
+        else:
+            return None
+
+    def local_equilibria(self, *parameter, eqApprox):
+        """Return equilibria for the Hill Model by applying a Newton variant to the approximate equilibrium given.
+        INPUT:
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            eqApprox - list of potential equilibria used as starting point for Newton
+        RETURNS:
+            list of equilibria WITH DOUBLES
+        """
+
+        parameterByCoordinate = self.unpack_parameter(
+            self.parse_parameter(*parameter))  # unpack variable parameters by component
+
         def F(x):
             """Fix parameter values in the zero finding map"""
             return self.__call__(x, *parameter)
@@ -1588,63 +1635,49 @@ class HillModel:
             """Return true if and only if an equlibrium is positive"""
             return np.all(equilibrium > 0)
 
-        def remove_doubles(solutions):
-            equilibria_pruned = np.row_stack([root.x for root in solutions])  # extra equilibria as vectors in R^n
-            equilibria_pruned = np.unique(np.round(equilibria_pruned, uniqueRootDigits), axis=0)  # remove duplicates
-            # equilibria_pruned = np.unique(np.round(equilibria_pruned/10**np.ceil(log(equilibria_pruned)),
-            #                                uniqueRootDigits)*10**np.ceil(log(equilibria_pruned)), axis=0)
-
-            if len(equilibria_pruned) > 1:
-                all_equilibria = equilibria_pruned
-                radii = np.zeros(len(all_equilibria))
-                unique_equilibria = all_equilibria
-                for i in range(len(all_equilibria)):
-                    equilibrium = all_equilibria[i]
-                    max_rad, min_rad = self.radii_uniqueness_existence(equilibrium, *parameter)
-                    radii[i] = max_rad
-
-                radii2 = radii
-                for i in range(len(all_equilibria)):
-                    equilibrium1 = all_equilibria[i, :]
-                    radius1 = radii[i]
-                    j = i + 1
-                    while j < len(radii2):
-                        equilibrium2 = unique_equilibria[j, :]
-                        radius2 = radii2[j]
-                        if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
-                            # remove one of the two from
-                            unique_equilibria = np.delete(unique_equilibria, j, 0)
-                            radii2 = np.delete(radii2, j, 0)
-                        else:
-                            j = j + 1
-                equilibria_pruned = unique_equilibria
-            return equilibria_pruned
-
-        # build a grid of initial data for Newton algorithm
-        if eqBound is None:  # use the trivial equilibrium bounds
-            eqBound = np.array(
-                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
-        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
-        evalGrid = np.meshgrid(*coordinateIntervals)
-        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
-
         # Apply rootfinding algorithm to each initial condition
         solns = list(
             filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
                                                                           for x in
-                                                                          X]))  # return equilibria which converged
-        if solns:
-            equilibria = remove_doubles(solns)
-            better_solutions = list(filter(lambda root: eq_is_positive(root.x),
-                                            [find_root(F, DF, x, diagnose=True)
-                                            for x in equilibria]))
-            if better_solutions:
-                equilibria = remove_doubles(better_solutions)
-            else:
-                return None
-            return equilibria # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
-        else:
-            return None
+                                                                          eqApprox]))
+        # return equilibria which converged
+        return solns
+
+    def remove_doubles(self, solutions, *parameter, uniqueRootDigits=5):
+        """
+        for a list of equilibria, it returns a smaller list eliminating all doubles - it uses a comination
+        of radii polynomial and considering only up to a finite number of relevant digits
+        """
+        equilibria_pruned = np.row_stack([root.x for root in solutions])  # extra equilibria as vectors in R^n
+        equilibria_pruned = np.unique(np.round(equilibria_pruned, uniqueRootDigits), axis=0)  # remove duplicates
+        # equilibria_pruned = np.unique(np.round(equilibria_pruned/10**np.ceil(log(equilibria_pruned)),
+        #                                uniqueRootDigits)*10**np.ceil(log(equilibria_pruned)), axis=0)
+
+        if len(equilibria_pruned) > 1:
+            all_equilibria = equilibria_pruned
+            radii = np.zeros(len(all_equilibria))
+            unique_equilibria = all_equilibria
+            for i in range(len(all_equilibria)):
+                equilibrium = all_equilibria[i]
+                max_rad, min_rad = self.radii_uniqueness_existence(equilibrium, *parameter)
+                radii[i] = max_rad
+
+            radii2 = radii
+            for i in range(len(all_equilibria)):
+                equilibrium1 = all_equilibria[i, :]
+                radius1 = radii[i]
+                j = i + 1
+                while j < len(radii2):
+                    equilibrium2 = unique_equilibria[j, :]
+                    radius2 = radii2[j]
+                    if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
+                        # remove one of the two from
+                        unique_equilibria = np.delete(unique_equilibria, j, 0)
+                        radii2 = np.delete(radii2, j, 0)
+                    else:
+                        j = j + 1
+            equilibria_pruned = unique_equilibria
+        return equilibria_pruned
 
     @verify_call
     def saddle_though_arc_length_cont(self, equilibrium, parameter, parameter_bound):
