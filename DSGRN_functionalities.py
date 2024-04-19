@@ -115,9 +115,12 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
             all_ell = np.append(all_ell, ell)
             all_delta = np.append(all_delta, delta)
             all_theta = np.append(all_theta, theta)
-    L[indices_domain, indices_input] = all_ell
-    T[indices_domain, indices_input] = all_theta
-    Delta[indices_domain, indices_input] = all_delta
+    indices = list(zip(indices_domain, indices_input))
+    indices.sort(key=lambda x: x[1])
+    indices = np.array(indices)
+    L[indices[:, 0], indices[:, 1]] = all_ell
+    T[indices[:, 0], indices[:, 1]] = all_theta
+    Delta[indices[:, 0], indices[:, 1]] = all_delta
 
     for i in range(domain_size):
         T[i, :] = T[i, :] * Gamma[i]

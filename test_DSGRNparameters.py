@@ -39,9 +39,10 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 # production parameters as variable
 f = EMT(gammaVar, parameterVar)
 
-monostable_pars = np.array(range(42)) + 1
+monostable_pars = np.array(range(42)) + 1.0
 gamma_indices = np.array([7, 14, 21, 25, 35])
-monostable_pars[gamma_indices] = 1 + 0*gamma_indices
+monostable_pars[gamma_indices] = 1.0 + 0*gamma_indices
 L, U, T = HillContpar_to_DSGRN(f, monostable_pars, indices_sources_EMT, indices_targets_EMT)
 monostable_pars_test, index_a, index_b = DSGRNpar_to_HillCont(L, T, U)
-success = (DSGRN.par_index_from_sample(parameter_graph_EMT, L, U, T) == monostable_region)
+success = (monostable_pars == monostable_pars_test)
+print(success)
