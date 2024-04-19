@@ -99,9 +99,11 @@ def boxy_box_from_pars(n, par, gamma, maxiter=2000):
     # the iterations
     iter = 0
     remainder = np.array([])
-    while (not convergence(F, xminus, xplus)) and (iter < maxiter):
+    new_remainder = 10
+    while new_remainder > 10**-7 and (iter < maxiter):
         xplus_new, xminus_new = phi(xplus, xminus)
-        remainder = np.append(remainder, np.linalg.norm(xplus - xplus_new) + np.linalg.norm(xminus_new - xminus))
+        new_remainder = np.linalg.norm(xplus - xplus_new) + np.linalg.norm(xminus_new - xminus)
+        remainder = np.append(remainder, new_remainder)
         iter += 1
         xplus, xminus = xplus_new, xminus_new
 
@@ -155,8 +157,10 @@ def approx_saddle_node_with_boxy_box(hill_comb, par_NDMA):
     approx_saddle_position, approx_saddle_hill = [], []
     for hill_iter in hill_comb:
         success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=300)
-        if is_degenerate(xminus, xplus, tol=10**-3) != is_degenerate(old_xminus, old_xplus, tol=10**-3):
-            coord, hill_val = outlier(xminus, xplus, hill_iter, old_xminus, old_xplus, old_hill, tol=10**-3)
+        if not success:
+            continue
+        if is_degenerate(xminus, xplus, tol=10**-5) != is_degenerate(old_xminus, old_xplus, tol=10**-5):
+            coord, hill_val = outlier(xminus, xplus, hill_iter, old_xminus, old_xplus, old_hill, tol=10**-5)
             approx_saddle_position.append(coord)
             approx_saddle_hill.append(hill_val)
         old_xminus, old_xplus, old_hill = xminus, xplus, hill_iter
@@ -171,10 +175,14 @@ def saddle_node_with_boxybox(saddle_node_problem, hill_comb, par_NDMA):
         high_hill = max(hill_comb)
         hill_comb = np.linspace(high_hill, low_hill, 50)
     approx_saddle_position, old_hill = approx_saddle_node_with_boxy_box(hill_comb, par_NDMA)
-    par_of_SNbif = []
+    par_of_SNbif, bad_candidate = [], []
     for i in range(len(old_hill)):
-        par_of_SNbif.append(saddle_node_problem.find_saddle_node(0, old_hill[i], par_NDMA, equilibria=approx_saddle_position[i]))
-    return par_of_SNbif
+        saddle = saddle_node_problem.find_saddle_node(0, old_hill[i], par_NDMA, equilibria=approx_saddle_position[i])
+        if saddle:
+            par_of_SNbif.append(saddle)
+        else:
+            bad_candidate.append(old_hill[i])
+    return par_of_SNbif, bad_candidate
 
 
 def test1():
@@ -300,7 +308,7 @@ if __name__ == "__main__":
         print('Parameter is monostable at high hill')
     else:
         for hill_iter in np.linspace(high_hill, low_hill, 50):
-            success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=300)
+            success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=2000)
             if is_degenerate(xminus, xplus, tol=degeneracy_coef/2):
                 break
             old_xminus, old_xplus, old_hill = xminus, xplus, hill_iter

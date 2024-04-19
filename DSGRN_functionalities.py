@@ -3,8 +3,7 @@ import warnings
 import DSGRN
 import numpy as np
 import json
-
-from hill_model import is_vector
+from hill_model import ezcat, is_vector
 
 
 def from_string_to_Hill_data(DSGRN_par_string, network):
@@ -21,7 +20,6 @@ def from_string_to_Hill_data(DSGRN_par_string, network):
     # OLD:
     # def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_graph, region):
     D = network.size()
-    gamma = np.ones(D)
     L = np.zeros([D, D])
     U = np.zeros([D, D])
     T = np.zeros([D, D])
@@ -43,11 +41,8 @@ def from_string_to_Hill_data(DSGRN_par_string, network):
         else:  # T
             T[tuple(node_indices)] = value
 
-    delta = U - L
-    ell_non_zero = L[np.nonzero(L)]
-    theta_non_zero = T[np.nonzero(T)]
-    delta_non_zero = delta[np.nonzero(delta)]
-    all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
+    all_pars, a, b = DSGRNpar_to_HillCont(L, T, U)
+
     return all_pars, indices_domain, indices_input
 
 
@@ -61,51 +56,72 @@ def DSGRNpar_to_HillCont(L, T, U):
     indices_domain : indices defining the network structure, in particular the source of each edge in the DSGRN order
     indices_input : indices defining the network structure, in particular the target of each edge in the DSGRN order
     """
-    gamma = np.ones(shape=(1, np.shape(L)[0]))
     indices = np.array(np.nonzero(L))
     indices_domain = indices[0, :]
     indices_input = indices[1, :]
+
+    domain_size = np.shape(L)[0]
+    gamma = np.ones(domain_size)
     delta = U - L
-    ell_non_zero = L[np.nonzero(L)]
-    theta_non_zero = T[np.nonzero(T)]
-    delta_non_zero = delta[np.nonzero(delta)]
-    all_pars = np.append(gamma, np.append(ell_non_zero, np.append(theta_non_zero, delta_non_zero)))
+
+    all_pars = np.array([])
+    for column in range(domain_size):
+        column_pars = ezcat(*list(zip(L[:, column], delta[:, column], T[:, column])))
+        column_pars = column_pars[np.nonzero(column_pars)]
+
+        all_pars = np.append(all_pars, gamma[column])
+        all_pars = np.append(all_pars, column_pars)
+
     return all_pars, indices_domain, indices_input
 
 
-def HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size):
+def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
     """
     given a parameter array and some network data, returns DSGRN parameters ell, theta and u
     INPUT
+    hillmodel: NDMA hill model
     par : NDMA vector of parameters
-    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_domain : vector with all the edges sources in DSGRN order
     indices_input : vector with all the edges targets in DSGRN order
-    domain_size : dimension of the network
     OUTPUT
     L, T, U : arrays of ell, theta and u values
     """
-    data_size = int((len(par) - domain_size) / 3)
-    gamma = par[0:domain_size]
+    domain_size = hillmodel.dimension
+    number_of_edges = int((len(par) - domain_size) / 3)
+
+    par = np.insert(par, hillmodel.hillInsertionIndex, np.nan)
+    # add the hill coefficient in all the right spots for the hill model to work it out
+
+    param_by_coords = hillmodel.unpack_parameter(par)
+    Gamma = [param_by_coords[i][0] for i in range(len(param_by_coords))]
+
     L = np.zeros((domain_size, domain_size))  # equation, input
     T = np.zeros((domain_size, domain_size))
-    delta = np.zeros((domain_size, domain_size))
-    begin_L = domain_size
-    end_L = begin_L + data_size
-    begin_T = begin_L + data_size
-    end_T = begin_T + data_size
-    begin_U = begin_T + data_size
-    end_U = begin_U + data_size
+    Delta = np.zeros((domain_size, domain_size))
+
+    # creating the correct indices for the DSGRN matrices
     index_reordering = np.argsort(indices_domain)
     indices_domain = np.array(indices_domain)
     indices_input = np.array(indices_input)
     indices_domain = indices_domain[index_reordering]
     indices_input = indices_input[index_reordering]
-    L[indices_domain, indices_input] = par[begin_L:end_L]
-    T[indices_domain, indices_input] = par[begin_T:end_T]
-    for i in range(np.shape(T)[0]):
-        T[i, :] = T[i, :] / gamma[i]
-    delta[indices_domain, indices_input] = par[begin_U:end_U]
-    U = L + delta
+
+    all_ell, all_delta, all_theta = np.array([]), np.array([]), np.array([])
+    for coord_index in range(len(param_by_coords)):
+        gamma, list_of_component_pars = hillmodel.coordinates[coord_index].parse_parameters(param_by_coords[coord_index])
+        for j in range(len(list_of_component_pars)):
+            ell, delta, theta, hillCoefficient = hillmodel.coordinates[coord_index].productionComponents[j].curry_parameters(
+                list_of_component_pars[j])
+            all_ell = np.append(all_ell, ell)
+            all_delta = np.append(all_delta, delta)
+            all_theta = np.append(all_theta, theta)
+    L[indices_domain, indices_input] = all_ell
+    T[indices_domain, indices_input] = all_theta
+    Delta[indices_domain, indices_input] = all_delta
+
+    for i in range(domain_size):
+        T[i, :] = T[i, :] * Gamma[i]
+    U = L + Delta
     return L, U, T
 
 
