@@ -123,7 +123,7 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
     Delta[indices[:, 0], indices[:, 1]] = all_delta
 
     for i in range(domain_size):
-        T[i, :] = T[i, :] * Gamma[i]
+        T[:, i] = T[:, i] * Gamma[i]
     U = L + Delta
     return L, U, T
 

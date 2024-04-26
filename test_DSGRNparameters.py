@@ -40,9 +40,26 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 f = EMT(gammaVar, parameterVar)
 
 monostable_pars = np.array(range(42)) + 1.0
-gamma_indices = np.array([7, 14, 21, 25, 35])
-monostable_pars[gamma_indices] = 1.0 + 0*gamma_indices
+gamma_indices = np.array([0, 7, 14, 21, 25, 35])
+theta_indices =[[3, 6], [10, 13], [17, 20], [24], [28, 31, 34], [38, 41]]
+# monostable_pars[gamma_indices] = 1.0 + 0*gamma_indices
 L, U, T = HillContpar_to_DSGRN(f, monostable_pars, indices_sources_EMT, indices_targets_EMT)
 monostable_pars_test, index_a, index_b = DSGRNpar_to_HillCont(L, T, U)
 success = (monostable_pars == monostable_pars_test)
-print(success)
+different_index = np.argwhere(monostable_pars_test!=monostable_pars)[:, 0]
+print('if gammai is not 1, there is a difference between the two parameter vectors, only in the gammas and thetas elements:')
+print(monostable_pars[different_index])
+print(monostable_pars_test[different_index])
+
+monostable_pars_rescaled = monostable_pars.copy()
+monostable_pars_rescaled[gamma_indices] = 1.0 + 0*gamma_indices
+for i in range(len(gamma_indices)):
+    gamma_i = monostable_pars[gamma_indices[i]]
+    thetas_i = monostable_pars[theta_indices[i]]
+    monostable_pars_rescaled[theta_indices[i]] = gamma_i * thetas_i
+different_index = np.argwhere(monostable_pars_test != monostable_pars_rescaled)[:, 0]
+print(monostable_pars_rescaled[different_index])
+print(monostable_pars_test[different_index])
+
+
+print(' SUCCESS = ', all(monostable_pars_test == monostable_pars_rescaled))
