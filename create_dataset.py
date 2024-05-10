@@ -310,74 +310,75 @@ def TS_region(n, name_input):
     return name
 
 
-test_case = np.infty
-if test_case == 0:
-    # a < b  ,  a > b
-    name = 'simple_test.npz'
-    n_parameters_simple = 2
-    n_regions_simple = 2
-    requested_size = 5000
-    name = create_dataset(n_parameters_simple, simple_region, n_regions_simple, requested_size, name)
-    data_loc, regions_loc, coefs_optimal = load_dataset(name)
-    plt.plot(data_loc[0], data_loc[1], '.')
+if __name__ == "__main__":
+    test_case = np.infty
+    if test_case == 0:
+        # a < b  ,  a > b
+        name = 'simple_test.npz'
+        n_parameters_simple = 2
+        n_regions_simple = 2
+        requested_size = 5000
+        name = create_dataset(n_parameters_simple, simple_region, n_regions_simple, requested_size, name)
+        data_loc, regions_loc, coefs_optimal = load_dataset(name)
+        plt.plot(data_loc[0], data_loc[1], '.')
 
 
-if test_case == 1:
-    # c < a - b , a-b < c < a+b , a+b < c
-    name = 'second_simple_test.npz'
-    n_parameters_simple = 3
-    n_regions_simple = 3
-    requested_size = 5000
-    name = create_dataset(n_parameters_simple, second_simple_region, n_regions_simple, requested_size, name)
-    data_loc, regions_loc, coefs_optimal = load_dataset(name)
-    region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
-    region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
-    region_2 = requested_size - region_1 - region_3
+    if test_case == 1:
+        # c < a - b , a-b < c < a+b , a+b < c
+        name = 'second_simple_test.npz'
+        n_parameters_simple = 3
+        n_regions_simple = 3
+        requested_size = 5000
+        name = create_dataset(n_parameters_simple, second_simple_region, n_regions_simple, requested_size, name)
+        data_loc, regions_loc, coefs_optimal = load_dataset(name)
+        region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
+        region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
+        region_2 = requested_size - region_1 - region_3
 
 
-if test_case == 2:
-    # c + d < ab , c-d < ab < c+d , ab < c-d
-    # AND a<b, b<a     (6 regions)
-    name = 'third_simple_test.npz'
-    n_parameters_simple = 4
-    n_regions_simple = 6
-    requested_size = 5000
-    name = create_dataset(n_parameters_simple, third_simple_region, n_regions_simple, requested_size, name)
-    data_loc, regions_loc, coefs_optimal = load_dataset(name)
-    counter = np.zeros(n_regions_simple)
-    for i in range(n_regions_simple):
-        counter[i] = np.count_nonzero(regions_loc == i)
+    if test_case == 2:
+        # c + d < ab , c-d < ab < c+d , ab < c-d
+        # AND a<b, b<a     (6 regions)
+        name = 'third_simple_test.npz'
+        n_parameters_simple = 4
+        n_regions_simple = 6
+        requested_size = 5000
+        name = create_dataset(n_parameters_simple, third_simple_region, n_regions_simple, requested_size, name)
+        data_loc, regions_loc, coefs_optimal = load_dataset(name)
+        counter = np.zeros(n_regions_simple)
+        for i in range(n_regions_simple):
+            counter[i] = np.count_nonzero(regions_loc == i)
 
 
-if test_case == 3:
-    print('This is the toggle switch')
+    if test_case == 3:
+        print('This is the toggle switch')
 
-    # testing region assignment
-    # region = associate_parameter_regionTS(np.array([0.5, 0.5, 1.2]), np.array([1.2, 2.4, 0.5]))
-    # region should be [1,2,3]
+        # testing region assignment
+        # region = associate_parameter_regionTS(np.array([0.5, 0.5, 1.2]), np.array([1.2, 2.4, 0.5]))
+        # region should be [1,2,3]
 
-    decay = np.array([1, 1], dtype=float)
-    p1 = np.array([1, 5, 3], dtype=float)
-    p2 = np.array([1, 6, 3], dtype=float)
+        decay = np.array([1, 1], dtype=float)
+        p1 = np.array([1, 5, 3], dtype=float)
+        p2 = np.array([1, 6, 3], dtype=float)
 
-    f = ToggleSwitch(decay, [p1, p2])
+        f = ToggleSwitch(decay, [p1, p2])
 
-    name = 'TS_data_test.npz'
-    n_parameters_TS = 5
-    n_regions_TS = 9
-    name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, 100, name)
-    # create a new TS dataset
+        name = 'TS_data_test.npz'
+        n_parameters_TS = 5
+        n_regions_TS = 9
+        name = create_dataset(n_parameters_TS, DSGRN_parameter_regionTS, n_regions_TS, 100, name)
+        # create a new TS dataset
 
-    testing_functionalities = 0
-    if testing_functionalities > 1:
-        # expand the dataset (actually, using the same coefs but rewriting the dataset)
-        data, parameter_region, coefs_optimal = load_dataset(name)
-        sampler_TS = region_sampler()
-        size_dataset = 100000
-        generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
+        testing_functionalities = 0
+        if testing_functionalities > 1:
+            # expand the dataset (actually, using the same coefs but rewriting the dataset)
+            data, parameter_region, coefs_optimal = load_dataset(name)
+            sampler_TS = region_sampler()
+            size_dataset = 100000
+            generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
 
-        # subsampling methods: all regions or specific regions
-        size_sample = 4
-        subsample(name, size_sample)
-        region_number = 5
-        region_subsample(name, region_number, size_sample)
+            # subsampling methods: all regions or specific regions
+            size_sample = 4
+            subsample(name, size_sample)
+            region_number = 5
+            region_subsample(name, region_number, size_sample)

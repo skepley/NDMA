@@ -75,7 +75,7 @@ def DSGRNpar_to_HillCont(L, T, U):
     return all_pars, indices_domain, indices_input
 
 
-def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
+def HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target):
     """
     given a parameter array and some network data, returns DSGRN parameters ell, theta and u
     INPUT
@@ -100,11 +100,11 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
     Delta = np.zeros((domain_size, domain_size))
 
     # creating the correct indices for the DSGRN matrices
-    index_reordering = np.argsort(indices_domain)
-    indices_domain = np.array(indices_domain)
-    indices_input = np.array(indices_input)
-    indices_domain = indices_domain[index_reordering]
-    indices_input = indices_input[index_reordering]
+    index_reordering = np.argsort(indices_sources)
+    indices_sources = np.array(indices_sources)
+    indices_target = np.array(indices_target)
+    indices_sources = indices_sources[index_reordering]
+    indices_target = indices_target[index_reordering]
 
     all_ell, all_delta, all_theta = np.array([]), np.array([]), np.array([])
     for coord_index in range(len(param_by_coords)):
@@ -115,7 +115,7 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
             all_ell = np.append(all_ell, ell)
             all_delta = np.append(all_delta, delta)
             all_theta = np.append(all_theta, theta)
-    indices = list(zip(indices_domain, indices_input))
+    indices = list(zip(indices_sources, indices_target))
     indices.sort(key=lambda x: x[1])
     indices = np.array(indices)
     L[indices[:, 0], indices[:, 1]] = all_ell
@@ -128,7 +128,7 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_domain, indices_input):
     return L, U, T
 
 
-def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_input, domain_size):
+def par_to_region(hillmodel, par, regions_array, parameter_graph, indices_sources, indices_target):
     """
     associate to a NDMA parameter the corresponding DSGRN region number
     INPUT
@@ -141,7 +141,7 @@ def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_i
     OUTPUT
 
     """
-    L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
+    L, U, T = HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target)
     extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     restricted_region_number = np.where(extended_region_number == regions_array)
     if np.shape(restricted_region_number)[1] == 0:
@@ -150,12 +150,12 @@ def par_to_region(par, regions_array, parameter_graph, indices_domain, indices_i
     return region_number
 
 
-def par_to_region_wrapper(regions_array, parameter_graph, indices_domain, indices_input, domain_size):
+def par_to_region_wrapper(hillmodel, regions_array, parameter_graph, indices_domain, indices_input):
     def par_2_region(par_array):
         region_number = []
         for par in par_array.T:
             region_number.append(
-                par_to_region(par, regions_array, parameter_graph, indices_domain, indices_input, domain_size))
+                par_to_region(hillmodel, par, regions_array, parameter_graph, indices_domain, indices_input))
         return np.array(region_number)
 
     return par_2_region
