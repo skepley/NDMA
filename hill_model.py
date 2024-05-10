@@ -1574,7 +1574,7 @@ class HillModel:
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         # TODO : refactor to non-deprecated name
         warnings.warn('DEPRECATED - call global_equilibrium_search instead')
-        return self.global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=5, eqBound=None)
+        return self.global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits, eqBound=eqBound)
 
     def global_equilibrium_search(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
@@ -1597,12 +1597,12 @@ class HillModel:
         X = np.column_stack([G_i.flatten() for G_i in evalGrid])
 
         # Apply rootfinding algorithm to each initial condition
-        solns = self.local_equilibrium_search(X, parameter)
+        solns = self.local_equilibrium_search(X, *parameter)
         # list(
         # filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
         #                                                              for x in
         #                                                              X]))  # return equilibria which converged
-        if solns:
+        if np.size(solns)>0:
             equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits)
             better_solutions = self.local_equilibrium_search(equilibria, parameter)
             # list(filter(lambda root: eq_is_positive(root.x),
