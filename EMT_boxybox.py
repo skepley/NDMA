@@ -155,7 +155,7 @@ def approx_saddle_node_with_boxy_box(hill_comb, par_NDMA):
     old_hill, par, gamma = NDMApars_to_boxyboxpars(hill_comb[0], par_NDMA)
     success, old_xminus, old_xplus, remainder = boxy_box_from_pars(old_hill, par, gamma, maxiter=300)
     approx_saddle_position, approx_saddle_hill = [], []
-    for hill_iter in hill_comb:
+    for hill_iter in hill_comb[1:]:
         success, xminus, xplus, remainder = boxy_box_from_pars(hill_iter, par, gamma, maxiter=300)
         if not success:
             continue

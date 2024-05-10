@@ -10,6 +10,7 @@ from saddle_finding_functionalities import *
 from create_dataset import *
 import sys
 from scipy.stats import chi2_contingency
+from EMT_boxybox import saddle_node_with_boxybox, NDMApars_to_boxyboxpars, boxy_box_from_pars
 
 
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
@@ -20,8 +21,8 @@ f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_EMT.npz'
-file_storing = 'chi_test_EMT_small.npz'
-n_sample = 10
+file_storing = 'chi_test_EMT_march24.npz'
+n_sample = 100
 
 emtData = np.load(dataFile)
 emtRegions = emtData['parameter_region']
@@ -67,7 +68,12 @@ hill_par_at_saddle = []
 for d in range(10, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    SNParameters, badCandidates = saddle_node_search(f, [1, 10, 20, 50, 100], p, ds, dsMinimum, maxIteration=100, gridDensity=3, bisectionBool=True)
+    # if region_j == 0:
+        # TODO: remove this if statement
+        #continue
+    saddle_node_problem = SaddleNode(f)
+    hill_selection = [1, 5, 10, 100]
+    SNParameters, badCandidates = saddle_node_with_boxybox(saddle_node_problem, hill_selection, p)
 
     if SNParameters and SNParameters != 0:
         hill_par_at_saddle.append(SNParameters)
@@ -86,6 +92,11 @@ for d in range(10, n_sample):
             n_monostable_without_saddle = n_monostable_without_saddle + 1
         else:
             n_bistable_without_saddle = n_bistable_without_saddle + 1
+            # test
+            old_hill, par, gamma = NDMApars_to_boxyboxpars(100, p)
+            success, old_xminus, old_xplus, remainder = boxy_box_from_pars(old_hill, par, gamma, maxiter=300)
+            if np.linalg.norm(old_xplus - old_xminus)>10**-5:
+                print('bistability found, but no saddle node??')
     
     printing_statement = 'Completion: ' + str(d+1) + ' out of ' + str(n_sample)
     sys.stdout.write('\r' + printing_statement)
