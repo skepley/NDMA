@@ -105,7 +105,7 @@ if test_case == 3:
     if testing_functionalities > 1:
         # expand the dataset (actually, using the same coefs but rewriting the dataset)
         data, parameter_region, coefs_optimal = load_dataset(name)
-        sampler_TS = region_sampler()
+        sampler_TS = distribution_sampler()
         size_dataset = 100000
         generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
 

@@ -38,7 +38,7 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     file_name           name of the saved file
 
     helper functions:
-    region_sampler
+    distribution_sampler
     DSGRN_parameter_region
     generate_data_from_coefs
     """
@@ -46,7 +46,7 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
         file_name = f"{timestamp}"+'.npz'
 
-    sampler_global = region_sampler()
+    sampler_global = distribution_sampler()
     sampler_fisher = region_sampler_fisher()
     def sampler_score_fisher(fisher_coefficients):
 
@@ -158,7 +158,7 @@ def region_sampler_fisher():
     return many_fisher_distributions
 
 
-def region_sampler():
+def distribution_sampler():
     """
     Creates a sample from the appropriate normal multivariate distribution based on the coefficients given
 
@@ -373,7 +373,7 @@ if __name__ == "__main__":
         if testing_functionalities > 1:
             # expand the dataset (actually, using the same coefs but rewriting the dataset)
             data, parameter_region, coefs_optimal = load_dataset(name)
-            sampler_TS = region_sampler()
+            sampler_TS = distribution_sampler()
             size_dataset = 100000
             generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
 
