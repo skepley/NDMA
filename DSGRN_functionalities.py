@@ -108,9 +108,11 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target):
 
     all_ell, all_delta, all_theta = np.array([]), np.array([]), np.array([])
     for coord_index in range(len(param_by_coords)):
-        gamma, list_of_component_pars = hillmodel.coordinates[coord_index].parse_parameters(param_by_coords[coord_index])
+        gamma, list_of_component_pars = hillmodel.coordinates[coord_index].parse_parameters(
+            param_by_coords[coord_index])
         for j in range(len(list_of_component_pars)):
-            ell, delta, theta, hillCoefficient = hillmodel.coordinates[coord_index].productionComponents[j].curry_parameters(
+            ell, delta, theta, hillCoefficient = hillmodel.coordinates[coord_index].productionComponents[
+                j].curry_parameters(
                 list_of_component_pars[j])
             all_ell = np.append(all_ell, ell)
             all_delta = np.append(all_delta, delta)
@@ -296,8 +298,9 @@ def padded_filter_multivariate(mean, variance, size_out, lambda_function):
     iter_rand = 0
     while np.size(par_region, 0) < size_out and iter_rand < 5:
         iter_rand += 1
-        variance = variance * 0.95 # decrease variance to increase hit rate, hopefully
-        par_region = np.append(par_region, filtered_multivariate(mean, variance, size_out * 10, lambda_function), axis=0)
+        variance = variance * 0.95  # decrease variance to increase hit rate, hopefully
+        par_region = np.append(par_region, filtered_multivariate(mean, variance, size_out * 10, lambda_function),
+                               axis=0)
     par_region = par_region[:size_out, :]
     if np.size(par_region, 0) < size_out:
         warnings.warn("default", print('Number of points created within the region in lower than expected\n',
@@ -317,6 +320,51 @@ def filtered_multivariate(mean, variance, size, lambda_function):
     OUTPUT
     point_cloud : point cloud satisfying the given boolean function
     """
-    random_cloud = np.abs(np.random.multivariate_normal(mean, variance, size)) # only the positive quadrant is considered
+    random_cloud = np.abs(
+        np.random.multivariate_normal(mean, variance, size))  # only the positive quadrant is considered
     point_cloud = random_cloud[[lambda_function(vec) for vec in random_cloud]]
     return point_cloud
+
+
+def filter_region_wrt_morse_graph(iterative_regions, parameter_graph, filter_condition):
+    """for all parameter regions given, return the ones satistying the filter condition
+    """
+    accepted_regions = []
+    for par_index in iterative_regions:
+        parameter = parameter_graph.parameter(par_index)
+        domain_graph = DSGRN.DomainGraph(parameter)
+        morse_graph = DSGRN.MorseGraph(domain_graph)
+        if filter_condition(morse_graph):
+            accepted_regions.append(par_index)
+    return accepted_regions
+
+
+def filter_region_wrt_index(iterative_regions, parameter_graph, filter_condition):
+    """for all parameter regions given, return the ones satistying the filter condition on the region index
+    """
+    accepted_regions = []
+    for par_index in iterative_regions:
+        if filter_condition(par_index):
+            accepted_regions.append(par_index)
+    return accepted_regions
+
+
+def compute_rank_region_wrt_morse_graph(iterative_regions, parameter_graph, ranking_function):
+    """for all parameter regions given, return their rank (maintaining order)
+    """
+    rank_regions = []
+    for par_index in iterative_regions:  # parameter_graph_EMT.size()
+        parameter = parameter_graph.parameter(par_index)
+        domain_graph = DSGRN.DomainGraph(parameter)
+        morse_graph = DSGRN.MorseGraph(domain_graph)
+        rank_regions.append(ranking_function(morse_graph))
+    return rank_regions
+
+
+def rank_region_wrt_morse_graph(iterative_regions, parameter_graph, ranking_function):
+    """for all parameter regions given, return their rank (maintaining order)
+    """
+    rank_regions = compute_rank_region_wrt_morse_graph(iterative_regions, parameter_graph, ranking_function)
+    order = rank_regions.argsort()
+    sorted_regions = iterative_regions[order]
+    return sorted_regions

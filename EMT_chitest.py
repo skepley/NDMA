@@ -20,8 +20,8 @@ parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for
 f = EMT(gammaVar, parameterVar)
 
 # load the dataset of candidates produced by DSGRN
-dataFile = 'dataset_EMT.npz'
-file_storing = 'chi_test_EMT_march24.npz'
+dataFile = 'dataset_EMT_april24.npz'
+file_storing = 'chi_test_EMT_mai24.npz'
 n_sample = 100
 
 emtData = np.load(dataFile)
@@ -68,11 +68,11 @@ hill_par_at_saddle = []
 for d in range(10, n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    # if region_j == 0:
+    if region_j != 1:
         # TODO: remove this if statement
-        #continue
+        continue
     saddle_node_problem = SaddleNode(f)
-    hill_selection = [1, 5, 10, 100]
+    hill_selection = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]
     SNParameters, badCandidates = saddle_node_with_boxybox(saddle_node_problem, hill_selection, p)
 
     if SNParameters and SNParameters != 0:

@@ -11,6 +11,20 @@ from hill_model import *
 from saddle_node import *
 
 
+def def_emt_hill_model():
+    """
+    returns an instance of the Hill model class describing the EMT model such that all parameters are set as variable
+    and the hill coefficient is unified
+    """
+    # define the EMT hill model
+    gammaVar_EMT = np.array(6 * [np.nan])  # set all decay rates as variables
+    edgeCounts_EMT = [2, 2, 2, 1, 3, 2]
+    parameterVar_EMT = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts_EMT]
+    # set all production parameters as variable
+    f_EMT = EMT(gammaVar_EMT, parameterVar_EMT)
+    return f_EMT
+
+
 class EMT(HillModel):
     """Six-dimensional EMT model construction inherited as a HillModel where each node has free Hill coefficients. This
      has a total of 12 edges and 54 parameters. The nodes are ordered as follows:

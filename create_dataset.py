@@ -264,6 +264,62 @@ def region_subsample(file_name, region_number, size_subsample):
     data_subsample = data[:, index_random]
     return data_subsample, coefs
 
+
+# let a and b be two vectors in high dimensions, we want to create a distribution that approximately give points along
+# the segment [a,b]
+
+def normal_distribution_around_points(a, b):
+    v1 = a - b
+    lambda_1 = np.linalg.norm(a - b) / 2
+
+    V = np.identity(np.size(a, 1))
+    index_info = np.argmax(v1)
+    V[:, index_info] = v1
+    V[:, [0, index_info]] = V[:, [index_info, 0]]
+
+    Lambda = np.identity(np.size(a, 1))
+    Lambda = 10 ** -4 * lambda_1 * Lambda
+    Lambda[0, 0] = lambda_1
+
+    V = np.linalg.qr(V.T)[0].T
+
+    Sigma = np.dot(np.dot(V, Lambda), V.T)
+
+    mu = (a[0, :] + b[0, :]) / 2
+    return Sigma, mu
+
+
+def normal_distribution_around_many_points(a, *args):
+    size_subspace = len(args)
+    central_point = a
+    for vec in args:
+        central_point = central_point + vec
+    mean_point = central_point / (size_subspace + 1)
+    average_distance = a - mean_point
+    for vec in args:
+        average_distance = average_distance + vec - mean_point
+    average_distance = average_distance / (size_subspace + 1)
+
+    V = np.identity(np.size(a, 1))
+    V[:, 0] = a - mean_point
+
+    Lambda = np.identity(np.size(a, 1))
+    lambda_1 = np.linalg.norm(a - mean_point) / 2
+    Lambda = 0.0001 * average_distance * Lambda
+    Lambda[0, 0] = 0.01 * lambda_1
+    i = 1
+
+    for vec in args:
+        V[:, i] = vec
+        Lambda[i, i] = 0.01 * lambda_1
+        i += 1
+
+    V, _ = np.linalg.qr(V.T).T
+
+    Sigma = np.dot(np.dot(V, Lambda), V.T)
+    mu = mean_point[0, :]
+    return Sigma, mu
+
 # costum specific for Toggle Switch
 # create_dataset_ToggleSwitch(10)
 # readTS()
