@@ -1,18 +1,12 @@
 import numpy as np
-import scipy
-import matplotlib.pyplot as plt
-import graphviz
-from create_dataset import create_dataset, distribution_sampler, generate_data_from_coefs, \
-    normal_distribution_around_points
-import json
-from DSGRN_functionalities import *
-from models.EMT_model import EMT, def_emt_hill_model
-# from EMT_toolbox import *
-from DSGRNcrawler import *
+from create_dataset import tworegions_dataset
+from models.EMT_model import def_emt_hill_model
+from DSGRNcrawler import DSGRNcrawler
+import DSGRN
 
 # size and name of dataset created
 size_dataset = 10 ** 4
-file_name = 'dataset_EMT_april24.npz'
+file_name = 'dataset_EMT_may24.npz'
 graph_span = 10
 
 print('This code creates a datset of size ', size_dataset, ' in file ', file_name, ' such that ')
@@ -22,11 +16,6 @@ print('The regions are chosen in the first ', graph_span, 'DSGRN regions such th
 print('and each region is maximally enclosed with regions of its same stability')
 print('i.e. the monostable region has many monostable regions around,',
       'and the bistable region has many bistable regions around')
-""" 
-The algorithm then creates the default points, and uses them as base to create a gaussian clou around them.
-The Gaussian cloud is then 'optimised' by randomly tweaking its coefficients to better distribute the points it 
-generates
-"""
 
 # create network from file
 EMT_network = DSGRN.Network("EMT.txt")
@@ -74,66 +63,11 @@ best_pair = np.array(mono_bistable_pairs[ranking[-1]][0]) # highest score
 monostable_region, bistable_region = best_pair[0], best_pair[1]
 print('Chosen regions: ' + str(best_pair))
 
-# sampling from each region
-sampler = DSGRN.ParameterSampler(EMT_network)
-
-monostable_parameternode = parameter_graph_EMT.parameter(monostable_region)
-monostable_parameter = sampler.sample(monostable_parameternode)
-print('monostable parameters from DSGRN as reference: \n', monostable_parameter)
-bistable_parameternode = parameter_graph_EMT.parameter(bistable_region)
-bistable_parameter = sampler.sample(bistable_parameternode)
+best_pair = np.array([7, 127]) # for testing
 
 f = def_emt_hill_model()
 n_parameters_EMT = 42
 
-# extract sheer data
-bistable_pars, _, _ = from_string_to_Hill_data(bistable_parameter, EMT_network)
-monostable_pars, indices_sources_EMT, indices_targets_EMT = from_string_to_Hill_data(monostable_parameter, EMT_network)
+final_score, _ = tworegions_dataset(f, best_pair, size_dataset, file_name, EMT_network, n_parameters_EMT)
+print('Datset created with final score of ', final_score)
 
-ND_sampler = distribution_sampler()
-assign_region = par_to_region_wrapper(f, best_pair, parameter_graph_EMT, indices_sources_EMT, indices_targets_EMT)
-print('Test: bistable and monostable regions', assign_region(np.array([bistable_pars, monostable_pars]).T))
-
-# trying to get more points in region 1 (only points in region 0 otherwise)
-# looking for "middle point" between region 0 and 1
-# finding too many monostable, so moving the monostable point towards the bistable one
-old_bistable_pars = bistable_pars
-old_monostable_pars = monostable_pars
-for i in range(10):
-    middle_point = (bistable_pars+monostable_pars)/2
-    if par_to_region(f, middle_point, best_pair, parameter_graph_EMT, indices_sources_EMT, indices_targets_EMT)==0:
-        monostable_pars = middle_point
-    else:
-        print(i, 'iterations of bisection done to move the monostable pars closer to the bistable one')
-        break
-# Create initial distribution
-Sigma, mu = normal_distribution_around_points(np.array([bistable_pars]), np.array([monostable_pars]))
-
-# Create dataset
-initial_coef = np.append(mu, Sigma.flatten())
-
-bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(2)])
-score = lambda vec:  min(bin_size(vec))*len(bin_size(vec)) / np.size(vec)
-
-best_coef = initial_coef
-best_data = ND_sampler(initial_coef[:n_parameters_EMT], initial_coef[n_parameters_EMT:], 500)
-best_parameter_region = assign_region(best_data)
-best_score = score(best_parameter_region)
-
-for i in range(100):
-    random_coef = best_coef * (1 + np.random.rand(np.size(initial_coef)) * 0.05)
-    data = ND_sampler(random_coef[:n_parameters_EMT], random_coef[n_parameters_EMT:], 500)
-    parameter_region = assign_region(data)
-    if score(parameter_region) > best_score:
-        best_score = score(parameter_region)
-        best_data = data
-        best_parameter_region = parameter_region
-        best_coef = random_coef
-
-print('Final randomly generated score: ', best_score)
-print('Number of data in regions: ', bin_size(best_parameter_region))
-
-generate_data_from_coefs(file_name, best_coef, ND_sampler, assign_region, size_dataset, n_parameters_EMT)
-
-# print('launching optimization')
-# file_name = create_dataset(n_parameters, assign_region, n_parameter_region, size_dataset, file_name=file_name, initial_coef=initial_coef)

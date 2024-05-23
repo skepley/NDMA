@@ -7,6 +7,17 @@ from hill_model import ezcat, is_vector
 
 
 # notation: L, U, T
+def from_region_to_deterministic_point(network, region_number: int):
+    sampler = DSGRN.ParameterSampler(network)
+    parameter_graph = DSGRN.ParameterGraph(network)
+
+    parameternode = parameter_graph.parameter(region_number)
+    parameter = sampler.sample(parameternode)
+
+    # extract sheer data
+    pars, indices_sources, indices_targets = from_string_to_Hill_data(parameter, network)
+    return pars, indices_sources, indices_targets
+
 
 def from_string_to_Hill_data(DSGRN_par_string, network):
     """

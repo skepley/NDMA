@@ -4,21 +4,129 @@ Some code to create and manage a huge data set of stored parameters, created a p
 
 Author: Elena Queirolo
 Created: 1st March 2021
-Modified: 1st March 2021
+Modified: 23rd May 2024
 """
 from hill_model import *
 import numpy as np
-from toggle_switch_heat_functionalities import *
 import random
-from scipy.stats import multivariate_normal
+# from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from datetime import datetime
 import warnings
 from models.TS_model import ToggleSwitch
 import matplotlib.pyplot as plt
+import DSGRN
+from DSGRN_functionalities import par_to_region_wrapper, from_string_to_Hill_data, par_to_region, \
+    from_region_to_deterministic_point
+from toggle_switch_heat_functionalities import fiber_sampler, parameter_to_DSGRN_coord
 
 
-def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None, initial_coef=None):
+def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, filename, network, n_parameters):
+    """
+    INPUT
+    f_hill_model        Hill model class
+    parameter_regions   vector of two integers, indicating the two parameter regions of interest in DSGRN
+    dataset_size        integer, defining the size of the dataset to be created
+    filename            string, the name of the dataset file
+    network             DSGRN Network describing the network structure
+    n_parameters        integer, the number of NDMA parameters (ex: 42 for the restricted EMT model)
+
+    OUTPUT
+    best_score          float, indicating how good the found distribution is: 1 - 50% of points in each region,
+                        0.5 - smallest region only has 25% of points, 0 - smallest region is never sampled
+    best_coef           vector, coefficients defining the used Gaussian distribution
+
+    RESULT
+    filename file is created such that:
+
+    file_name           name of the saved file storing three items:
+        optimal_coef        the coefficients used to created the dataset
+        data                the data itself
+        parameter_region    an integer vector having values 0,1 or 2 and length equal to data, indicating in which
+                            DSGRN region each element of data lives in - first region, second region, neither.
+
+    The algorithm creates the default points in the two regions, and uses them as base to create a gaussian cloud around
+    them. If the two initial points are not ideal, other closer to the boundary between the two regions are chosen, in
+    the hope of improving the starting data cloud
+    The Gaussian cloud is then 'optimised' by randomly tweaking its coefficients to better distribute the points it
+    generates
+    """
+    # rank datasets acording to score
+    bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(2)])
+
+    def score(coefs):
+        data_vec = ND_sampler(coefs[:n_parameters], coefs[n_parameters:], 500)
+        parameter_region_vec = assign_region(data_vec)
+        bins = bin_size(parameter_region_vec)
+        scor = min(bins) * len(bins) / np.size(parameter_region_vec)
+        return scor
+
+    def from_points_to_coefs(a, b):
+        Sigma, mu = normal_distribution_around_points(np.array([a]), np.array([b]))
+        coef_ab = np.append(mu, Sigma.flatten())
+        return coef_ab
+
+    ND_sampler = distribution_sampler()
+    parameter_graph = DSGRN.ParameterGraph(network)
+
+    # sampling from each region
+    pars0, sources_vec, targets_vec = from_region_to_deterministic_point(network, parameter_regions[0])
+    pars1, _, _ = from_region_to_deterministic_point(network, parameter_regions[1])
+
+    assign_region = par_to_region_wrapper(f_hill_model, parameter_regions, parameter_graph, sources_vec, targets_vec)
+
+    # Create initial distribution
+    initial_coef = from_points_to_coefs(pars0, pars1)
+    initial_score = score(initial_coef)
+
+    # trying to get more points in missing region
+    # looking for "middle point" between region 0 and 1
+    if initial_score == 0:
+        middle_point = (pars1 + pars0) / 2
+        existing_region = par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
+                             targets_vec)
+        for i in range(10):
+            middle_point = (pars1 + pars0) / 2
+            if par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
+                             targets_vec) == existing_region:
+                if existing_region == 0:
+                    pars0 = middle_point
+                else:
+                    pars1 = middle_point
+            else:
+                print(i, 'iterations of bisection done to move the monostable pars closer to the bistable one')
+                break
+        initial_coef = from_points_to_coefs(pars0, pars1)
+        initial_score = score(initial_coef)
+
+    if initial_score < 0.1:
+        warnings.warn('The initial Gaussian distribution chosen is very poor, likely low quality results to be expected')
+
+    best_score, best_coef = optimize_wrt_score(initial_coef, score)
+
+    if best_score < 0.2:
+        warnings.warn('Poor quality of the final distribution, consider choosing other starting points')
+
+    _ = generate_data_from_coefs(filename, best_coef, ND_sampler, assign_region, dataset_size, n_parameters)
+
+    return best_score, best_coef
+
+
+def optimize_wrt_score(initial_val, score, iters=100):
+    best_value = initial_val
+    best_score = score(best_value)
+
+    for iteri in range(iters):
+        random_val = best_value * (1 + np.random.rand(np.size(initial_val)) * 0.05)
+        random_score = score(random_val)
+        if random_score > best_score:
+            best_value = random_val
+            best_score = random_score
+    return best_score, best_value
+
+
+def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, size_dataset: int, file_name=None,
+                   initial_coef=None):
     """
     create_dataset uses the information concerning a Hill model and its number of parameter regions to create a Fisher
     distribution spanning the parameter space such that all parameter regions are similarly sampled.
@@ -42,15 +150,18 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     DSGRN_parameter_region
     generate_data_from_coefs
     """
+    warnings.warn('This function is deprecated, please use the new version instead')
     if file_name is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-        file_name = f"{timestamp}"+'.npz'
+        file_name = f"{timestamp}" + '.npz'
 
     sampler_global = distribution_sampler()
     sampler_fisher = region_sampler_fisher()
+
     def sampler_score_fisher(fisher_coefficients):
 
-        data_sample = sampler_fisher(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:], 5*10**3)
+        data_sample = sampler_fisher(fisher_coefficients[:n_parameters], fisher_coefficients[n_parameters:],
+                                     5 * 10 ** 3)
         data_region = assign_region(data_sample)
         # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
         # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
@@ -58,13 +169,14 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
         counter = np.zeros(n_parameter_region)
         for iter_loc in range(n_parameter_region):
             counter[iter_loc] = np.count_nonzero(data_region == iter_loc)
-        score = 1 - np.min(counter)/np.max(counter)
+        score = 1 - np.min(counter) / np.max(counter)
         # print(score) # lowest score is best score!
         return score  # score must be minimized
 
     def sampler_score(normal_coefficients):
 
-        data_sample = sampler_global(normal_coefficients[:n_parameters], normal_coefficients[n_parameters:], 5*10**3)
+        data_sample = sampler_global(normal_coefficients[:n_parameters], normal_coefficients[n_parameters:],
+                                     5 * 10 ** 3)
         data_region = assign_region(data_sample)
         # TODO: link to DSGRN, this takes as input a matrix of parameters par[1:n_pars,1:size_sample], and returns a
         # vector data_region[1:size_sample], such that data_region[i] tells us which region par[:, i] belongs to
@@ -72,11 +184,11 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
         counter = np.zeros(n_parameter_region)
         for iter_loc in range(n_parameter_region):
             counter[iter_loc] = np.count_nonzero(data_region == iter_loc)
-        score = 1 - np.min(counter)/np.max(counter)
+        score = 1 - np.min(counter) / np.max(counter)
         # print(score) # lowest score is best score!
         return score  # score must be minimized
 
-    size_coef = n_parameters*(1+n_parameters)
+    size_coef = n_parameters * (1 + n_parameters)
     # for fisher  size_coef = 2*n_parameters
     if initial_coef is None:
         coefficients = np.abs(np.random.normal(size=size_coef))
@@ -100,7 +212,7 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     optimal_coefs = minimize(sampler_score, coefficients, method='nelder-mead')
     print(optimal_coefs.message)
     if optimal_coefs.success is False:
-        print('The convergence failed, but the ration between worst region and best region is', -optimal_coefs.fun+1,
+        print('The convergence failed, but the ration between worst region and best region is', -optimal_coefs.fun + 1,
               ', where this is 1 if they have the same number of samples')
     optimal_coef = optimal_coefs.x
     # data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
@@ -147,6 +259,7 @@ def region_sampler_fisher():
     Returns a function that takes as input 2 coefficient vectors and the size of the requested sample and that has as
     output a sample
     """
+
     def fisher_distribution(c1, c2, size):
         return np.random.f(c1, c2, size)
 
@@ -155,6 +268,7 @@ def region_sampler_fisher():
         for i in range(len(c1_vec)):
             par[i, :] = fisher_distribution(c1_vec[i], c2_vec[i], size)
         return par
+
     return many_fisher_distributions
 
 
@@ -175,6 +289,7 @@ def distribution_sampler():
         par = np.abs(x).T
         # abs ensures it's positive
         return par
+
     return multivariate_normal_distributions
 
 
@@ -208,8 +323,27 @@ def subsample_data_by_region(n_sample, region, alpha, beta, parameters, paramete
     return loc_alpha, loc_beta, loc_parameters, loc_parameter_region
 
 
-def subsample_data_by_bounds(n_sample, alpha_min, alpha_max, beta_min, beta_max, alpha, beta, parameters, parameter_region):
-    idx = np.nonzero((alpha > alpha_min) * (alpha < alpha_max)*(beta > beta_min) * (beta < beta_max))
+def random_optimize_par(initial_coef, sampler, assign_region, n_pars, iters=100, score=False):
+    if not score:
+        bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(2)])
+        score = lambda vec: min(bin_size(vec)) * len(bin_size(vec)) / np.size(vec)
+    best_coef = initial_coef
+    best_data = sampler(initial_coef[:n_pars], initial_coef[n_pars:], 500)
+    best_parameter_region = assign_region(best_data)
+    best_score = score(best_parameter_region)
+    for i in range(iters):
+        random_coef = best_coef * (1 + np.random.rand(np.size(initial_coef)) * 0.05)
+        data = sampler(random_coef[:n_pars], random_coef[n_pars:], 500)
+        parameter_region = assign_region(data)
+        if score(parameter_region) > best_score:
+            best_score = score(parameter_region)
+            best_coef = random_coef
+    return best_coef, best_score
+
+
+def subsample_data_by_bounds(n_sample, alpha_min, alpha_max, beta_min, beta_max, alpha, beta, parameters,
+                             parameter_region):
+    idx = np.nonzero((alpha > alpha_min) * (alpha < alpha_max) * (beta > beta_min) * (beta < beta_max))
     if len(idx) < n_sample:
         raise Exception("Not enough samples to go by")
     sample_idx = idx[random.sample(range(len(idx)), k=n_sample)]
@@ -320,6 +454,7 @@ def normal_distribution_around_many_points(a, *args):
     mu = mean_point[0, :]
     return Sigma, mu
 
+
 # costum specific for Toggle Switch
 # create_dataset_ToggleSwitch(10)
 # readTS()
@@ -349,13 +484,13 @@ def third_simple_region(x):
     c = x[2]
     d = x[3]
     assigned_region1 = np.zeros_like(a) + 1
-    assigned_region1[c+d < a * b] = 0
-    assigned_region1[a * b < c-d] = 2
+    assigned_region1[c + d < a * b] = 0
+    assigned_region1[a * b < c - d] = 2
 
     assigned_region2 = np.zeros_like(a)
     assigned_region2[a > b] = 1
 
-    assigned_region = assigned_region1 + 3*assigned_region2
+    assigned_region = assigned_region1 + 3 * assigned_region2
     return assigned_region
 
 
@@ -378,7 +513,6 @@ if __name__ == "__main__":
         data_loc, regions_loc, coefs_optimal = load_dataset(name)
         plt.plot(data_loc[0], data_loc[1], '.')
 
-
     if test_case == 1:
         # c < a - b , a-b < c < a+b , a+b < c
         name = 'second_simple_test.npz'
@@ -387,10 +521,9 @@ if __name__ == "__main__":
         requested_size = 5000
         name = create_dataset(n_parameters_simple, second_simple_region, n_regions_simple, requested_size, name)
         data_loc, regions_loc, coefs_optimal = load_dataset(name)
-        region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
-        region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
+        region_1 = np.sum(data_loc[2, :] < data_loc[0, :] - data_loc[1, :])
+        region_3 = np.sum(data_loc[2, :] > data_loc[0, :] + data_loc[1, :])
         region_2 = requested_size - region_1 - region_3
-
 
     if test_case == 2:
         # c + d < ab , c-d < ab < c+d , ab < c-d
@@ -404,7 +537,6 @@ if __name__ == "__main__":
         counter = np.zeros(n_regions_simple)
         for i in range(n_regions_simple):
             counter[i] = np.count_nonzero(regions_loc == i)
-
 
     if test_case == 3:
         print('This is the toggle switch')
