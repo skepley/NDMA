@@ -7,7 +7,8 @@ from create_dataset import create_dataset, distribution_sampler, generate_data_f
 import json
 from DSGRN_functionalities import *
 from models.EMT_model import EMT, def_emt_hill_model
-from EMT_toolbox import *
+# from EMT_toolbox import *
+from DSGRNcrawler import *
 
 # size and name of dataset created
 size_dataset = 10 ** 4
@@ -30,13 +31,14 @@ generates
 # create network from file
 EMT_network = DSGRN.Network("EMT.txt")
 parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)
+crawler = DSGRNcrawler(parameter_graph_EMT)
 
 possible_regions = np.array(range(graph_span))
-monostable_regions = possible_regions[vec_is_monostable(possible_regions)]
+monostable_regions = possible_regions[crawler.vec_is_monostable(possible_regions)]
 mono_bistable_pairs = []
 
 for par_index_i in monostable_regions:  # parameter_graph_EMT.size()
-    bistable_list_i = bistable_neighbours(par_index_i)
+    bistable_list_i = crawler.bistable_neighbours(par_index_i)
     if bistable_list_i:
         mono_bistable_pairs.append([[par_index_i, bistable_index] for bistable_index in bistable_list_i])
 
@@ -52,11 +54,11 @@ print('All the pairs:\n', mono_bistable_pairs)
 def score_many_monostable_and_many_bistable(pair_mono_bi):
     par_index_mono, par_index_bi = pair_mono_bi[0], pair_mono_bi[1]
     adjacent_nodes_mono = parameter_graph_EMT.adjacencies(par_index_mono)
-    num_loc_monostable = sum(vec_is_monostable(adjacent_nodes_mono))
+    num_loc_monostable = sum(crawler.vec_is_monostable(adjacent_nodes_mono))
     score_monostable = num_loc_monostable / len(adjacent_nodes_mono)
 
     adjacent_nodes_bi = parameter_graph_EMT.adjacencies(par_index_bi)
-    num_loc_bistable = sum([is_bistable(adjacent) for adjacent in adjacent_nodes_bi])
+    num_loc_bistable = sum([crawler.is_bistable(adjacent) for adjacent in adjacent_nodes_bi])
     score_bistable = num_loc_bistable / len(adjacent_nodes_bi)
 
     final_score = score_monostable ** 2 + score_bistable ** 2
@@ -75,6 +77,7 @@ print('Chosen regions: ' + str(best_pair))
 # sampling from each region
 sampler = DSGRN.ParameterSampler(EMT_network)
 
+
 monostable_parameternode = parameter_graph_EMT.parameter(monostable_region)
 monostable_parameter = sampler.sample(monostable_parameternode)
 print('monostable parameters from DSGRN as reference: \n', monostable_parameter)
@@ -88,20 +91,34 @@ n_parameters_EMT = 42
 bistable_pars, _, _ = from_string_to_Hill_data(bistable_parameter, EMT_network)
 monostable_pars, indices_sources_EMT, indices_targets_EMT = from_string_to_Hill_data(monostable_parameter, EMT_network)
 
+ND_sampler = distribution_sampler()
+assign_region = par_to_region_wrapper(f, best_pair, parameter_graph_EMT, indices_sources_EMT, indices_targets_EMT)
+print('Test: bistable and monostable regions', assign_region(np.array([bistable_pars, monostable_pars]).T))
+
+# trying to get more points in region 1 (only points in region 0 otherwise)
+# looking for "middle point" between region 0 and 1
+# finding too many monostable, so moving the monostable point towards the bistable one
+old_bistable_pars = bistable_pars
+old_monostable_pars = monostable_pars
+for i in range(10):
+    middle_point = (bistable_pars+monostable_pars)/2
+    if par_to_region(f, middle_point, best_pair, parameter_graph_EMT, indices_sources_EMT, indices_targets_EMT)==0:
+        monostable_pars = middle_point
+    else:
+        print(i, 'iterations of bisection done to move the monostable pars closer to the bistable one')
+        break
 # Create initial distribution
 Sigma, mu = normal_distribution_around_points(np.array([bistable_pars]), np.array([monostable_pars]))
+Sigma = Sigma
 
 # Create dataset
 initial_coef = np.append(mu, Sigma.flatten())
-assign_region = par_to_region_wrapper(f, best_pair, parameter_graph_EMT, indices_sources_EMT, indices_targets_EMT)
 
-ND_sampler = distribution_sampler()
+# data_sample = ND_sampler(mu, Sigma.flatten(), 10 ** 4)
+# data_region = assign_region(data_sample)
 
-data_sample = ND_sampler(mu, Sigma.flatten(), 10 ** 4)
-data_region = assign_region(data_sample)
-
-bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(np.max(vec))])
-score = lambda vec: 1 - (np.max(bin_size(vec)) - min(bin_size(vec))) / np.size(vec)
+bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(2)])
+score = lambda vec:  min(bin_size(vec))*len(bin_size(vec)) / np.size(vec)
 
 best_coef = initial_coef
 best_data = ND_sampler(initial_coef[:n_parameters_EMT], initial_coef[n_parameters_EMT:], 500)
@@ -109,7 +126,7 @@ best_parameter_region = assign_region(best_data)
 best_score = score(best_parameter_region)
 
 for i in range(100):
-    random_coef = initial_coef + np.random.rand(np.size(initial_coef)) * 0.3
+    random_coef = best_coef * (1 + np.random.rand(np.size(initial_coef)) * 0.05)
     data = ND_sampler(random_coef[:n_parameters_EMT], random_coef[n_parameters_EMT:], 500)
     parameter_region = assign_region(data)
     if score(parameter_region) > best_score:

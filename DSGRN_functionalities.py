@@ -6,7 +6,29 @@ import json
 from hill_model import ezcat, is_vector
 
 
+# notation: L, U, T
+
 def from_string_to_Hill_data(DSGRN_par_string, network):
+    """
+    extract Hill parameters from a DSGRN parameter string and the network info, returns additional network info
+    INPUT
+    DSGRN_par_string : string of DSGRN parameters
+    network : DSGRN network
+    OUTPUT
+    all_pars : vector with all the parameter in NDMA format
+    indices_domain : indices defining the network structure, in particular the source of each edge in the DSGRN order
+    indices_input : indices defining the network structure, in particular the target of each edge in the DSGRN order
+    """
+    # OLD:
+    # def from_string_to_Hill_data(DSGRN_par_string, domain_size, network, parameter_graph, region):
+    L, U, T = from_string_to_DSGRN_data(DSGRN_par_string, network)
+
+    all_pars, indices_domain, indices_input = DSGRNpar_to_HillCont(L, U, T)
+
+    return all_pars, indices_domain, indices_input
+
+
+def from_string_to_DSGRN_data(DSGRN_par_string, network):
     """
     extract Hill parameters from a DSGRN parameter string and the network info, returns additional network info
     INPUT
@@ -27,7 +49,7 @@ def from_string_to_Hill_data(DSGRN_par_string, network):
     indices_input = []
     sample_dict = json.loads(DSGRN_par_string)
     for key, value in sample_dict['Parameter'].items():
-        # Get parameter (L, U, or T)
+        # Get parameter (L, T, or U)
         par_type = key[0]
         # Extract variable names
         node_names = [name.strip() for name in key[2:-1].split('->')]
@@ -41,16 +63,14 @@ def from_string_to_Hill_data(DSGRN_par_string, network):
         else:  # T
             T[tuple(node_indices)] = value
 
-    all_pars, a, b = DSGRNpar_to_HillCont(L, T, U)
-
-    return all_pars, indices_domain, indices_input
+    return L, U, T
 
 
-def DSGRNpar_to_HillCont(L, T, U):
+def DSGRNpar_to_HillCont(L, U, T):
     """
     takes the standard DSGRN parameters (3 vectors) and returns NDMA parameter vector, together with some info on the network
     INPUT
-    L, T, U : np.array with the ell, theta and u data
+    L, U, T : np.array with the ell, theta and u data
     OUTPUT
     all_pars : vector with all the parameter in NDMA format
     indices_domain : indices defining the network structure, in particular the source of each edge in the DSGRN order
@@ -84,7 +104,7 @@ def HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target):
     indices_domain : vector with all the edges sources in DSGRN order
     indices_input : vector with all the edges targets in DSGRN order
     OUTPUT
-    L, T, U : arrays of ell, theta and u values
+    L, U, T : arrays of ell, theta and u values
     """
     domain_size = hillmodel.dimension
     number_of_edges = int((len(par) - domain_size) / 3)
@@ -143,8 +163,7 @@ def par_to_region(hillmodel, par, regions_array, parameter_graph, indices_source
     OUTPUT
 
     """
-    L, U, T = HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target)
-    extended_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
+    extended_region_number = global_par_to_region(hillmodel, par, parameter_graph, indices_sources, indices_target)
     restricted_region_number = np.where(extended_region_number == regions_array)
     if np.shape(restricted_region_number)[1] == 0:
         return len(regions_array)
@@ -153,6 +172,8 @@ def par_to_region(hillmodel, par, regions_array, parameter_graph, indices_source
 
 
 def par_to_region_wrapper(hillmodel, regions_array, parameter_graph, indices_domain, indices_input):
+    regions_array = np.array(regions_array)
+
     def par_2_region(par_array):
         region_number = []
         for par in par_array.T:
@@ -163,7 +184,7 @@ def par_to_region_wrapper(hillmodel, regions_array, parameter_graph, indices_dom
     return par_2_region
 
 
-def global_par_to_region(par, parameter_graph, indices_domain, indices_input, domain_size):
+def global_par_to_region(hillmodel, par, parameter_graph, indices_sources, indices_target):
     """
     takes a NDMA parameter and return a DSGNR region number
     INPUT
@@ -175,7 +196,7 @@ def global_par_to_region(par, parameter_graph, indices_domain, indices_input, do
     OUTPUT
     return_region_number : DSGRN region number
     """
-    L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
+    L, U, T = HillContpar_to_DSGRN(hillmodel, par, indices_sources, indices_target)
     return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
     return return_region_number
 
