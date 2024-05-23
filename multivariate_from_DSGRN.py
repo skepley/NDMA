@@ -70,13 +70,12 @@ def score_many_monostable_and_many_bistable(pair_mono_bi):
 # nodes near the bistable node
 score_candidate = np.array([score_many_monostable_and_many_bistable(pair[0]) for pair in mono_bistable_pairs])
 ranking = score_candidate.argsort()
-best_pair = mono_bistable_pairs[ranking[-1]][0]  # highest score
+best_pair = np.array(mono_bistable_pairs[ranking[-1]][0]) # highest score
 monostable_region, bistable_region = best_pair[0], best_pair[1]
 print('Chosen regions: ' + str(best_pair))
 
 # sampling from each region
 sampler = DSGRN.ParameterSampler(EMT_network)
-
 
 monostable_parameternode = parameter_graph_EMT.parameter(monostable_region)
 monostable_parameter = sampler.sample(monostable_parameternode)
@@ -109,13 +108,9 @@ for i in range(10):
         break
 # Create initial distribution
 Sigma, mu = normal_distribution_around_points(np.array([bistable_pars]), np.array([monostable_pars]))
-Sigma = Sigma
 
 # Create dataset
 initial_coef = np.append(mu, Sigma.flatten())
-
-# data_sample = ND_sampler(mu, Sigma.flatten(), 10 ** 4)
-# data_region = assign_region(data_sample)
 
 bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(2)])
 score = lambda vec:  min(bin_size(vec))*len(bin_size(vec)) / np.size(vec)
