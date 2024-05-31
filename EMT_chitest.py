@@ -13,11 +13,7 @@ from scipy.stats import chi2_contingency
 from EMT_boxybox import saddle_node_with_boxybox, NDMApars_to_boxyboxpars, boxy_box_from_pars
 
 
-gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
-edgeCounts = [2, 2, 2, 1, 3, 2]
-parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts]  # set all
-# production parameters as variable
-f = EMT(gammaVar, parameterVar)
+f = def_emt_hill_model()
 
 # load the dataset of candidates produced by DSGRN
 dataFile = 'dataset_EMT_may24.npz'
@@ -43,14 +39,8 @@ data_subsample = emtParameters[all_index].transpose()
 region_subsample = emtRegions[all_index]
 
 # Saddle node bifurcation search
-# SNB = SaddleNode(f)
-# p = bistableParameters[7]
-# snb = []
 ds = []
 dsMinimum = []
-
-# data_subsample, region_subsample, coefs = subsample(dataFile, n_sample)
-# a = data_subsample
 
 n_monostable_region = 0
 n_monostable_with_saddle = 0
@@ -65,7 +55,7 @@ n_bistable_bad_candidate = 0
 
 hill_par_at_saddle = []
 
-for d in range(10, n_sample):
+for d in range(n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
     #if region_j != 1:
@@ -96,7 +86,7 @@ for d in range(10, n_sample):
             old_hill, par, gamma = NDMApars_to_boxyboxpars(100, p)
             success, old_xminus, old_xplus, remainder = boxy_box_from_pars(old_hill, par, gamma, maxiter=300)
             if np.linalg.norm(old_xplus - old_xminus)>10**-5:
-                print('bistability found, but no saddle node??')
+                print('bistability found, but no saddle node')
     
     printing_statement = 'Completion: ' + str(d+1) + ' out of ' + str(n_sample)
     sys.stdout.write('\r' + printing_statement)
