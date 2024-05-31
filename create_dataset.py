@@ -537,6 +537,7 @@ if __name__ == "__main__":
         counter = np.zeros(n_regions_simple)
         for i in range(n_regions_simple):
             counter[i] = np.count_nonzero(regions_loc == i)
+        # c < a - b , a-b < c < a+b , a+b < c
 
     if test_case == 3:
         print('This is the toggle switch')

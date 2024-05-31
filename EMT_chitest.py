@@ -16,8 +16,8 @@ from EMT_boxybox import saddle_node_with_boxybox, NDMApars_to_boxyboxpars, boxy_
 f = def_emt_hill_model()
 
 # load the dataset of candidates produced by DSGRN
-dataFile = 'dataset_EMT_may24.npz'
-file_storing = 'chi_test_EMT_mai24.npz'
+dataFile = 'dataset_EMT.npz'
+file_storing = 'chi_test_EMT_march24.npz'
 n_sample = 100
 
 emtData = np.load(dataFile)
@@ -58,11 +58,11 @@ hill_par_at_saddle = []
 for d in range(n_sample):
     p = data_subsample[:, d]
     region_j = region_subsample[d]
-    #if region_j != 1:
-    #    # TODO: remove this if statement
-    #    continue
+    # if region_j == 0:
+        # TODO: remove this if statement
+        #continue
     saddle_node_problem = SaddleNode(f)
-    hill_selection = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]
+    hill_selection = [1, 5, 10, 100]
     SNParameters, badCandidates = saddle_node_with_boxybox(saddle_node_problem, hill_selection, p)
 
     if SNParameters and SNParameters != 0:
@@ -86,7 +86,7 @@ for d in range(n_sample):
             old_hill, par, gamma = NDMApars_to_boxyboxpars(100, p)
             success, old_xminus, old_xplus, remainder = boxy_box_from_pars(old_hill, par, gamma, maxiter=300)
             if np.linalg.norm(old_xplus - old_xminus)>10**-5:
-                print('bistability found, but no saddle node')
+                print('bistability found, but no saddle node??')
     
     printing_statement = 'Completion: ' + str(d+1) + ' out of ' + str(n_sample)
     sys.stdout.write('\r' + printing_statement)
