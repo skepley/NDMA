@@ -4,6 +4,9 @@ import itertools
 from models.EMT_model import *
 
 
+f = def_emt_hill_model()
+
+
 def Hmin(n, par, x):
     ell, delta, theta = par[:]
     return ell + delta / (1 + (x / theta) ** n)
@@ -185,6 +188,18 @@ def saddle_node_with_boxybox(saddle_node_problem, hill_comb, par_NDMA):
     return par_of_SNbif, bad_candidate
 
 
+def eqs_with_boxyboxEMT(hillpar, par_NDMA):
+    """
+    takes some info on the
+    """
+    n, par, gamma = NDMApars_to_boxyboxpars(hillpar, par_NDMA)
+    success, xminus, xplus, remainder = boxy_box_from_pars(n, par, gamma)
+    all_corners = corners_of_box(xminus, xplus)
+    NDMA_eqs = f.local_equilibrium_search(all_corners, hillpar, par_NDMA)
+    NDMA_eqs = f.remove_doubles(NDMA_eqs, hillpar, par_NDMA, uniqueRootDigits=5)
+    return NDMA_eqs
+
+
 def test1():
     ##### TEST 1: run the boxy box (no guarantee on the right hand side)
     print('##### TEST 1: run the boxy box (no guarantee on the right hand side)')
@@ -218,11 +233,7 @@ if __name__ == "__main__":
     ##### TEST 2: compare boxy box and EMT (test guarantee on the right hand side)
     print('##### TEST 2: compare boxy box and EMT (test guarantee on the right hand side)')
     # set EMT-specific elements
-    gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
-    edgeCounts = [2, 2, 2, 1, 3, 2]
-    parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts]  # set all
-    # production parameters as variable
-    f = EMT(gammaVar, parameterVar)
+
 
     xminus, xplus = 0, 0
     success = False

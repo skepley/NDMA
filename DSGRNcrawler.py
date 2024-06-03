@@ -83,3 +83,11 @@ class DSGRNcrawler:
             if self.is_bistable(adjacent):
                 bistable_list.append(adjacent)
         return bistable_list
+
+    def n_stable_FP(self, par_index):
+        """
+        takes a parameter index (int) and returns a boolean if the parameter region is bistable
+        """
+        morse_graph = self.morse_graph_from_index(par_index)
+        return sum(1 for node in range(morse_graph.poset().size()) if isFP(node, morse_graph))
+

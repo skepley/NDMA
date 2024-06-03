@@ -142,6 +142,14 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
             return np.nan
 
 
+def equilibrium_stability(hillmodel, equilibrium, *parameter):
+    Jac = hillmodel.dx(equilibrium, *parameter)
+    eigs = np.linalg.eig(Jac)[0]
+    if all(np.real(eigs) < 0):
+        return True
+    return False
+
+
 def verify_call(func):
     """Evaluation method decorator for validating evaluation calls. This can be used when troubleshooting and
     testing and then omitted in production runs to improve efficiency. This decorates any HillModel or

@@ -16,8 +16,8 @@ from EMT_boxybox import saddle_node_with_boxybox, NDMApars_to_boxyboxpars, boxy_
 f = def_emt_hill_model()
 
 # load the dataset of candidates produced by DSGRN
-dataFile = 'dataset_EMT.npz'
-file_storing = 'chi_test_EMT_march24.npz'
+dataFile = 'dataset_EMT_may24.npz'
+file_storing = 'chi_test_EMT_may24.npz'
 n_sample = 100
 
 emtData = np.load(dataFile)
