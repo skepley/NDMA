@@ -19,9 +19,90 @@ import DSGRN
 from DSGRN_functionalities import par_to_region_wrapper, from_string_to_Hill_data, par_to_region, \
     from_region_to_deterministic_point
 from toggle_switch_heat_functionalities import fiber_sampler, parameter_to_DSGRN_coord
+import datetime
 
 
-def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, filename, network, n_parameters):
+def oneregion_dataset(f_hill_model, parameter_region, dataset_size: int, network, n_parameters, filename=None,
+                      save_file=True, optimize=True):
+    """
+    INPUT
+    f_hill_model        Hill model class
+    parameter_regions   vector of two integers, indicating the two parameter regions of interest in DSGRN
+    dataset_size        integer, defining the size of the dataset to be created
+    filename            string, the name of the dataset file
+    network             DSGRN Network describing the network structure
+    n_parameters        integer, the number of NDMA parameters (ex: 42 for the restricted EMT model)
+
+    OUTPUT
+    best_score          float, indicating how good the found distribution is: 1 - 50% of points in each region,
+                        0.5 - smallest region only has 25% of points, 0 - smallest region is never sampled
+    best_coef           vector, coefficients defining the used Gaussian distribution
+
+    RESULT
+    filename file is created such that:
+
+    file_name           name of the saved file storing three items:
+        optimal_coef        the coefficients used to created the dataset
+        data                the data itself
+        parameter_region    an integer vector having values 0,1 or 2 and length equal to data, indicating in which
+                            DSGRN region each element of data lives in - first region, second region, neither.
+
+    The algorithm creates the default points in the two regions, and uses them as base to create a gaussian cloud around
+    them. If the two initial points are not ideal, other closer to the boundary between the two regions are chosen, in
+    the hope of improving the starting data cloud
+    The Gaussian cloud is then 'optimised' by randomly tweaking its coefficients to better distribute the points it
+    generates
+    """
+    # rank datasets acording to score
+    bin_size = lambda vec: np.array([np.sum(vec == j) for j in range(1)])
+
+    def score(coefs):
+        data_vec = ND_sampler(coefs[:n_parameters], coefs[n_parameters:], 500)
+        parameter_region_vec = assign_region(data_vec)
+        bins = bin_size(parameter_region_vec)
+        scor = min(bins) * len(bins) / np.size(parameter_region_vec)
+        return scor
+
+    def from_point_to_coefs(a):
+        mu = a
+        Sigma = 0.001*np.eye(np.size(a), np.size(a))
+        coef_ab = np.append(mu, Sigma.flatten())
+        return coef_ab
+
+    ND_sampler = distribution_sampler()
+    parameter_graph = DSGRN.ParameterGraph(network)
+
+    # sampling from each region
+    pars0, sources_vec, targets_vec = from_region_to_deterministic_point(network, parameter_region)
+
+    assign_region = par_to_region_wrapper(f_hill_model, parameter_region, parameter_graph, sources_vec, targets_vec)
+
+    # Create initial distribution
+    initial_coef = from_point_to_coefs(pars0)
+    initial_score = score(initial_coef)
+
+    if initial_score < 0.1:
+        warnings.warn(
+            'The initial Gaussian distribution chosen is very poor, likely low quality results to be expected')
+        print('Initial score = ', initial_score)
+
+    if optimize:
+        best_score, best_coef = optimize_wrt_score(initial_coef, score)
+        if best_score < 0.2:
+            warnings.warn('Poor quality of the final distribution, consider choosing other starting points')
+    else:
+        best_score, best_coef = initial_score, initial_coef
+
+    if save_file:
+        if filename is None:
+            filename = "region_" + str(parameter_region) + datetime.datetime.now().strftime("_date%d_%m_%Y")
+        _ = generate_datafile_from_coefs(filename, best_coef, ND_sampler, assign_region, dataset_size, n_parameters)
+
+    return best_score, best_coef
+
+
+def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, n_parameters, network, filename=None,
+                       save_file=True):
     """
     INPUT
     f_hill_model        Hill model class
@@ -84,7 +165,7 @@ def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, filen
     if initial_score == 0:
         middle_point = (pars1 + pars0) / 2
         existing_region = par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
-                             targets_vec)
+                                        targets_vec)
         for i in range(10):
             middle_point = (pars1 + pars0) / 2
             if par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
@@ -100,14 +181,19 @@ def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, filen
         initial_score = score(initial_coef)
 
     if initial_score < 0.1:
-        warnings.warn('The initial Gaussian distribution chosen is very poor, likely low quality results to be expected')
+        warnings.warn(
+            'The initial Gaussian distribution chosen is very poor, likely low quality results to be expected')
 
     best_score, best_coef = optimize_wrt_score(initial_coef, score)
 
     if best_score < 0.2:
         warnings.warn('Poor quality of the final distribution, consider choosing other starting points')
 
-    _ = generate_data_from_coefs(filename, best_coef, ND_sampler, assign_region, dataset_size, n_parameters)
+    if save_file:
+        if filename is None:
+            filename = "tworegions_" + str(parameter_regions[0]) + "_" + str(parameter_regions[1]) + \
+                       datetime.datetime.now().strftime("_date%d_%m_%Y")
+        _ = generate_datafile_from_coefs(filename, best_coef, ND_sampler, assign_region, dataset_size, n_parameters)
 
     return best_score, best_coef
 
@@ -148,7 +234,7 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     helper functions:
     distribution_sampler
     DSGRN_parameter_region
-    generate_data_from_coefs
+    generate_datafile_from_coefs
     """
     warnings.warn('This function is deprecated, please use the new version instead')
     if file_name is None:
@@ -218,11 +304,11 @@ def create_dataset(n_parameters: int, assign_region, n_parameter_region: int, si
     # data = sampler_global(optimal_coef[:n_parameters], optimal_coef[n_parameters:], size_dataset)
     # parameter_region = DSGRN_parameter_region(f, data)
     # np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
-    generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters)
+    generate_datafile_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters)
     return file_name
 
 
-def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters):
+def generate_datafile_from_coefs(file_name, optimal_coef, sampler_global, assign_region, size_dataset, n_parameters):
     """
     Takes the optimal coefficients and create a dataset out of them
 
@@ -237,6 +323,22 @@ def generate_data_from_coefs(file_name, optimal_coef, sampler_global, assign_reg
     parameter_region = assign_region(data)
     np.savez(file_name, optimal_coef=optimal_coef, data=data, parameter_region=parameter_region)
     return file_name
+
+
+def generate_data_from_coefs(coef, n_parameters, assign_region, size_dataset, sampler=None):
+    """
+    Takes the optimal coefficients and create a dataset out of them
+
+    INPUT
+    optimal_coef    optimal coefficients for the Fisher distribution
+    sampler_global  way to sample from the correct distribution given the optimal parameters
+    size_dataset    integer, size of the wanted dataset
+    """
+    if sampler is None:
+        sampler = distribution_sampler()
+    data = sampler(coef[:n_parameters], coef[n_parameters:], size_dataset)
+    parameter_region = assign_region(data)
+    return data, parameter_region
 
 
 def load_dataset(file_name):
@@ -564,7 +666,7 @@ if __name__ == "__main__":
             data, parameter_region, coefs_optimal = load_dataset(name)
             sampler_TS = distribution_sampler()
             size_dataset = 100000
-            generate_data_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
+            generate_datafile_from_coefs(name, coefs_optimal, sampler_TS, f, size_dataset, n_parameters_TS)
 
             # subsampling methods: all regions or specific regions
             size_sample = 4

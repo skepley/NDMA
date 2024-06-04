@@ -175,8 +175,13 @@ def par_to_region(hillmodel, par, regions_array, parameter_graph, indices_source
 
     """
     extended_region_number = global_par_to_region(hillmodel, par, parameter_graph, indices_sources, indices_target)
+    if np.shape(regions_array) == (): # special case for only one region
+        if extended_region_number == regions_array:
+            return 0
+        else:
+            return 1
     restricted_region_number = np.where(extended_region_number == regions_array)
-    if np.shape(restricted_region_number)[1] == 0:
+    if np.shape(restricted_region_number)[1] == 0: # if no match, return length of region array
         return len(regions_array)
     region_number = restricted_region_number[0][0]
     return region_number
