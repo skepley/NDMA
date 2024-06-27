@@ -1423,7 +1423,7 @@ class HillModel:
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:  # return the full derivative wrt all parameters
+        if diffIndex is None or (self.nParameter == 1 and diffIndex == 0):  # return the full derivative wrt all parameters
             Dpf = np.zeros(
                 [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
             for (i, f_i) in enumerate(self.coordinates):

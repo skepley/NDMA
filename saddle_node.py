@@ -103,7 +103,7 @@ class SaddleNode:
             # the first element of the eigenvector. If we extend to C, more work will be needed
             if tangentVector[0] < 0:
                 tangentVector = - tangentVector
-            return tangentVector / np.linalg.norm(tangentVector)
+            return np.squeeze(tangentVector) / np.linalg.norm(tangentVector)
 
         def root(u0):
             """Attempts to return a single root of the SaddleNode root finding problem"""

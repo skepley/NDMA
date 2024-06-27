@@ -28,19 +28,21 @@ def Hplus(n, par, x):
 
 def gpm_func(n, par):
     # change this, the NDMA parameters are gamma1, ell21, delta21, theta21, ell31, delta31....,gamma2....
+    if not hasattr(n, "__len__"):
+        n = n + np.zeros(12)
     gplus = lambda x: np.array((1,
                                 1,
-                                Hplus(n, par[4, :], x[0]),
+                                Hplus(n[4], par[4, :], x[0]),
                                 1,
-                                Hplus(n, par[8, :], x[2]),
+                                Hplus(n[8], par[8, :], x[2]),
                                 1))
 
-    gminus = lambda x: np.array((Hmin(n, par[0, :], x[1]) * Hmin(n, par[1, :], x[3]),
-                                 Hmin(n, par[2, :], x[2]) * Hmin(n, par[3, :], x[4]),
-                                 Hmin(n, par[5, :], x[5]),
-                                 Hmin(n, par[6, :], x[4]),
-                                 Hmin(n, par[7, :], x[1]) * Hmin(n, par[9, :], x[3]),
-                                 Hmin(n, par[10, :], x[2]) * Hmin(n, par[11, :], x[4])))
+    gminus = lambda x: np.array((Hmin(n[0], par[0, :], x[1]) * Hmin(n[1], par[1, :], x[3]),
+                                 Hmin(n[2], par[2, :], x[2]) * Hmin(n[3], par[3, :], x[4]),
+                                 Hmin(n[5], par[5, :], x[5]),
+                                 Hmin(n[6], par[6, :], x[4]),
+                                 Hmin(n[7], par[7, :], x[1]) * Hmin(n[9], par[9, :], x[3]),
+                                 Hmin(n[10], par[10, :], x[2]) * Hmin(n[11], par[11, :], x[4])))
     return gplus, gminus
 
 
@@ -128,6 +130,19 @@ def NDMApars_to_boxyboxpars(hill, pars):
     return hill, par, gamma
 
 
+def NDMAparsTEHTA_to_boxyboxpars(theta, pars54):
+    # the NDMA pars are all mixed up!
+    gamma_index = [0, 9, 18, 27, 32, 45]
+    gamma = pars54[gamma_index]
+    pars54 = np.delete(pars54, gamma_index)
+    hill_index = 4*(1+np.array(range(12)))-1
+    hill = pars54[hill_index]
+    par54 = np.delete(pars54, hill_index)
+    par = np.reshape(par54, [12, 3])
+    par[9, 2] = theta
+    return hill, par, gamma
+
+
 def corners_of_box(xminus, xplus):
     all_corners = list(itertools.product(*zip(xminus, xplus)))
     return np.array(all_corners)
@@ -188,6 +203,63 @@ def saddle_node_with_boxybox(saddle_node_problem, hill_comb, par_NDMA):
     return par_of_SNbif, bad_candidate
 
 
+def approx_saddle_node_with_boxy_box_THETA(theta_comb, par_NDMA):
+    """ by going through all hill coefficients stored in hill_comb, we look for changes in the number of equilibria and
+    return approximate saddle nodes"""
+    def outlier(xminus, xplus, theta_iter, old_xminus, old_xplus, old_theta, tol=10**-7):
+        """ select the corner that is disappearing during the saddle node"""
+        if is_degenerate(old_xminus, old_xplus, tol=tol):
+            return outlier(old_xminus, old_xplus, old_theta, xminus, xplus, theta_iter, tol=tol)
+        degenerate_x = xminus
+        theta = theta_iter
+        approx_saddle_position = 0 * degenerate_x
+        for i in range(np.size(degenerate_x)):
+            if np.abs(degenerate_x[i] - old_xminus[i]) > np.abs(degenerate_x[i] - old_xplus[i]):
+                approx_saddle_position[i] = old_xminus[i]
+            else:
+                approx_saddle_position[i] = old_xplus[i]
+        return approx_saddle_position, theta
+
+    if np.size(theta_comb) == 2:
+        low_theta = min(theta_comb)
+        high_theta = max(theta_comb)
+        theta_comb = np.linspace(high_theta, low_theta, 50)
+
+    hill, par, gamma = NDMAparsTEHTA_to_boxyboxpars(theta_comb[0], par_NDMA)
+    old_theta = theta_comb[0]
+    success, old_xminus, old_xplus, remainder = boxy_box_from_pars(hill, par, gamma, maxiter=300)
+    approx_saddle_position, approx_saddle_theta = [], []
+    for theta_iter in theta_comb[1:]:
+        hill, par_iter, gamma = NDMAparsTEHTA_to_boxyboxpars(theta_iter, par_NDMA)
+        success, xminus, xplus, remainder = boxy_box_from_pars(hill, par_iter, gamma, maxiter=300)
+        if not success:
+            continue
+        if is_degenerate(xminus, xplus, tol=10**-5) != is_degenerate(old_xminus, old_xplus, tol=10**-5):
+            coord, theta_val = outlier(xminus, xplus, theta_iter, old_xminus, old_xplus, old_theta, tol=10**-5)
+            approx_saddle_position.append(coord)
+            approx_saddle_theta.append(theta_val)
+        old_xminus, old_xplus, old_theta = xminus, xplus, theta_iter
+
+    return approx_saddle_position, approx_saddle_theta
+
+
+def saddle_node_with_boxybox_THETA(saddle_node_problem, theta_comb, par54):
+    """ for the EMT saddle node problem taken a selection of hill coefficients and a parameter, it finds all saddle nodes"""
+    if np.size(theta_comb) == 2:
+        low_theta = min(theta_comb)
+        high_theta = max(theta_comb)
+        theta_comb = np.linspace(high_theta, low_theta, 50)
+    approx_saddle_position, old_theta = approx_saddle_node_with_boxy_box_THETA(theta_comb, par54)
+    par_of_SNbif, bad_candidate = [], []
+    for i in range(len(old_theta)):
+        saddle = saddle_node_problem.find_saddle_node(0, old_theta[i], equilibria=approx_saddle_position[i])
+        if saddle:
+            par_of_SNbif.append(saddle)
+        else:
+            bad_candidate.append(old_theta[i])
+    return par_of_SNbif, bad_candidate
+
+
 def eqs_with_boxyboxEMT(hillpar, par_NDMA):
     """
     takes some info on the
@@ -234,16 +306,15 @@ if __name__ == "__main__":
     print('##### TEST 2: compare boxy box and EMT (test guarantee on the right hand side)')
     # set EMT-specific elements
 
-
     xminus, xplus = 0, 0
-    success = False
-    while np.linalg.norm(xminus- xplus)< 10**-1 or not success:
+    test_success = False
+    while np.linalg.norm(xminus- xplus)< 10**-1 or not test_success:
         par_NDMA = np.abs(np.random.random(42))
         hill = 3.2
         n, par, gamma = NDMApars_to_boxyboxpars(hill, par_NDMA)
-        #print(hill, par_NDMA)
-        #print(n, par, gamma)
-        success, xminus, xplus, remainder = boxy_box_from_pars(n, par, gamma)
+        # print(hill, par_NDMA)
+        # print(n, par, gamma)
+        test_success, xminus, xplus, remainder = boxy_box_from_pars(n, par, gamma)
         all_corners = corners_of_box(xminus, xplus)
         norms = [np.linalg.norm(f(all_corners[i, :], hill, par_NDMA)) for i in range(np.size(all_corners, 1))]
     print('norms = ', norms)
@@ -261,8 +332,8 @@ if __name__ == "__main__":
     print(eqs)
 
     # small test: are equilibria on the corners?
-    #distance_to_nearest_corner = [np.linalg.norm(eqs[i, :]-all_corners[j, :]) for i in range(2) for j in range(64)]
-    #print(distance_to_nearest_corner)
+    # distance_to_nearest_corner = [np.linalg.norm(eqs[i, :]-all_corners[j, :]) for i in range(2) for j in range(64)]
+    # print(distance_to_nearest_corner)
 
 
     ##### TEST 4: find change in number of equilibria
