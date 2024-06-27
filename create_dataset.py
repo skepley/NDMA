@@ -101,8 +101,8 @@ def oneregion_dataset(f_hill_model, parameter_region, dataset_size: int, network
     return best_score, best_coef
 
 
-def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, n_parameters, network, filename=None,
-                       save_file=True):
+def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, network, n_parameters, filename=None,
+                       save_file=True, optimize=True):
     """
     INPUT
     f_hill_model        Hill model class
@@ -164,11 +164,11 @@ def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, n_par
     # looking for "middle point" between region 0 and 1
     if initial_score == 0:
         middle_point = (pars1 + pars0) / 2
-        existing_region = par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
+        existing_region = par_to_region(f_hill_model, middle_point, parameter_regions, parameter_graph, sources_vec,
                                         targets_vec)
         for i in range(10):
             middle_point = (pars1 + pars0) / 2
-            if par_to_region(f, middle_point, parameter_regions, parameter_graph, sources_vec,
+            if par_to_region(f_hill_model, middle_point, parameter_regions, parameter_graph, sources_vec,
                              targets_vec) == existing_region:
                 if existing_region == 0:
                     pars0 = middle_point
@@ -184,7 +184,12 @@ def tworegions_dataset(f_hill_model, parameter_regions, dataset_size: int, n_par
         warnings.warn(
             'The initial Gaussian distribution chosen is very poor, likely low quality results to be expected')
 
-    best_score, best_coef = optimize_wrt_score(initial_coef, score)
+    if optimize:
+        best_score, best_coef = optimize_wrt_score(initial_coef, score)
+        if best_score < 0.2:
+            warnings.warn('Poor quality of the final distribution, consider choosing other starting points')
+    else:
+        best_score, best_coef = initial_score, initial_coef
 
     if best_score < 0.2:
         warnings.warn('Poor quality of the final distribution, consider choosing other starting points')

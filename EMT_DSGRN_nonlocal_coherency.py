@@ -1,9 +1,11 @@
 import numpy as np
-
-from models.EMT_model import *
-from create_dataset import *
+from hill_model import equilibrium_stability
+from models.EMT_model import def_emt_hill_model
+from create_dataset import from_region_to_deterministic_point, par_to_region_wrapper, oneregion_dataset, generate_data_from_coefs
 from EMT_boxybox import eqs_with_boxyboxEMT
 from DSGRNcrawler import DSGRNcrawler
+import DSGRN
+import random
 
 EMT_network = DSGRN.Network("EMT.txt")
 parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)

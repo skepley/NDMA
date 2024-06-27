@@ -68,6 +68,6 @@ best_pair = np.array([7, 127]) # for testing
 f = def_emt_hill_model()
 n_parameters_EMT = 42
 
-final_score, _ = tworegions_dataset(f, best_pair, size_dataset, n_parameters_EMT, EMT_network, file_name)
+final_score, _ = tworegions_dataset(f, best_pair, size_dataset, EMT_network, n_parameters_EMT, file_name)
 print('Datset created with final score of ', final_score)
 
