@@ -89,6 +89,9 @@ def skinny_newton(f, Df, x0, maxDefect=1e-13):
     iDefect = np.linalg.norm(y)  # initialize defect
     iIterate = 1
     while iDefect > maxDefect and iIterate < maxIterate:
+        if np.linalg.matrix_rank(Dy) < np.shape(Dy)[0]:
+            warnings.warn('Skinny newton found a singular derivative')
+            break
         if fDim == 1:
             x -= y / Dy
         else:
@@ -1423,16 +1426,17 @@ class HillModel:
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None or (self.nParameter == 1 and diffIndex == 0):  # return the full derivative wrt all parameters
-            Dpf = np.zeros(
-                [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
-            for (i, f_i) in enumerate(self.coordinates):
-                Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i],
-                                                                                parameterByCoordinate[
-                                                                                    i])  # insert derivative of this coordinate
-            return Dpf
+        Dpf = np.zeros(
+            [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
+        for (i, f_i) in enumerate(self.coordinates):
+            Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i],
+                                                                            parameterByCoordinate[
+                                                                                i])  # insert derivative of this coordinate
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(Dpf[:, np.array([diffIndex])])
+
 
     @verify_call
     def dx2(self, x, *parameter):
@@ -1458,15 +1462,16 @@ class HillModel:
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:  # return the full derivative wrt all parameters
-            Dpxf = np.zeros(2 * [self.dimension] + [self.nParameter])  # initialize Derivative as 3-tensor of size NxNxM
-            for (i, f_i) in enumerate(self.coordinates):
-                Dpxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dxdiff(
-                    stateByCoordinate[i], parameterByCoordinate[
-                        i])  # insert derivative of this coordinate
-            return Dpxf
+        Dpxf = np.zeros(2 * [self.dimension] + [self.nParameter])  # initialize Derivative as 3-tensor of size NxNxM
+        for (i, f_i) in enumerate(self.coordinates):
+            Dpxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dxdiff(
+                stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
+        if diffIndex is None:
+            return Dpxf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(Dpxf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
+        # this isn't implemented yet
 
     @verify_call
     def diff2(self, x, *parameter, diffIndex=None):

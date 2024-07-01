@@ -130,16 +130,16 @@ def NDMApars_to_boxyboxpars(hill, pars):
     return hill, par, gamma
 
 
-def NDMAparsTEHTA_to_boxyboxpars(theta, pars54):
+def NDMAparsTHETA_to_boxyboxpars(theta, pars43, theta_index):
     # the NDMA pars are all mixed up!
-    gamma_index = [0, 9, 18, 27, 32, 45]
-    gamma = pars54[gamma_index]
-    pars54 = np.delete(pars54, gamma_index)
-    hill_index = 4*(1+np.array(range(12)))-1
-    hill = pars54[hill_index]
-    par54 = np.delete(pars54, hill_index)
-    par = np.reshape(par54, [12, 3])
-    par[9, 2] = theta
+    pars43[theta_index] = theta
+    hill_index = 0
+    hill = pars43[hill_index]
+    pars42 = np.delete(pars43, hill_index)
+    gamma_index = [0, 7, 14, 21, 25, 35]
+    gamma = pars42[gamma_index]
+    par = np.delete(pars42, gamma_index)
+    par = np.reshape(par, [12, 3])
     return hill, par, gamma
 
 
@@ -203,7 +203,7 @@ def saddle_node_with_boxybox(saddle_node_problem, hill_comb, par_NDMA):
     return par_of_SNbif, bad_candidate
 
 
-def approx_saddle_node_with_boxy_box_THETA(theta_comb, par_NDMA):
+def approx_saddle_node_with_boxy_box_THETA(theta_comb, par_NDMA, index_to_varry):
     """ by going through all hill coefficients stored in hill_comb, we look for changes in the number of equilibria and
     return approximate saddle nodes"""
     def outlier(xminus, xplus, theta_iter, old_xminus, old_xplus, old_theta, tol=10**-7):
@@ -225,12 +225,12 @@ def approx_saddle_node_with_boxy_box_THETA(theta_comb, par_NDMA):
         high_theta = max(theta_comb)
         theta_comb = np.linspace(high_theta, low_theta, 50)
 
-    hill, par, gamma = NDMAparsTEHTA_to_boxyboxpars(theta_comb[0], par_NDMA)
+    hill, par, gamma = NDMAparsTHETA_to_boxyboxpars(theta_comb[0], par_NDMA, index_to_varry)
     old_theta = theta_comb[0]
     success, old_xminus, old_xplus, remainder = boxy_box_from_pars(hill, par, gamma, maxiter=300)
     approx_saddle_position, approx_saddle_theta = [], []
     for theta_iter in theta_comb[1:]:
-        hill, par_iter, gamma = NDMAparsTEHTA_to_boxyboxpars(theta_iter, par_NDMA)
+        hill, par_iter, gamma = NDMAparsTHETA_to_boxyboxpars(theta_iter, par_NDMA, index_to_varry)
         success, xminus, xplus, remainder = boxy_box_from_pars(hill, par_iter, gamma, maxiter=300)
         if not success:
             continue
@@ -243,20 +243,21 @@ def approx_saddle_node_with_boxy_box_THETA(theta_comb, par_NDMA):
     return approx_saddle_position, approx_saddle_theta
 
 
-def saddle_node_with_boxybox_THETA(saddle_node_problem, theta_comb, par54):
+def saddle_node_with_boxybox_THETA(saddle_node_problem, theta_comb, par43, index_to_varry):
     """ for the EMT saddle node problem taken a selection of hill coefficients and a parameter, it finds all saddle nodes"""
     if np.size(theta_comb) == 2:
         low_theta = min(theta_comb)
         high_theta = max(theta_comb)
         theta_comb = np.linspace(high_theta, low_theta, 50)
-    approx_saddle_position, old_theta = approx_saddle_node_with_boxy_box_THETA(theta_comb, par54)
+    approx_saddle_position, saddle_theta = approx_saddle_node_with_boxy_box_THETA(theta_comb, par43, index_to_varry)
     par_of_SNbif, bad_candidate = [], []
-    for i in range(len(old_theta)):
-        saddle = saddle_node_problem.find_saddle_node(0, old_theta[i], equilibria=approx_saddle_position[i])
+    for i in range(len(saddle_theta)):
+        par43[index_to_varry] = saddle_theta[i]
+        saddle = saddle_node_problem.find_saddle_node(index_to_varry, par43, equilibria=approx_saddle_position[i])
         if saddle:
             par_of_SNbif.append(saddle)
         else:
-            bad_candidate.append(old_theta[i])
+            bad_candidate.append(saddle_theta[i])
     return par_of_SNbif, bad_candidate
 
 

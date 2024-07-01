@@ -9,6 +9,10 @@ import DSGRN
 from saddle_node import SaddleNode
 from hill_model import HillModel
 
+
+np.seterr(over='ignore', invalid='ignore')  # ignore overflow and division by zero warnings:
+
+
 EMT_network = DSGRN.Network("EMT.txt")
 parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)
 crawler = DSGRNcrawler(parameter_graph_EMT)
@@ -47,12 +51,12 @@ def coherent_percentage(data_vec, expected_eqs):
     return coherent_perc
 
 
-# coherent_percentage_monostable = coherent_percentage(data_in_region_monostable[:size_dataset, :], 1)
-# coherent_percentage_bistable = coherent_percentage(data_in_region_bistable[:size_dataset, :], 2)
+coherent_percentage_monostable = coherent_percentage(data_in_region_monostable[:size_dataset, :], 1)
+coherent_percentage_bistable = coherent_percentage(data_in_region_bistable[:size_dataset, :], 2)
 
-# print('Taking ', test_size, ' number of random parameter regions, at hill coefficient ', hill, 'in the monostable \n',
-#      'region we have a coherency rate of ', coherent_percentage_monostable, ' and in the bistable ',
-#      coherent_percentage_bistable)
+print('Taking ', test_size, ' number of random parameter regions, at hill coefficient ', hill, 'in the monostable \n',
+      'region we have a coherency rate of ', coherent_percentage_monostable, ' and in the bistable ',
+      coherent_percentage_bistable)
 
 
 def prevalence_vertical_saddles(data):
@@ -120,24 +124,6 @@ location_ells_4theqs = position_search('l', 10)[7:]
 location_important_delta = location_ells_4theqs[0] + 1
 
 
-def reshape_pars(fixed_pars_48):
-    reshaped_array = np.reshape(fixed_pars_48, (12, 4))
-    structured_par = [reshaped_array[0:2, :], reshaped_array[2:4, :], reshaped_array[4:6, :], reshaped_array[6, :],
-                      reshaped_array[7:10, :], reshaped_array[10:12, :]]
-    return structured_par
-
-
-def def_EMT_fixed_pars(fixed_pars):
-    parameter_54 = np.empty(54)
-    parameter_54[location_non_hill] = fixed_pars
-    parameter_54[location_all_hill] = 20
-    parameter_54[location_tenth_theta] = np.nan
-    gamma = parameter_54[location_all_gamma]
-    parameter_no_gamma = np.delete(parameter_54, location_all_gamma)
-    EMT_not_hill = HillModel(gamma, reshape_pars(parameter_no_gamma), productionSign, productionType, productionIndex)
-    return EMT_not_hill, parameter_54  # gamma, parameter_no_gamma
-
-
 def theta_bound(fixed_pars):
     location_ells_4theqs_fixed_pars = np.array(location_ells_4theqs) - np.array([7, 8, 9])
     ells = fixed_pars[location_ells_4theqs_fixed_pars]
@@ -146,32 +132,16 @@ def theta_bound(fixed_pars):
     return bound
 
 
-def is_theta_bounded(fixed_pars):
-    bound = theta_bound(fixed_pars)
-    theta = fixed_pars[location_tenth_theta - 7]
-    return theta < bound
-
-
-def is_in_monostable_reg(fixed_pars):
-    location_ells_4theqs_fixed_pars = np.array(location_ells_4theqs) - np.array([7, 8, 9])
-    ells = fixed_pars[location_ells_4theqs_fixed_pars]
-    bound = ells[0]*ells[1]*ells[2]
-    theta = fixed_pars[location_tenth_theta - 7]
-    return theta < bound
-
-
-def is_in_bistable_reg(fixed_pars):
-    if is_in_monostable_reg(fixed_pars):
-        return False
-    return is_theta_bounded(fixed_pars)
-
-
-def search_horizontal_saddles(par):
-    f, parameter54 = def_EMT_fixed_pars(par)
+def search_horizontal_saddles(par42, hill):
+    f = def_emt_hill_model()
     saddle_node_problem = SaddleNode(f)
-    min_theta = par[location_tenth_theta - 9]
-    theta_selection = np.linspace(min_theta, theta_bound(par), 3)
-    SNParameters, badCandidates = saddle_node_with_boxybox_THETA(saddle_node_problem, theta_selection, parameter54)
+    parameter_index_no_hill = 9 * 3 + 5 + 2
+    parameter_index_with_hill = parameter_index_no_hill + 1
+    min_theta = par42[parameter_index_no_hill]
+    theta_selection = np.linspace(min_theta, theta_bound(par42), 200)
+    par_with_hill = np.append(hill, par42)
+    SNParameters, badCandidates = saddle_node_with_boxybox_THETA(saddle_node_problem, theta_selection, par_with_hill,
+                                                                 parameter_index_with_hill)
     if SNParameters and SNParameters != 0:
         return True
     else:
@@ -180,6 +150,6 @@ def search_horizontal_saddles(par):
 
 n_saddles = 0
 for data in data_in_region_monostable[:size_dataset, :]:
-    saddle_horizontal = search_horizontal_saddles(data)
+    saddle_horizontal = search_horizontal_saddles(data, hill)
     n_saddles += saddle_horizontal
-print(n_saddles)
+print(n_saddles, 'out of ', size_dataset)

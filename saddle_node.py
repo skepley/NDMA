@@ -98,6 +98,7 @@ class SaddleNode:
             p = np.insert(fixedParameter, freeParameterIndex, rho)
             dp_f = self.model.diff(equilibrium, p, diffIndex=freeParameterIndex)  # partial derivative with respect to
             # the free parameter only
+
             tangentVector = -np.linalg.solve(self.model.dx(equilibrium, p), dp_f)
             # in R, we still have one choice of orientation once we fix the norm - this is done by checking the sign of
             # the first element of the eigenvector. If we extend to C, more work will be needed
@@ -171,7 +172,7 @@ class SaddleNode:
         index1 = np.arange(n)
         index2 = np.arange(n) + n
         index3 = 2 * n + np.arange(parameterDim)
-        if parameterDim == 1:
+        if parameterDim == 1 and self.model.nParameter > 1:
             # BLOCK ROW 1
             Dg[np.ix_(index1, index1)] = Dxf  # block - (1,1)
             # block - (1, 2) is an n-by-n zero block
