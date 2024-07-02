@@ -53,7 +53,7 @@ while score < 0.2:
                                               targets_vec)
 
     score, coef = tworegions_dataset(f, random_pair, size_dataset, EMT_network, n_parameters_EMT, save_file=False,
-                                     optimize=optimize_bool)  # TODO : save file for reference in future runs?
+                                     optimize=optimize_bool)
 
 data, assigned_regions = generate_data_from_coefs(coef, n_parameters_EMT, assign_region,
                                                       int(1.2 * size_dataset / score))

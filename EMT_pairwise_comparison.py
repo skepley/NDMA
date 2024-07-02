@@ -18,10 +18,9 @@ parameter_graph_EMT = DSGRN.ParameterGraph(EMT_network)
 crawler = DSGRNcrawler(parameter_graph_EMT)
 f = def_emt_hill_model()
 
-test_size = 20
 n_parameters_EMT = 42
 hill = 20
-size_dataset = 20
+size_dataset = 2
 optimize_bool = False
 
 selected_pair = [14643097617, 14643061617]
@@ -54,7 +53,7 @@ def coherent_percentage(data_vec, expected_eqs):
 coherent_percentage_monostable = coherent_percentage(data_in_region_monostable[:size_dataset, :], 1)
 coherent_percentage_bistable = coherent_percentage(data_in_region_bistable[:size_dataset, :], 2)
 
-print('Taking ', test_size, ' number of random parameter regions, at hill coefficient ', hill, 'in the monostable \n',
+print('Taking ', size_dataset, ' number of random parameter regions, at hill coefficient ', hill, 'in the monostable \n',
       'region we have a coherency rate of ', coherent_percentage_monostable, ' and in the bistable ',
       coherent_percentage_bistable)
 
@@ -92,11 +91,6 @@ print('We can transition from region A to region B by increasing T[X3->X4] in DS
 print('This corresponds to theta_{4,2} where the 4 comes from X4 and the 2 comes from the existence of \n',
       'T[X1->X4], T[X2->X4] and T[X3->X4]')
 
-productionSign = [[-1, -1], [-1, -1], [1, -1], [-1], [-1, 1, -1],
-                  [-1, -1]]  # length 6 list of production signs for each node
-productionType = [len(sign) * [1] for sign in productionSign]  # all productions are products
-productionIndex = [[0, 1, 3], [1, 2, 4], [2, 0, 5], [3, 4], [4, 1, 2, 3], [5, 2, 4]]
-edgeCounts_EMT = [2, 2, 2, 1, 3, 2]
 # before theta_{4,2} there are 4 gamma values, ell, delta, and 10 full terms (each having 4 variables)
 # this is  a hacky way to find the index of the tenth theta
 parameters_EMT = ['g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h',
