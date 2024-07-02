@@ -20,7 +20,7 @@ f = def_emt_hill_model()
 
 n_parameters_EMT = 42
 hill = 20
-size_dataset = 2
+size_dataset = 200
 optimize_bool = False
 
 selected_pair = [14643097617, 14643061617]
@@ -87,41 +87,16 @@ for i in range(len(inequalities_monostable)):
         print(inequalities_bistable[i - 3:i + 100])
         break
 
-print('We can transition from region A to region B by increasing T[X3->X4] in DSGRN coordinates')
-print('This corresponds to theta_{4,2} where the 4 comes from X4 and the 2 comes from the existence of \n',
-      'T[X1->X4], T[X2->X4] and T[X3->X4]')
-
-# before theta_{4,2} there are 4 gamma values, ell, delta, and 10 full terms (each having 4 variables)
-# this is  a hacky way to find the index of the tenth theta
-parameters_EMT = ['g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h',
-                  'g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h',
-                  'g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h',
-                  'g', 'l', 'd', 't', 'h',
-                  'g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h',
-                  'g', 'l', 'd', 't', 'h', 'l', 'd', 't', 'h']
-
-
-def position_search(what, how_many):
-    location = np.array([], int)
-    start_index_search = 0
-    for i in range(how_many):
-        location = np.append(location, parameters_EMT.index(what, start_index_search))
-        start_index_search = int(location[-1])+1
-    return location
-
-
-location_tenth_theta = position_search('t', 10)[-1]
-location_all_hill = position_search('h', 12)
-location_non_hill = np.array(list(set.difference(set(range(54)), set(location_all_hill))))
-location_all_gamma = position_search('g', 6)
-location_ells_4theqs = position_search('l', 10)[7:]
-location_important_delta = location_ells_4theqs[0] + 1
+print('We can transition from region A to region B by increasing T[X4->X3] in DSGRN coordinates')
+print('This corresponds to theta_{3,0} where the 3 comes from X3 and the 0 comes from it being \n',
+      'the only term in the equation for X3')
 
 
 def theta_bound(fixed_pars):
-    location_ells_4theqs_fixed_pars = np.array(location_ells_4theqs) - np.array([7, 8, 9])
+    # T[X4->X3] in region B is bounded by U[X1->X4] L[X2->X4] L[X3->X4]
+    location_ells_4theqs_fixed_pars = 5 + 7 * 3 + np.array([0, 3, 6])
     ells = fixed_pars[location_ells_4theqs_fixed_pars]
-    delta = fixed_pars[location_important_delta - 7]
+    delta = fixed_pars[location_ells_4theqs_fixed_pars[0] + 1]
     bound = (ells[0]+delta)*ells[1]*ells[2]
     return bound
 
@@ -129,7 +104,7 @@ def theta_bound(fixed_pars):
 def search_horizontal_saddles(par42, hill):
     f = def_emt_hill_model()
     saddle_node_problem = SaddleNode(f)
-    parameter_index_no_hill = 9 * 3 + 5 + 2
+    parameter_index_no_hill = 4 + 6 * 3 + 2
     parameter_index_with_hill = parameter_index_no_hill + 1
     min_theta = par42[parameter_index_no_hill]
     theta_selection = np.linspace(min_theta, theta_bound(par42), 200)
