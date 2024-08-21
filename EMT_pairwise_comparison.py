@@ -20,7 +20,7 @@ f = def_emt_hill_model()
 
 n_parameters_EMT = 42
 hill = 20
-size_dataset = 200
+size_dataset = 200  # whole code takes roughly 1s per item
 optimize_bool = False
 
 selected_pair = [14643097617, 14643061617]
@@ -35,8 +35,8 @@ score, coef = tworegions_dataset(f, selected_pair, size_dataset, EMT_network, n_
 
 data, assigned_regions = generate_data_from_coefs(coef, n_parameters_EMT, assign_region,
                                                   int(2.4 * size_dataset / score))
-data_in_region_monostable = data[:, assigned_regions == 0].T
-data_in_region_bistable = data[:, assigned_regions == 1].T
+data_in_region_monostable = data[:, assigned_regions == 0].T[:size_dataset, :]
+data_in_region_bistable = data[:, assigned_regions == 1].T[:size_dataset, :]
 
 
 def coherent_percentage(data_vec, expected_eqs):

@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 4 * 10 ** 2  # testing on 3, final run on 4
+n_sample = 4 * 10 ** 3  # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -108,6 +108,7 @@ if len(multiple_saddles) > 0:
     dsgrn_plot(multiple_saddles, color='tab:orange', alphaMax=alphaMax)
 if len(bad_parameters) > 0:
     dsgrn_plot(bad_parameters, color='tab:red', alphaMax=alphaMax)
-plt.savefig('all_results.pdf')
+plt.show()
+#plt.savefig('all_results.pdf')
 
 print('It is the end!')

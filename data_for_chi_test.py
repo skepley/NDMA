@@ -1,11 +1,10 @@
-from hill_model import *
 from models.TS_model import ToggleSwitch
-from saddle_finding_functionalities import *
-from toggle_switch_heat_functionalities import *
+from saddle_finding_functionalities import saddle_node_search
+from saddle_node import SaddleNode
 import sys
-from os.path import isfile
-from create_dataset import *
+from create_dataset import create_dataset_ToggleSwitch, subsample
 from scipy.stats import chi2_contingency
+import numpy as np
 
 file_storing = 'chi_test_data.npz'
 
@@ -17,7 +16,7 @@ f = ToggleSwitch(decay, [p1, p2])
 SN = SaddleNode(f)
 
 # size of the sample
-n_sample = 10 ** 4
+n_sample = 10 ** 2
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -129,12 +128,13 @@ np.savez(file_storing,
 
 data = np.load(file_storing)
 
-mat_for_chi_test = np.array([[np.sum(v_center_with_saddle)+np.sum(v_wrong_parity_center), np.sum(v_center_without_saddle), np.sum(v_center_bad_candidate)], [np.sum(v_donut_with_saddle)+np.sum(v_wrong_parity_donut), np.sum(v_donut_without_saddle), np.sum(v_donut_bad_candidate)]])
-
-unused, p, a, b = chi2_contingency(mat_for_chi_test)
+mat_for_chi_test = np.array([[np.sum(v_center_with_saddle)+np.sum(v_wrong_parity_center), np.sum(v_center_without_saddle)], [np.sum(v_donut_with_saddle)+np.sum(v_wrong_parity_donut), np.sum(v_donut_without_saddle)]])
 
 print('Correlation matrix\n')
 print(mat_for_chi_test)
+
+unused, p, a, b = chi2_contingency(mat_for_chi_test)
+
 if p <= 0.05:
     print('We reject the null hypothesis: there is correlation between saddles and center region\n')
 else:

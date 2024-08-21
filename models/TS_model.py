@@ -56,7 +56,8 @@ class ToggleSwitch(HillModel):
         """Overload the diff function to identify the Hill parameters"""
 
         fullDf = super().diff(x, *parameter)
-        Dpf = np.zeros([self.dimension, self.nReducedParameter])  # initialize full derivative with respect to all parameters
+        Dpf = np.zeros(
+            [self.dimension, self.nReducedParameter])  # initialize full derivative with respect to all parameters
         Dpf[:, 1:] = fullDf[:, self.nonHillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, 0] = np.einsum('ij->i',
                               fullDf[:, self.hillIndex])  # insert sum of derivatives for identified hill parameters
@@ -71,7 +72,8 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dxdiff(x, *parameter)
         Dpf = np.zeros(
-            2 * [self.dimension] + [self.nReducedParameter])  # initialize full derivative with respect to all parameters
+            2 * [self.dimension] + [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
         Dpf[:, :, 1:] = fullDf[:, :, self.nonHillIndex]  # insert derivatives of non-hill parameters
         Dpf[:, :, 0] = np.einsum('ijk->ij', fullDf[:, :,
                                             self.hillIndex])  # insert sum of derivatives for identified hill parameters
@@ -87,7 +89,8 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().diff2(x, *parameter)
         Dpf = np.zeros(
-            [self.dimension] + 2 * [self.nReducedParameter])  # initialize full derivative with respect to all parameters
+            [self.dimension] + 2 * [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
         Dpf[:, 1:, 1:] = fullDf[np.ix_(np.arange(self.dimension), self.nonHillIndex,
                                        self.nonHillIndex)]  # insert derivatives of non-hill parameters
         Dpf[:, 0, 0] = np.einsum('ijk->i', fullDf[np.ix_(np.arange(self.dimension), self.hillIndex,
@@ -105,7 +108,8 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dx2diff(x, *parameter)
         Dpf = np.zeros(
-            3 * [self.dimension] + [self.nReducedParameter])  # initialize full derivative with respect to all parameters
+            3 * [self.dimension] + [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
         Dpf[:, :, :, 1:] = fullDf[
             np.ix_(np.arange(self.dimension), np.arange(self.dimension), np.arange(self.dimension),
                    self.nonHillIndex)]  # insert derivatives of non-hill parameters
@@ -125,7 +129,8 @@ class ToggleSwitch(HillModel):
 
         fullDf = super().dxdiff2(x, *parameter)
         Dpf = np.zeros(
-            2 * [self.dimension] + 2 * [self.nReducedParameter])  # initialize full derivative with respect to all parameters
+            2 * [self.dimension] + 2 * [
+                self.nReducedParameter])  # initialize full derivative with respect to all parameters
         Dpf[:, :, 1:, 1:] = fullDf[
             np.ix_(np.arange(self.dimension), np.arange(self.dimension), self.nonHillIndex,
                    self.nonHillIndex)]  # insert derivatives of non-hill parameters
@@ -195,7 +200,7 @@ class ToggleSwitch(HillModel):
         while nIter < maxIter and notConverged:
             uNew = Phi(u)
             tol_loc = np.linalg.norm(uNew - u)
-            if nIter>3:
+            if nIter > 3:
                 uveryOld = uOld
             uOld = u
             notConverged = np.linalg.norm(uNew - u) > tol
@@ -208,11 +213,11 @@ class ToggleSwitch(HillModel):
         eq1 = np.array([alpha[0], beta[1]])
         eq2 = np.array([beta[0], alpha[1]])
         rad = self.radii_uniqueness_existence(eq1, *parameter)[0]
-        dist = np.linalg.norm(eq1-eq2)
-        if self.radii_uniqueness_existence(eq1, *parameter)[0] > np.linalg.norm(eq1-eq2):
+        dist = np.linalg.norm(eq1 - eq2)
+        if self.radii_uniqueness_existence(eq1, *parameter)[0] > np.linalg.norm(eq1 - eq2):
             return u0, eq1
         else:
-            if parameter[0] > 75 and (np.linalg.norm(eq1-eq2)) < 10**-9:
+            if parameter[0] > 75 and (np.linalg.norm(eq1 - eq2)) < 10 ** -9:
                 return u0, eq1
         if nIter == maxIter:
             print('\nUh oh. The bootstrap map failed to converge')
@@ -234,7 +239,6 @@ class ToggleSwitch(HillModel):
         y2 = cs2.collections[0].get_paths()[0].vertices[:, 1]
         return x1, y1, x2, y2
 
-
     def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, bootstrap=True):
         """Overloading the HillModel find equilibrium method to use the bootstrap approach for the ToggleSwitch. The output
          is an array whose rows are coordinates of found equilibria for the ToggleSwitch."""
@@ -247,11 +251,11 @@ class ToggleSwitch(HillModel):
             elif is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
                 return eqBound
             else:
-                return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits, eqBound=eqBound)
+                return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits,
+                                               eqBound=eqBound)
 
         else:  # Use the old version inherited from the HillModel class. This should only be used to troubleshoot
             return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
-
 
     def plot_equilibria(self, *parameter, nInitData=10):
         """Find equilibria at given parameter and add to current plot"""
@@ -285,6 +289,7 @@ class ToggleSwitch(HillModel):
         fullParameterVector = self.parse_parameter(*parameter)
         DSGRNParameter = fullParameterVector[[0, 1, 2, 3, 5, 6, 7, 8]]  # remove Hill coefficients from parameter vector
         return 3 * (factor_slice(*DSGRNParameter[[0, 1, 2, 7]]) + 1) - factor_slice(*DSGRNParameter[[4, 5, 6, 3]])
+
 
 if __name__ == "__main__":
     # set some parameters to test with

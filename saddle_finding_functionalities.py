@@ -23,6 +23,7 @@ def count_eq(hillModel, hill, p, gridDensity=5):
         return countVector
     else:
         if issubclass(type(hillModel), ToggleSwitch):
+            # TODO: this should not be necessary (only faster)
             # equilibria counting for the Toggle Switch is done using the bootstrap algorithm
             eqBound = hillModel.bootstrap_enclosure(hill, p)[1]
             if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
