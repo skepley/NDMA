@@ -22,7 +22,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 4 * 10 ** 3  # testing on 3, final run on 4
+n_sample = 4 * 10 ** 4  # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
@@ -30,7 +30,7 @@ except FileNotFoundError:
     n = 100000
     create_dataset_ToggleSwitch(100000, file_name)
 
-file_storing = 'heat_map_verysmall.npz'
+file_storing = 'heat_map.npz'
 
 data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
 a = np.transpose(data_subsample)
@@ -108,7 +108,7 @@ if len(multiple_saddles) > 0:
     dsgrn_plot(multiple_saddles, color='tab:orange', alphaMax=alphaMax)
 if len(bad_parameters) > 0:
     dsgrn_plot(bad_parameters, color='tab:red', alphaMax=alphaMax)
-plt.show()
-#plt.savefig('all_results.pdf')
+#plt.show()
+plt.savefig('all_results.pdf')
 
 print('It is the end!')

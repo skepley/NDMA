@@ -121,4 +121,4 @@ n_saddles = 0
 for data in data_in_region_monostable[:size_dataset, :]:
     saddle_horizontal = search_horizontal_saddles(data, hill)
     n_saddles += saddle_horizontal
-print(n_saddles, 'out of ', size_dataset)
+print(n_saddles, 'detected saddles out of ', size_dataset)
