@@ -69,5 +69,5 @@ f = def_emt_hill_model()
 n_parameters_EMT = 42
 
 final_score, _ = tworegions_dataset(f, best_pair, size_dataset, EMT_network, n_parameters_EMT, file_name)
-print('Datset created with final score of ', final_score)
+print('Dataset created with final score of ', final_score)
 

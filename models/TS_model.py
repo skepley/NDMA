@@ -6,7 +6,10 @@ An implementation of the 2 node Toggle Switch network as a Hill model
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from hill_model import *
+import warnings
+from matplotlib import pyplot as plt
+from hill_model import HillModel, ezcat, is_vector
+import numpy as np
 
 
 class ToggleSwitch(HillModel):

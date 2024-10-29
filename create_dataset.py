@@ -6,20 +6,20 @@ Author: Elena Queirolo
 Created: 1st March 2021
 Modified: 23rd May 2024
 """
-from hill_model import *
+
 import numpy as np
 import random
-# from scipy.stats import multivariate_normal
+import datetime
 from scipy.optimize import minimize
 from datetime import datetime
-import warnings
-from models.TS_model import ToggleSwitch
 import matplotlib.pyplot as plt
 import DSGRN
+import warnings
+
+from models.TS_model import ToggleSwitch
 from DSGRN_functionalities import par_to_region_wrapper, from_string_to_Hill_data, par_to_region, \
     from_region_to_deterministic_point
 from toggle_switch_heat_functionalities import fiber_sampler, parameter_to_DSGRN_coord
-import datetime
 
 
 def oneregion_dataset(f_hill_model, parameter_region, dataset_size: int, network, n_parameters, filename=None,
@@ -356,7 +356,7 @@ def load_dataset(file_name):
     optimal_coef        coefficients of the appropriate distribution that have been used to create the dataset
     """
     dataset = np.load(file_name)
-    return dataset.f.data, dataset.f.parameter_region, dataset.f.optimal_coef
+    return dataset.f.parameters, dataset.f.parameter_region
 
 
 def region_sampler_fisher():
@@ -484,14 +484,14 @@ def DSGRN_parameter_regionTS(parameter):
 
 
 def subsample(file_name, size_subsample):
-    data, regions, coefs = load_dataset(file_name)
-    size_data = np.size(data, 1)
+    data, regions = load_dataset(file_name)
+    size_data = np.size(data, 0)
     if size_subsample > size_data:
         raise ValueError('Cannot ask more samples than the stored ones')
     index_random = np.random.choice(size_data, size=size_subsample, replace=False)
-    data_subsample = data[:, index_random]
+    data_subsample = data[index_random, :]
     region_Subsample = regions[index_random]
-    return data_subsample, region_Subsample, coefs
+    return data_subsample, region_Subsample
 
 
 def region_subsample(file_name, region_number, size_subsample):

@@ -6,6 +6,7 @@
     Email: s.kepley@vu.nl
     Created: 12/8/2021
 """
+from hill_model import find_root
 from models.TS_model import *
 from scipy.linalg import null_space
 import matplotlib.pyplot as plt

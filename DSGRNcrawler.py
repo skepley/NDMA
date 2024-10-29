@@ -1,11 +1,4 @@
-import numpy as np
-import scipy
-import matplotlib.pyplot as plt
-import graphviz
-from create_dataset import create_dataset, distribution_sampler, generate_datafile_from_coefs
-import json
-from DSGRN_functionalities import *
-from models.EMT_model import EMT
+import DSGRN
 
 
 def isFP(morse_node, morse_graph):

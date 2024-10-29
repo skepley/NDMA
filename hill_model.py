@@ -7,7 +7,6 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
 """
 import numpy as np
 import warnings
-import matplotlib.pyplot as plt
 from itertools import product, permutations
 from scipy import optimize, linalg
 from numpy import log
@@ -1616,13 +1615,13 @@ class HillModel:
         #                                                              for x in
         #                                                              X]))  # return equilibria which converged
         if np.size(solns)>0:
-            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits)
-            better_solutions = self.local_equilibrium_search(equilibria, parameter)
+            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits=uniqueRootDigits)
+            better_solutions = self.local_equilibrium_search(equilibria, *parameter)
             # list(filter(lambda root: eq_is_positive(root.x),
             #             [find_root(F, DF, x, diagnose=True)
             #             for x in equilibria]))
-            if better_solutions:
-                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits)
+            if better_solutions.any():
+                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits=uniqueRootDigits)
             else:
                 return None
             return equilibria  # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
