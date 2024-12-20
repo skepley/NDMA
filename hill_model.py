@@ -1752,3 +1752,28 @@ class HillModel:
             equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
 
         return equilibrium, parameter, is_saddle
+
+    def __str__(self):
+        s = ""
+        for i in range(self.dimension):
+            s += "x_" + str(i) +" : "
+            n_inputs = len(self.productionIndex[i])
+            n_terms = 0
+            n_sums = len(self.coordinates[i].productionType)
+            for j in range(n_sums):
+                if (self.coordinates[i].productionType[j])!=1:
+                    s += ' ('
+                for component in self.coordinates[i].productionComponents[j]:
+                    if component.sign != 1:
+                        s += ' -'
+                    else:
+                        s += ' +'
+                    index = self.productionIndex[i][j]
+                    s += ' x_' + str(index)
+                    n_terms += 1
+                if (self.coordinates[i].productionType[j]) != 1:
+                    s += ' )'
+            s += '\n'
+            if n_inputs != n_terms:
+                raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
+        return s
