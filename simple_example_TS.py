@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os.path
 
+from hill_model import HillModel
+from models.EMT_model import def_emt_hill_model
 from saddle_finding_functionalities import count_eq, saddle_node_search
 from saddle_node import SaddleNode
 from models.TS_model import ToggleSwitch
@@ -28,7 +30,7 @@ gridDensity = 5
 parameter = np.array([3,4,5,3,2.4])
 n_eqs = np.empty([1,1])
 for hill in hill_vec:
-    n_eqs = n_eqs.append(count_eq(f, hill, parameter))
+    n_eqs = np.append(n_eqs, count_eq(f, hill, parameter))
 for hill, n_eq in zip(hill_vec, n_eqs):
     print("At Hill coefficient ", hill," we find ", n_eq," equilibria")
 
@@ -38,5 +40,3 @@ if n_eqs[0] != n_eqs[-1]:
     hillRange = [1, 5, 10, 15, 20, 25, 30] # a finer comb o look for the saddle node interval
     SNParameters, badCandidates = saddle_node_search(f, hillRange, parameter, bisectionBool=True)
     print(SNParameters)
-
-
