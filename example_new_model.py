@@ -13,7 +13,7 @@ p4 = np.array([[np.nan, np.nan, np.nan, 3], [np.nan, np.nan, np.nan, 3], [np.nan
 parameter = [p1, p1, p1, p4]
 
 productionSign = [[1], [-1], [1], [1, -1, -1]]
-productionType = [[1], [1], [1], [1, 1, 1]]
+productionType = [[1], [1], [1], [1, 2]]
 productionIndex = [[1], [2], [3], [2, 1, 0]]
 g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
 print('Example model:', g)

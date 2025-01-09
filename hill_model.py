@@ -1759,10 +1759,10 @@ class HillModel:
             s += "x_" + str(i) +" : "
             n_inputs = len(self.productionIndex[i])
             n_terms = 0
-            n_sums = len(self.coordinates[i].productionType)
+            n_sums = np.sum(self.coordinates[i].productionType)
+            if n_sums>1:
+                s += ' ('
             for j in range(n_sums):
-                if (self.coordinates[i].productionType[j])!=1:
-                    s += ' ('
                 for component in self.coordinates[i].productionComponents[j]:
                     if component.sign != 1:
                         s += ' -'
@@ -1771,8 +1771,11 @@ class HillModel:
                     index = self.productionIndex[i][j]
                     s += ' x_' + str(index)
                     n_terms += 1
-                if (self.coordinates[i].productionType[j]) != 1:
-                    s += ' )'
+                if np.sum(self.coordinates[i].productionType[:j+1]) == j+1 and n_sums>1:
+                    if j == n_sums-1:
+                        s += ' )'
+                    else:
+                        s += ' )('
             s += '\n'
             if n_inputs != n_terms:
                 raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
