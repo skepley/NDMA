@@ -15,7 +15,6 @@ import textwrap
 # ignore overflow and division by zero warnings:
 np.seterr(over='ignore', invalid='ignore')
 
-
 def npA(size, dim=2):
     """Return a random square integer matrix of given size for testing numpy functions."""
     A = np.random.randint(1, 10, dim * [size])
@@ -1295,6 +1294,38 @@ class HillCoordinate:
         return [minProduction, maxProduction]
 
 
+def validate_input(gamma, parameter, productionSign, productionType, productionIndex):
+    dim = len(gamma)
+    if len(parameter) != dim:
+        error_string = "The dimension of the system, given by the length of gamma is " + str(dim)
+        error_string += " but the number of equations defined by the parameter vector is " + str(len(parameter))
+        raise ValueError(error_string)
+    for i in range(dim):
+        n_terms_par = len(parameter[i])
+        n_terms_Sign = len(productionSign[i])
+        n_terms_Type = np.sum(productionType[i])
+        n_terms_Index = len(productionIndex[i])
+        if n_terms_par==4 and n_terms_Sign==n_terms_Type and n_terms_Index==n_terms_Type and n_terms_Type == 1:
+            n_terms_par = 1
+        if n_terms_par != n_terms_Sign:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of signs given is " + str(n_terms_Sign))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Index:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of indices given is " + str(n_terms_Index))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Type:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " while the 'type' indicating the products of sums implies " + str(n_terms_Type) + " elements\n")
+            error_string += ('The Hill model type indicates how many elements are summed in each product term, '
+                             'thus [1, 1] indicates the product of two terms, while [1, 2] indicates an equation of '
+                             'the form x_i (x_j + x_k), for i j and k defined in productionIndex and assuming all signs '
+                             'positive')
+            raise ValueError(error_string)
+    return
+
+
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and the state variables influencing
@@ -1314,9 +1345,29 @@ class HillModel:
             productionIndex - A length n list whose i^th element is a length K_i list of global indices for the nonlinear
                 interactions for node i. These are specified in any order as long as it is the same order used for productionSign
                 and the rows of parameter. IMPORTANT: The exception to this occurs if node i has a self edge. In this case i must appear as the first
-                index."""
+                index.
+
+            Example:
+                gamma = [1., 2., 3.]
+                p1 = np.array([1., 2., 3., 4.], dtype=float)
+                parameter = [p1, p1, np.array([p1,p1,p1])]
+
+                productionSign = [[1], [-1], [1, -1, -1]]
+                productionType = [[1], [1], [1, 2]]
+                productionIndex = [[1], [2], [2, 1, 0]]
+                g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+
+            defines the system
+                x_0 :  + x_1
+                x_1 :  - x_2
+                x_2 :  ( + x_2 )( - x_1 - x_0 )
+            where each Hill function has parameters ell = 1.,  delta = 2., theta = 3., HillCoef = 4.
+
+            Any parameter can be replaced by np.nan and be assigned at computation time instead.
+        """
 
         # TODO: Class constructor should not do work!
+        validate_input(gamma, parameter, productionSign, productionType, productionIndex)
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
         self.coordinates = [HillCoordinate(np.squeeze(parameter[j]), productionSign[j],

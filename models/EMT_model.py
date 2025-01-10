@@ -48,7 +48,7 @@ class EMT(HillModel):
         productionSign = [[-1, -1], [-1, -1], [1, -1], [-1], [-1, 1, -1],
                           [-1, -1]]  # length 6 list of production signs for each node
         productionType = [len(sign) * [1] for sign in productionSign]  # all productions are products
-        productionIndex = [[0, 1, 3], [1, 2, 4], [2, 0, 5], [3, 4], [4, 1, 2, 3], [5, 2, 4]]
+        productionIndex = [[1, 3], [2, 4], [0, 5], [4], [1, 2, 3], [2, 4]]
         super().__init__(gamma, parameter, productionSign, productionType,
                          productionIndex)  # define HillModel for toggle switch by inheritance
 
