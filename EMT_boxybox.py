@@ -1,6 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import itertools
+
 from models.EMT_model import def_emt_hill_model
 from saddle_node import SaddleNode
 

@@ -1,13 +1,13 @@
 import numpy as np
+import DSGRN
+
 from hill_model import equilibrium_stability
 from models.EMT_model import def_emt_hill_model
 from create_dataset import from_region_to_deterministic_point, par_to_region_wrapper, \
     generate_data_from_coefs, tworegions_dataset
 from EMT_boxybox import eqs_with_boxyboxEMT, saddle_node_with_boxybox, saddle_node_with_boxybox_THETA
 from DSGRNcrawler import DSGRNcrawler
-import DSGRN
 from saddle_node import SaddleNode
-from hill_model import HillModel
 
 
 np.seterr(over='ignore', invalid='ignore')  # ignore overflow and division by zero warnings:

@@ -4,14 +4,14 @@ The heat map indicates the value of the Hill coefficient in which a saddle node 
 It also consider the parameter projection into [0,3]x[0,3] thanks to the DSGRN region definition
 """
 
-from hill_model import *
-from saddle_finding_functionalities import *
-from toggle_switch_heat_functionalities import *
 import numpy as np
 import matplotlib.pyplot as plt
+import os.path
+
+from saddle_finding_functionalities import count_eq
+from saddle_node import SaddleNode
 from models.TS_model import ToggleSwitch
-import sys
-from create_dataset import *
+from create_dataset import create_dataset_ToggleSwitch, subsample
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -24,13 +24,11 @@ SN = SaddleNode(f)
 # size of the sample
 n_sample = 10 ** 3  # testing on 3, final run on 4
 file_name = 'TS_data_100000.npz'
-try:
-    np.load(file_name)
-except FileNotFoundError:
+if not os.path.isfile(file_name):
     n = 100000
     create_dataset_ToggleSwitch(100000, file_name)
 
-data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
+data_subsample, region_subsample = subsample(file_name, n_sample)
 a = np.transpose(data_subsample)
 
 hill_vec = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 17, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -43,7 +41,7 @@ for hill in hill_vec:
     coherency_R5 = 0
     coherency_donut = 0
     for j in range(n_sample):
-        a_j = a[j, :]
+        a_j = a[:, j]
         region = region_subsample[j]
         n_eqs = count_eq(f, hill, a_j)
         # n_eqs = np.shape(eqs)[0]

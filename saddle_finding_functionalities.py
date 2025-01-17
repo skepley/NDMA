@@ -292,7 +292,7 @@ def find_nearest_row(array2D, value1D):
     return idx
 
 
-def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=False):
+def saddle_node_search(hillModel, hillRange, parameter, ds=0.1, dsMinimum=10**-5, maxIteration=100, gridDensity=5, bisectionBool=False):
     """
     This function takes a Hill model with identified Hill coefficients and searches for saddle node bifurcations with
     respect to the Hill coefficient. The Hill coefficient must have the first parameter index.

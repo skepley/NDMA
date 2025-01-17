@@ -7,7 +7,6 @@ Classes and methods for constructing, evaluating, and doing parameter continuati
 """
 import numpy as np
 import warnings
-import matplotlib.pyplot as plt
 from itertools import product, permutations
 from scipy import optimize, linalg
 from numpy import log
@@ -15,7 +14,6 @@ import textwrap
 
 # ignore overflow and division by zero warnings:
 np.seterr(over='ignore', invalid='ignore')
-
 
 def npA(size, dim=2):
     """Return a random square integer matrix of given size for testing numpy functions."""
@@ -1296,6 +1294,38 @@ class HillCoordinate:
         return [minProduction, maxProduction]
 
 
+def validate_input(gamma, parameter, productionSign, productionType, productionIndex):
+    dim = len(gamma)
+    if len(parameter) != dim:
+        error_string = "The dimension of the system, given by the length of gamma is " + str(dim)
+        error_string += " but the number of equations defined by the parameter vector is " + str(len(parameter))
+        raise ValueError(error_string)
+    for i in range(dim):
+        n_terms_par = len(parameter[i])
+        n_terms_Sign = len(productionSign[i])
+        n_terms_Type = np.sum(productionType[i])
+        n_terms_Index = len(productionIndex[i])
+        if n_terms_par==4 and n_terms_Sign==n_terms_Type and n_terms_Index==n_terms_Type and n_terms_Type == 1:
+            n_terms_par = 1
+        if n_terms_par != n_terms_Sign:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of signs given is " + str(n_terms_Sign))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Index:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of indices given is " + str(n_terms_Index))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Type:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " while the 'type' indicating the products of sums implies " + str(n_terms_Type) + " elements\n")
+            error_string += ('The Hill model type indicates how many elements are summed in each product term, '
+                             'thus [1, 1] indicates the product of two terms, while [1, 2] indicates an equation of '
+                             'the form x_i (x_j + x_k), for i j and k defined in productionIndex and assuming all signs '
+                             'positive')
+            raise ValueError(error_string)
+    return
+
+
 class HillModel:
     """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and the state variables influencing
@@ -1315,9 +1345,29 @@ class HillModel:
             productionIndex - A length n list whose i^th element is a length K_i list of global indices for the nonlinear
                 interactions for node i. These are specified in any order as long as it is the same order used for productionSign
                 and the rows of parameter. IMPORTANT: The exception to this occurs if node i has a self edge. In this case i must appear as the first
-                index."""
+                index.
+
+            Example:
+                gamma = [1., 2., 3.]
+                p1 = np.array([1., 2., 3., 4.], dtype=float)
+                parameter = [p1, p1, np.array([p1,p1,p1])]
+
+                productionSign = [[1], [-1], [1, -1, -1]]
+                productionType = [[1], [1], [1, 2]]
+                productionIndex = [[1], [2], [2, 1, 0]]
+                g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+
+            defines the system
+                x_0 :  + x_1
+                x_1 :  - x_2
+                x_2 :  ( + x_2 )( - x_1 - x_0 )
+            where each Hill function has parameters ell = 1.,  delta = 2., theta = 3., HillCoef = 4.
+
+            Any parameter can be replaced by np.nan and be assigned at computation time instead.
+        """
 
         # TODO: Class constructor should not do work!
+        validate_input(gamma, parameter, productionSign, productionType, productionIndex)
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
         self.coordinates = [HillCoordinate(np.squeeze(parameter[j]), productionSign[j],
@@ -1616,13 +1666,13 @@ class HillModel:
         #                                                              for x in
         #                                                              X]))  # return equilibria which converged
         if np.size(solns)>0:
-            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits)
-            better_solutions = self.local_equilibrium_search(equilibria, parameter)
+            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits=uniqueRootDigits)
+            better_solutions = self.local_equilibrium_search(equilibria, *parameter)
             # list(filter(lambda root: eq_is_positive(root.x),
             #             [find_root(F, DF, x, diagnose=True)
             #             for x in equilibria]))
-            if better_solutions:
-                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits)
+            if better_solutions.any():
+                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits=uniqueRootDigits)
             else:
                 return None
             return equilibria  # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
@@ -1753,3 +1803,31 @@ class HillModel:
             equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
 
         return equilibrium, parameter, is_saddle
+
+    def __str__(self):
+        s = ""
+        for i in range(self.dimension):
+            s += "x_" + str(i) +" : "
+            n_inputs = len(self.productionIndex[i])
+            n_terms = 0
+            n_sums = np.sum(self.coordinates[i].productionType)
+            if n_sums>1:
+                s += ' ('
+            for j in range(n_sums):
+                for component in self.coordinates[i].productionComponents[j]:
+                    if component.sign != 1:
+                        s += ' -'
+                    else:
+                        s += ' +'
+                    index = self.productionIndex[i][j]
+                    s += ' x_' + str(index)
+                    n_terms += 1
+                if np.sum(self.coordinates[i].productionType[:j+1]) == j+1 and n_sums>1:
+                    if j == n_sums-1:
+                        s += ' )'
+                    else:
+                        s += ' )('
+            s += '\n'
+            if n_inputs != n_terms:
+                raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
+        return s
