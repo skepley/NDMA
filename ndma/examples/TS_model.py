@@ -8,8 +8,11 @@ An implementation of the 2 node Toggle Switch network as a Hill model
 """
 import warnings
 from matplotlib import pyplot as plt
-from hill_model import HillModel, ezcat, is_vector
+from ndma.hill_model import ezcat, is_vector
 import numpy as np
+
+from ndma.activation import HillActivation
+from ndma.model import Model
 
 
 class ToggleSwitch(Model):

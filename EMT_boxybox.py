@@ -1,8 +1,8 @@
 import numpy as np
 import itertools
 
-from models.EMT_model import def_emt_hill_model
-from saddle_node import SaddleNode
+from ndma.examples.EMT_model import def_emt_hill_model
+from ndma.bifurcation.saddlenode import SaddleNode
 
 
 f = def_emt_hill_model()

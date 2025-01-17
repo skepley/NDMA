@@ -34,7 +34,7 @@ productionTypes = [[3], [2], [1]]  # all production terms in a single summand
 productionIndex = [[0, 1, 2], [0, 2], [0]]
 parameter = [nan_array(len(productionIndex[idx]), 4) for idx in range(nCoordinate)]
 
-f = Model(gamma, parameter, productionSigns, productionTypes, productionIndex)  # define HillModel
+f = Model(gamma, parameter, productionSigns, productionTypes, productionIndex, HillActivation)  # define HillModel
 # get easy access to Hill productionComponents
 f0 = f.coordinates[0]
 f1 = f.coordinates[1]

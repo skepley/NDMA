@@ -10,7 +10,7 @@ import warnings
 #from models.TS_model import *
 #from saddle_node import *
 from scipy.linalg import null_space
-from models.TS_model import *
+from ndma.examples.TS_model import *
 from warnings import warn
 
 from ndma.hill_model import *

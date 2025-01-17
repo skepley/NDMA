@@ -5,11 +5,12 @@ This child class overwrites all functionalities of the Hill class
 """
 import numpy as np
 
-from hill_model import HillModel, ezcat
-from models.EMT_model import EMT
+from ndma.activation import HillActivation
+from ndma.model.model import Model, ezcat
+from ndma.examples.EMT_model import EMT
 
 
-class HillModelRestricted(HillModel):
+class HillModelRestricted(Model):
     """
     This subclass of the Hill model class automatically sets all Hill Coefficients to be equal, thus decreasing the  parameter space
     It can also be used as template for future applications were other parameters are set to be equal
@@ -33,7 +34,7 @@ class HillModelRestricted(HillModel):
         parameter_with_Hill = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
             np.nan]]).transpose()], axis=1), parameter))
         super().__init__(gamma, parameter_with_Hill, productionSign, productionType,
-                         productionIndex)  # define HillModel for toggle switch by inheritance
+                         productionIndex, activationFunction=HillActivation)  # define HillModel for toggle switch by inheritance
 
         # # Alterations for identifying all Hill coefficients.
         self.hillIndex = self.hill_coefficient_idx()  # indices of Hill coefficient parameters in the full parameter
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     productionSign = [[1], [-1], [1], [1, -1, -1]]
     productionType = [[1], [1], [1], [1, 2]]
     productionIndex = [[1], [2], [3], [2, 1, 0]]
-    g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+    g = Model(gamma, parameter, productionSign, productionType, productionIndex)
     print('Example model:\n', g)
 
     def fill_with_randoms(p):

@@ -6,7 +6,10 @@ An implementation of the 6 node EMT network as a Hill model
     Email: s.kepley@vu.nl
     Created: 1/15/2021
 """
+import numpy as np
 
+from ndma.hill_model import ezcat
+from ndma.activation import HillActivation
 from ndma.model.model import Model
 
 
@@ -24,7 +27,7 @@ def def_emt_hill_model():
     return f_EMT
 
 
-class EMT(HillModel):
+class EMT(Model):
     """Six-dimensional EMT model construction inherited as a HillModel where each node has free Hill coefficients. This
      has a total of 12 edges and 54 parameters. The nodes are ordered as follows:
     0. TGF_beta
@@ -51,7 +54,7 @@ class EMT(HillModel):
         productionType = [len(sign) * [1] for sign in productionSign]  # all productions are products
         productionIndex = [[1, 3], [2, 4], [0, 5], [4], [1, 2, 3], [2, 4]]
         super().__init__(gamma, parameter, productionSign, productionType,
-                         productionIndex)  # define HillModel for toggle switch by inheritance
+                         productionIndex, activationFunction=HillActivation)  # define HillModel for toggle switch by inheritance
 
         # # Alterations for identifying all Hill coefficients.
         self.hillIndex = self.hill_coefficient_idx()  # indices of Hill coefficient parameters in the full parameter

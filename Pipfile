@@ -9,6 +9,7 @@ verify_ssl = true
 scipy = "*"
 matplotlib = '3.5.0'
 dsgrn = "*"
+numpy = "*"
 
 [requires]
 itertools = "*"

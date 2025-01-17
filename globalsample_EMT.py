@@ -10,7 +10,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-from models.EMT_model import *
+from ndma.examples.EMT_model import *
 from saddle_finding_functionalities import *
 from create_dataset import *
 import sys

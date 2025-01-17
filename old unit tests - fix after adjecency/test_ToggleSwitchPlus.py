@@ -8,8 +8,10 @@ Testing functionality for the ToggleSwitch with self edges allowed.
     Email: s.kepley@vu.nl
     Created: 7/9/2020 
 """
-from hill_model import *
-from models.TSPlus_model import ToggleSwitchPlus
+import numpy as np
+
+from ndma.hill_model import ezcat
+from ndma.examples.TSPlus_model import ToggleSwitchPlus
 
 # TESTING FOR TOGGLE SWITCH PLUS
 # ============= set up the toggle switch example to test on =============

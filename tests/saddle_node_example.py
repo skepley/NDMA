@@ -85,8 +85,8 @@ plt.figure()
 f.plot_nullcline(n1Sol, p1)
 plt.title('p = {0}; n = {1}'.format(p1, n1Sol))
 plt.figure()
-#epsilon = 0.01
-#f.plot_nullcline(n1Sol+epsilon, p1)
-#plt.title('p = {0}; n = {1}'.format(p1, n1Sol+epsilon))
+epsilon = 0.01
+f.plot_nullcline(n1Sol+epsilon, p1)
+plt.title('p = {0}; n = {1}'.format(p1, n1Sol+epsilon))
 
 plt.show()

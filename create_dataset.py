@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import DSGRN
 import warnings
 
-from models.TS_model import ToggleSwitch
+from ndma.examples.TS_model import ToggleSwitch
 from DSGRN_functionalities import par_to_region_wrapper, from_string_to_Hill_data, par_to_region, \
     from_region_to_deterministic_point
 from toggle_switch_heat_functionalities import fiber_sampler, parameter_to_DSGRN_coord

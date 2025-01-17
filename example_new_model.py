@@ -1,7 +1,7 @@
 import numpy as np
-from hill_model import HillModel, ezcat
-from hill_model_restricted import HillModelRestricted
-from models.EMT_model import def_emt_hill_model
+from ndma.model.model import Model, ezcat
+from ndma.model.restricted_model import HillModelRestricted
+from ndma.examples.EMT_model import def_emt_hill_model
 
 '''
 This code is an introduction to building your own model and setting parameters.
@@ -38,7 +38,7 @@ parameter = [p1, p1, p1, p4]
 productionSign = [[1], [-1], [1], [1, -1, -1]]
 productionType = [[1], [1], [1], [1, 2]]
 productionIndex = [[1], [2], [3], [2, 1, 0]]
-g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+g = Model(gamma, parameter, productionSign, productionType, productionIndex)
 print('Example model:\n', g)
 
 # test a call
@@ -63,7 +63,7 @@ p1 = np.array([2., np.nan, np.nan, np.nan], dtype=float)
 p4 = np.array([[2.2, np.nan, np.nan, np.nan], [2.3, np.nan, np.nan, np.nan], [2.4, np.nan, np.nan, np.nan]], dtype=float)
 parameter = [p1, p1, p1, p4]
 
-g_fixed_pars = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+g_fixed_pars = Model(gamma, parameter, productionSign, productionType, productionIndex)
 
 # test a call
 x = np.random.random(4)

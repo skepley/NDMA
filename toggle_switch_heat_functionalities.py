@@ -4,7 +4,7 @@ Functionalities for plotting heat maps and contour plots for the Toggle Switch
 import numpy as np
 from matplotlib import pyplot as plt
 
-from hill_model import ezcat, is_vector
+from ndma.hill_model import ezcat, is_vector
 from scipy.interpolate import griddata
 
 

@@ -8,9 +8,12 @@ A description of what the script performs
     email: s.kepley@vu.nl
     Date: 7/14/23; Last revision: 7/14/23
 """
+import warnings
+
 import numpy as np
 from scipy import linalg
 
+from ndma.activation import HillActivation
 from ndma.coordinate import Coordinate
 from ndma.hill_model import ezcat, find_root, is_vector
 
@@ -46,18 +49,49 @@ def verify_call(func):
 
     return func_wrapper
 
+def validate_input(gamma, parameter, productionSign, productionType, productionIndex):
+    dim = len(gamma)
+    if len(parameter) != dim:
+        error_string = "The dimension of the system, given by the length of gamma is " + str(dim)
+        error_string += " but the number of equations defined by the parameter vector is " + str(len(parameter))
+        raise ValueError(error_string)
+    for i in range(dim):
+        n_terms_par = len(parameter[i])
+        n_terms_Sign = len(productionSign[i])
+        n_terms_Type = np.sum(productionType[i])
+        n_terms_Index = len(productionIndex[i])
+        if n_terms_par == 4 and n_terms_Sign == n_terms_Type and n_terms_Index == n_terms_Type and n_terms_Type == 1:
+            n_terms_par = 1
+        if n_terms_par != n_terms_Sign:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of signs given is " + str(n_terms_Sign))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Index:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " terms, while the number of indices given is " + str(n_terms_Index))
+            raise ValueError(error_string)
+        if n_terms_par != n_terms_Type:
+            error_string = ("For equation " + str(i) + " the number of parameters implies " + str(n_terms_par) +
+                            " while the 'type' indicating the products of sums implies " + str(
+                        n_terms_Type) + " elements\n")
+            error_string += ('The Hill model type indicates how many elements are summed in each product term, '
+                             'thus [1, 1] indicates the product of two terms, while [1, 2] indicates an equation of '
+                             'the form x_i (x_j + x_k), for i j and k defined in productionIndex and assuming all signs '
+                             'positive')
+            raise ValueError(error_string)
+    return
 
 class Model:
-    """Define a NDMA model as a vector field describing the derivatives of all state variables. The i^th coordinate
+    """Define a Hill model as a vector field describing the derivatives of all state variables. The i^th coordinate
     describes the derivative of the state variable, x_i, as a function of x_i and the state variables influencing
-    its production nonlinearly represented by an activation function. For this model all activation functions are the same.
-    The vector field is defined coordinate-wise as a vector of Coordinate instances."""
+    its production nonlinearly represented as a HillCoordinate. The vector field is defined coordinate-wise as a vector
+    of HillCoordinate instances."""
 
-    def __init__(self, gamma, productionParameter, productionSign, productionType, productionIndex, activationFunction):
+    def __init__(self, gamma, parameter, productionSign, productionType, productionIndex, activationFunction=HillActivation):
         """Class constructor which has the following syntax:
         INPUTS:
             gamma - A vector in R^n of linear decay rates
-            productionParameter - A length n list of K_i-by-4 parameter arrays
+            parameter - A length n list of K_i-by-4 parameter arrays
                     Note: If K_i = 1 then productionSign[i] should be a vector, not a matrix i.e. it should have shape
                     (4,) as opposed to (1,4). If the latter case then the result will be squeezed since otherwise HillCoordinate
                     will throw an exception during construction of that coordinate.
@@ -67,15 +101,34 @@ class Model:
                 interactions for node i. These are specified in any order as long as it is the same order used for productionSign
                 and the rows of parameter. IMPORTANT: The exception to this occurs if node i has a self edge. In this case i must appear as the first
                 index.
-            activationFunction - The name of the activation function to use for all nonlinear production terms."""
+
+            Example:
+                gamma = [1., 2., 3.]
+                p1 = np.array([1., 2., 3., 4.], dtype=float)
+                parameter = [p1, p1, np.array([p1,p1,p1])]
+
+                productionSign = [[1], [-1], [1, -1, -1]]
+                productionType = [[1], [1], [1, 2]]
+                productionIndex = [[1], [2], [2, 1, 0]]
+                g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+
+            defines the system
+                x_0 :  + x_1
+                x_1 :  - x_2
+                x_2 :  ( + x_2 )( - x_1 - x_0 )
+            where each Hill function has parameters ell = 1.,  delta = 2., theta = 3., HillCoef = 4.
+
+            Any parameter can be replaced by np.nan and be assigned at computation time instead.
+        """
 
         # TODO: Class constructor should not do work!
         self.dimension = len(gamma)  # Dimension of vector field
         coordinateDims = [len(set(productionIndex[j] + [j])) for j in range(self.dimension)]
-        self.coordinates = [Coordinate(gamma[j], np.squeeze(productionParameter[j]), productionSign[j],
+        self.coordinates = [Coordinate(gamma[j], np.squeeze(parameter[j]), productionSign[j],
                                        productionType[j], coordinateDims[j], activationFunction) for j in
                             range(
                                 self.dimension)]  # A list of HillCoordinates specifying each coordinate of the vector field
+
         self.productionIndex = productionIndex  # store the list of global indices which contribute to the production term of each coordinate.
         self.stateIndexByCoordinate = [self.state_variable_selection(idx) for idx in range(self.dimension)]
         # create a list of selections which slice the full state vector into subvectors for passing to evaluation functions of each coordinate.
@@ -83,9 +136,10 @@ class Model:
                                            self.coordinates)  # number of variable parameters by coordinate
         parameterIndexEndpoints = np.insert(np.cumsum(self.nParameterByCoordinate), 0,
                                             0)  # endpoints for concatenated parameter vector by coordinate
-        self.parameterIndexByCoordinate = [list(range(parameterIndexEndpoints[idx], parameterIndexEndpoints[idx + 1]))
-                                           for idx in
-                                           range(self.dimension)]
+        self.parameterIndexByCoordinate = [
+            list(range(parameterIndexEndpoints[idx], parameterIndexEndpoints[idx + 1]))
+            for idx in
+            range(self.dimension)]
         self.nParameter = sum(self.nParameterByCoordinate)  # number of variable parameters for this HillModel
 
     def state_variable_selection(self, idx):
@@ -152,7 +206,8 @@ class Model:
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         return np.array(
-            list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate, parameterByCoordinate)))
+            list(map(lambda f_i, x_i, p_i: f_i(x_i, p_i), self.coordinates, stateByCoordinate,
+                     parameterByCoordinate)))
 
     @verify_call
     def dx(self, x, *parameter):
@@ -178,16 +233,16 @@ class Model:
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:  # return the full derivative wrt all parameters
-            Dpf = np.zeros(
-                [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
-            for (i, f_i) in enumerate(self.coordinates):
-                Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i],
-                                                                                parameterByCoordinate[
-                                                                                    i])  # insert derivative of this coordinate
-            return Dpf
+        Dpf = np.zeros(
+            [self.dimension, self.nParameter])  # initialize Derivative as 2-tensor of size NxM
+        for (i, f_i) in enumerate(self.coordinates):
+            Dpf[np.ix_([i], self.parameterIndexByCoordinate[i])] = f_i.diff(stateByCoordinate[i],
+                                                                            parameterByCoordinate[
+                                                                                i])  # insert derivative of this coordinate
+        if diffIndex is None:
+            return Dpf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(Dpf[:, np.array([diffIndex])])
 
     @verify_call
     def dx2(self, x, *parameter):
@@ -213,15 +268,17 @@ class Model:
 
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
-        if diffIndex is None:  # return the full derivative wrt all parameters
-            Dpxf = np.zeros(2 * [self.dimension] + [self.nParameter])  # initialize Derivative as 3-tensor of size NxNxM
-            for (i, f_i) in enumerate(self.coordinates):
-                Dpxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dxdiff(
-                    stateByCoordinate[i], parameterByCoordinate[
-                        i])  # insert derivative of this coordinate
-            return Dpxf
+        Dpxf = np.zeros(2 * [self.dimension] + [self.nParameter])  # initialize Derivative as 3-tensor of size NxNxM
+        for (i, f_i) in enumerate(self.coordinates):
+            Dpxf[np.ix_([i], self.stateIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.dxdiff(
+                stateByCoordinate[i], parameterByCoordinate[
+                    i])  # insert derivative of this coordinate
+        if diffIndex is None:
+            return Dpxf  # return the full vector of partials
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            return np.squeeze(
+                Dpxf[:, :, np.array([diffIndex])])  # return only columns for the specified subset of partials
+        # this isn't implemented yet
 
     @verify_call
     def diff2(self, x, *parameter, diffIndex=None):
@@ -232,14 +289,17 @@ class Model:
         # unpack state and parameter vectors by component
         stateByCoordinate, parameterByCoordinate = self.unpack_by_coordinate(x, *parameter)
         if diffIndex is None:  # return the full derivative with respect to all state and parameter vectors
-            Dppf = np.zeros([self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 3-tensor of size NxMxM
+            Dppf = np.zeros(
+                [self.dimension] + 2 * [self.nParameter])  # initialize Derivative as 3-tensor of size NxMxM
             for (i, f_i) in enumerate(self.coordinates):
-                Dppf[np.ix_([i], self.parameterIndexByCoordinate[i], self.parameterIndexByCoordinate[i])] = f_i.diff2(
+                Dppf[np.ix_([i], self.parameterIndexByCoordinate[i],
+                            self.parameterIndexByCoordinate[i])] = f_i.diff2(
                     stateByCoordinate[i], parameterByCoordinate[
                         i])  # insert derivative of this coordinate
             return Dppf
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            raise IndexError(
+                'selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     @verify_call
     def dx3(self, x, *parameter):
@@ -275,7 +335,8 @@ class Model:
                                                                                     i])  # insert derivative of this coordinate
             return Dpxxf
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            raise IndexError(
+                'selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     @verify_call
     def dxdiff2(self, x, *parameter, diffIndex=None):
@@ -294,7 +355,8 @@ class Model:
                     stateByCoordinate[i], parameterByCoordinate[i])  # insert derivative of this coordinate
             return Dppxf
         else:
-            raise IndexError('selective differentiation indices is not yet implemented')  # this isn't implemented yet
+            raise IndexError(
+                'selective differentiation indices is not yet implemented')  # this isn't implemented yet
 
     def radii_uniqueness_existence(self, equilibrium, *parameter):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
@@ -317,7 +379,13 @@ class Model:
         A = np.linalg.inv(DF_x)
         Y_bound = np.linalg.norm(A @ F(equilibrium))
         Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
-        Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
+
+        def operator_norm(T):
+            # takes a 3D tensor and returns the operator norm - any size
+            norm_T = np.max(np.max(np.sum(np.abs(D2F_x), axis=2), axis=1), axis=0)
+            return norm_T
+
+        Z2_bound = np.linalg.norm(A) * operator_norm(D2F_x)
         if Z2_bound < 1e-16:
             Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
         delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
@@ -328,7 +396,13 @@ class Model:
         min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
         return max_rad, min_rad
 
-    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=10, eqBound=None):
+    def find_equilibria(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
+        # TODO : refactor to non-deprecated name
+        warnings.warn('DEPRECATED - call global_equilibrium_search instead')
+        return self.global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits,
+                                              eqBound=eqBound)
+
+    def global_equilibrium_search(self, gridDensity, *parameter, uniqueRootDigits=5, eqBound=None):
         """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
         INPUT:
             *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
@@ -337,6 +411,46 @@ class Model:
             eqBound - N-by-2 array of intervals defining a search rectangle. Initial data will be chosen uniformly here. """
 
         # TODO: Include root finding method as kwarg
+        parameterByCoordinate = self.unpack_parameter(
+            self.parse_parameter(*parameter))  # unpack variable parameters by component
+
+        # build a grid of initial data for Newton algorithm
+        if eqBound is None:  # use the trivial equilibrium bounds
+            eqBound = np.array(
+                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
+        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
+        evalGrid = np.meshgrid(*coordinateIntervals)
+        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
+
+        # Apply rootfinding algorithm to each initial condition
+        solns = self.local_equilibrium_search(X, *parameter)
+        # list(
+        # filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
+        #                                                              for x in
+        #                                                              X]))  # return equilibria which converged
+        if np.size(solns) > 0:
+            equilibria = self.remove_doubles(solns, *parameter, uniqueRootDigits=uniqueRootDigits)
+            better_solutions = self.local_equilibrium_search(equilibria, *parameter)
+            # list(filter(lambda root: eq_is_positive(root.x),
+            #             [find_root(F, DF, x, diagnose=True)
+            #             for x in equilibria]))
+            if better_solutions.any():
+                equilibria = self.remove_doubles(better_solutions, *parameter, uniqueRootDigits=uniqueRootDigits)
+            else:
+                return None
+            return equilibria  # np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
+        else:
+            return None
+
+    def local_equilibrium_search(self, eqApprox, *parameter):
+        """Return equilibria for the Hill Model by applying a Newton variant to the approximate equilibrium given.
+        INPUT:
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            eqApprox - list of potential equilibria used as starting point for Newton
+        RETURNS:
+            list of equilibria WITH DOUBLES
+        """
+
         parameterByCoordinate = self.unpack_parameter(
             self.parse_parameter(*parameter))  # unpack variable parameters by component
 
@@ -352,68 +466,134 @@ class Model:
             """Return true if and only if an equlibrium is positive"""
             return np.all(equilibrium > 0)
 
-        # def radii_uniqueness_existence(equilibrium):
-        #     DF_x = DF(equilibrium)
-        #     D2F_x = self.dx2(equilibrium, *parameter)
-        #     A = np.linalg.inv(DF_x)
-        #     Y_bound = np.linalg.norm(A @ F(equilibrium))
-        #     Z0_bound = np.linalg.norm(np.identity(len(equilibrium)) - A @ DF_x)
-        #     Z2_bound = np.linalg.norm(A) * np.linalg.norm(D2F_x)
-        #     if Z2_bound < 1e-16:
-        #         Z2_bound = 1e-8  # in case the Z2 bound is too close to zero, we increase it a bit
-        #     delta = 1 - 4 * (Z0_bound + Y_bound) * Z2_bound
-        #     if delta < 0:
-        #         return 0, 0
-        #     max_rad = (1 + np.sqrt(delta)) / (2 * Z2_bound)
-        #     min_rad = (1 - np.sqrt(delta)) / (2 * Z2_bound)
-        #     return max_rad, min_rad
-
-        # build a grid of initial data for Newton algorithm
-        if eqBound is None:  # use the trivial equilibrium bounds
-            eqBound = np.array(
-                list(map(lambda f_i, parm: f_i.eq_interval(parm), self.coordinates, parameterByCoordinate)))
-        coordinateIntervals = [np.linspace(*interval, num=gridDensity) for interval in eqBound]
-        evalGrid = np.meshgrid(*coordinateIntervals)
-        X = np.column_stack([G_i.flatten() for G_i in evalGrid])
-
         # Apply rootfinding algorithm to each initial condition
         solns = list(
             filter(lambda root: root.success and eq_is_positive(root.x), [find_root(F, DF, x, diagnose=True)
                                                                           for x in
-                                                                          X]))  # return equilibria which converged
-        if solns:
-            equilibria = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
-            equilibria = np.unique(np.round(equilibria, uniqueRootDigits), axis=0)  # remove duplicates
-            # equilibria = np.unique(np.round(equilibria/10**np.ceil(log(equilibria)),
-            #                                uniqueRootDigits)*10**np.ceil(log(equilibria)), axis=0)
+                                                                          eqApprox]))
 
-            if len(equilibria) > 1:
-                all_equilibria = equilibria
-                radii = np.zeros(len(all_equilibria))
-                unique_equilibria = all_equilibria
-                for i in range(len(all_equilibria)):
-                    equilibrium = all_equilibria[i]
-                    max_rad, min_rad = self.radii_uniqueness_existence(equilibrium, *parameter)
-                    radii[i] = max_rad
+        solutions = np.row_stack([root.x for root in solns])  # extra equilibria as vectors in R^n
+        # return equilibria which converged
+        return solutions
 
-                radii2 = radii
-                for i in range(len(all_equilibria)):
-                    equilibrium1 = all_equilibria[i, :]
-                    radius1 = radii[i]
-                    j = i + 1
-                    while j < len(radii2):
-                        equilibrium2 = unique_equilibria[j, :]
-                        radius2 = radii2[j]
-                        if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
-                            # remove one of the two from
-                            unique_equilibria = np.delete(unique_equilibria, j, 0)
-                            radii2 = np.delete(radii2, j, 0)
-                        else:
-                            j = j + 1
-                equilibria = unique_equilibria
-            return np.row_stack([find_root(F, DF, x) for x in equilibria])  # Iterate Newton again to regain lost digits
+    def remove_doubles(self, solutions, *parameter, uniqueRootDigits=5):
+        """
+        for a list of equilibria, it returns a smaller list eliminating all doubles - it uses a comination
+        of radii polynomial and considering only up to a finite number of relevant digits
+        """
+        equilibria_pruned = np.unique(np.round(solutions, uniqueRootDigits), axis=0)  # remove duplicates
+        # equilibria_pruned = np.unique(np.round(equilibria_pruned/10**np.ceil(log(equilibria_pruned)),
+        #                                uniqueRootDigits)*10**np.ceil(log(equilibria_pruned)), axis=0)
+
+        if len(equilibria_pruned) > 1:
+            all_equilibria = equilibria_pruned
+            radii = np.zeros(len(all_equilibria))
+            unique_equilibria = all_equilibria
+            for i in range(len(all_equilibria)):
+                equilibrium = all_equilibria[i]
+                max_rad, min_rad = self.radii_uniqueness_existence(equilibrium, *parameter)
+                radii[i] = max_rad
+
+            radii2 = radii
+            for i in range(len(all_equilibria)):
+                equilibrium1 = all_equilibria[i, :]
+                radius1 = radii[i]
+                j = i + 1
+                while j < len(radii2):
+                    equilibrium2 = unique_equilibria[j, :]
+                    radius2 = radii2[j]
+                    if np.linalg.norm(equilibrium1 - equilibrium2) < np.maximum(radius1, radius2):
+                        # remove one of the two from
+                        unique_equilibria = np.delete(unique_equilibria, j, 0)
+                        radii2 = np.delete(radii2, j, 0)
+                    else:
+                        j = j + 1
+            equilibria_pruned = unique_equilibria
+        return equilibria_pruned
+
+    @verify_call
+    def saddle_though_arc_length_cont(self, equilibrium, parameter, parameter_bound):
+        """Return equilibria for the Hill Model by uniformly sampling for initial conditions and iterating a Newton variant.
+        INPUT:
+            *parameter - Evaluations for variable parameters to use for evaluating the root finding algorithm
+            gridDensity - density to sample in each dimension.
+            uniqueRootDigits - Number of digits to use for distinguishing between floats.
+            eqBound - N-by-2 array of intervals defining a search rectangle. Initial data will be chosen uniformly here. """
+
+        def F(x, param):
+            """Fix parameter values in the zero finding map"""
+            return self.__call__(x, param)
+
+        def DF(x, param):
+            """Fix parameter values in the zero finding map derivative"""
+            return self.dx(x, param)
+
+        def D_lambda_F(x, param):
+            return self.diff(x, param)
+
+        def Jac(x, param):
+            return np.array([DF(x, param), D_lambda_F(x, param)])
+
+        def Newton_loc(x, param):
+            iter = 0
+            while np.linalg.norm(F(x, param)) < 10 ** -14 and iter < 20:
+                iter = iter + 1
+                step = np.linalg.solve(DF(x, param), F(x, param))
+                x = x - step[:-1]
+                param = param - step[-1]
+            return x, param
+
+        def arc_length_step(x, param, direction):
+            step_size = 10 ** -6
+            tangent = linalg.null_space(Jac(x, param))
+            if tangent[-1] * direction < 0:
+                tangent = -1 * tangent
+            new_x = x + step_size * tangent[:-1]
+            new_par = param + step_size * tangent[-1]
+            [x, param] = Newton_loc(new_x, new_par)
+            if np.abs(np.log(np.linalg.det(DF(x, param)))) > 10 and np.linalg.norm(D_lambda_F(x, param)) > 0.9:
+                is_saddle = True
+            else:
+                is_saddle = False
+            return x, param, is_saddle
+
+        if parameter < parameter_bound:
+            direction = +1
         else:
-            return None
+            direction = -1
+        is_saddle = False
+        while not is_saddle and (parameter - parameter_bound) * direction < 0:
+            equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
+
+        return equilibrium, parameter, is_saddle
+
+    def __str__(self):
+        s = ""
+        for i in range(self.dimension):
+            s += "x_" + str(i) + " : "
+            n_inputs = len(self.productionIndex[i])
+            n_terms = 0
+            n_sums = np.sum(self.coordinates[i].productionType)
+            if n_sums > 1:
+                s += ' ('
+            for j in range(n_sums):
+                for component in self.coordinates[i].productionComponents[j]:
+                    if component.sign != 1:
+                        s += ' -'
+                    else:
+                        s += ' +'
+                    index = self.productionIndex[i][j]
+                    s += ' x_' + str(index)
+                    n_terms += 1
+                if np.sum(self.coordinates[i].productionType[:j + 1]) == j + 1 and n_sums > 1:
+                    if j == n_sums - 1:
+                        s += ' )'
+                    else:
+                        s += ' )('
+            s += '\n'
+            if n_inputs != n_terms:
+                raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
+        return s
 
     @verify_call
     def saddle_though_arc_length_cont(self, equilibrium, parameter, parameter_bound):

@@ -8,7 +8,7 @@ PLot the hysteresis figure from the Toggle Switch section of the paper.
     email: s.kepley@vu.nl
     Date: 3/22/22; Last revision: 3/22/22
 """
-from models.TS_model import *
+from ndma.examples.TS_model import *
 import matplotlib.pyplot as plt
 from saddle_finding_functionalities import *
 

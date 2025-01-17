@@ -13,8 +13,10 @@ Optional file header info (to give more details about the function than in the H
     Email: s.kepley@vu.nl
     Created: 7/20/2020 
 """
-from hill_model import *
-from models.Network12_model import Network12
+import numpy as np
+
+from ndma.hill_model import ezcat
+from ndma.examples.Network12_model import Network12
 
 # ============= set up the a Network12 instance =============
 nCoordinate = 3

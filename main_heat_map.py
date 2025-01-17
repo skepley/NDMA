@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 import sys
 
 from saddle_finding_functionalities import saddle_node_search
-from saddle_node import SaddleNode
+from ndma.bifurcation.saddlenode import SaddleNode
 from toggle_switch_heat_functionalities import parameter_to_alpha_beta, parameter_to_DSGRN_coord, dsgrn_heat_plot, \
     dsgrn_plot
-from models.TS_model import ToggleSwitch
+from ndma.examples.TS_model import ToggleSwitch
 from create_dataset import create_dataset_ToggleSwitch, subsample
 
 # define the saddle node problem for the toggle switch

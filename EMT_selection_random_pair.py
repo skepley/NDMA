@@ -2,8 +2,8 @@ import numpy as np
 import DSGRN
 import random
 
-from hill_model import equilibrium_stability
-from models.EMT_model import def_emt_hill_model
+from ndma.hill_model import equilibrium_stability
+from ndma.examples.EMT_model import def_emt_hill_model
 from create_dataset import from_region_to_deterministic_point, par_to_region_wrapper, \
     generate_data_from_coefs, tworegions_dataset
 from EMT_boxybox import eqs_with_boxyboxEMT

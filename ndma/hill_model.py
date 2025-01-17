@@ -89,3 +89,11 @@ def full_newton(f, Df, x0, maxDefect=1e-13):
         else:
             print('Newton failed to converge')
             return np.nan
+
+
+def equilibrium_stability(hillmodel, equilibrium, *parameter):
+    Jac = hillmodel.dx(equilibrium, *parameter)
+    eigs = np.linalg.eig(Jac)[0]
+    if all(np.real(eigs) < 0):
+        return True
+    return False

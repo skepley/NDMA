@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import os.path
 
 from saddle_finding_functionalities import count_eq
-from saddle_node import SaddleNode
-from models.TS_model import ToggleSwitch
+from ndma.bifurcation.saddlenode import SaddleNode
+from ndma.examples.TS_model import ToggleSwitch
 from create_dataset import create_dataset_ToggleSwitch, subsample
 
 # define the saddle node problem for the toggle switch

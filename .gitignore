@@ -8,4 +8,6 @@ __pycache__/
 
 *.png
 
+
 Pipfile.lock
+/venv

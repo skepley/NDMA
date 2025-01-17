@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from hill_model import is_vector
+from ndma.hill_model import is_vector
 from saddle_finding_functionalities import count_eq
-from models.TS_model import ToggleSwitch
+from ndma.examples.TS_model import ToggleSwitch
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
