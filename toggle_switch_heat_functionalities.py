@@ -1,16 +1,13 @@
 """
 Functionalities for plotting heat maps and contour plots for the Toggle Switch
 """
-import matplotlib.pyplot as plt
-import warnings
+import numpy as np
+from matplotlib import pyplot as plt
 
-warnings.simplefilter('once', UserWarning)
-
-from ndma.hill_model import *
+from hill_model import ezcat, is_vector
 from scipy.interpolate import griddata
 
 
-# EQ: I don't think we should ever use the sampler, and if we do we should change it to create_dataset
 def sampler():
     """Sample parameters for the toggle switch other than the hill coefficient. This is a nondimensionalized sampler
      so it assumes that theta_1 = theta_2 = gamma_1 = 1 and returns a vector in R^5 of the form:

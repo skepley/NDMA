@@ -4,12 +4,16 @@ The heat map indicates the value of the Hill coefficient in which a saddle node 
 It also consider the parameter projection into [0,3]x[0,3] thanks to the DSGRN region definition
 """
 
-from saddle_finding_functionalities import *
-from ndma.examples.TS_model import ToggleSwitch
-from ndma.bifurcation.saddlenode import SaddleNode
+import numpy as np
 import matplotlib.pyplot as plt
 import sys
-from create_dataset import *
+
+from saddle_finding_functionalities import saddle_node_search
+from saddle_node import SaddleNode
+from toggle_switch_heat_functionalities import parameter_to_alpha_beta, parameter_to_DSGRN_coord, dsgrn_heat_plot, \
+    dsgrn_plot
+from models.TS_model import ToggleSwitch
+from create_dataset import create_dataset_ToggleSwitch, subsample
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -20,18 +24,19 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 10 ** 4
-file_name = 'TS_data_1000000.npz'
+n_sample = 4 * 10 ** 4  # testing on 3, final run on 4
+file_name = 'TS_data_100000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
     n = 1000000
     TS_region(n, file_name)
 
-file_storing = 'heat_map.npz'
+file_storing = 'heat_map_2024.npz'
 
-data_subsample, region_subsample, coefs = subsample(file_name, n_sample)
-a = np.transpose(data_subsample)
+data_subsample, region_subsample = subsample(file_name, n_sample)
+# a = np.transpose(data_subsample)
+a = data_subsample
 u, v = parameter_to_DSGRN_coord(a)
 
 
@@ -52,7 +57,8 @@ for j in range(n_sample):  # range(n_sample):
     a_j = a[j, :]
     ds = 0.01
     dsMinimum = 0.005
-    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80, 100], a_j, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=True)
+    SNParameters, badCandidates = saddle_node_search(f, [1, 5, 10, 40, 80], a_j, ds, dsMinimum, maxIteration=100,
+                                                     gridDensity=5, bisectionBool=True)
     if SNParameters and SNParameters != 0:
         for k in range(len(SNParameters)):
             # print('Saddle detected')
@@ -73,6 +79,8 @@ for j in range(n_sample):  # range(n_sample):
     if SNParameters == 0 and badCandidates == 0:
         boring_parameters = np.append(boring_parameters, [a_j], axis=0)
 
+'''
+# uncomment to save the results
 np.savez('heat_map_data',
          u=u, v=v, a=a, parameter_full=parameter_full, lowest_hill=lowest_hill, bad_parameters=bad_parameters,
          bad_candidates=bad_candidates, boring_parameters=boring_parameters, n_sample=n_sample,
@@ -86,6 +94,7 @@ n_sample = data.f.n_sample
 parameter_full = data.f.parameter_full
 lowest_hill = data.f.lowest_hill
 multiple_saddles = data.f.multiple_saddles
+'''
 
 print('\nNumber of bad candidates', len(bad_parameters), 'out of ', n_sample)
 print('Number of boring candidates', len(boring_parameters), 'out of ', n_sample)
@@ -105,6 +114,7 @@ if len(multiple_saddles) > 0:
     dsgrn_plot(multiple_saddles, color='tab:orange', alphaMax=alphaMax)
 if len(bad_parameters) > 0:
     dsgrn_plot(bad_parameters, color='tab:red', alphaMax=alphaMax)
+#plt.show()
 plt.savefig('all_results.pdf')
 
 print('It is the end!')

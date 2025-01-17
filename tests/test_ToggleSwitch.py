@@ -41,8 +41,40 @@ f1p = ezcat(p[:4], hill)  # parameters for f1 and f2 function calls
 f2p = ezcat(p[4:], hill)
 H1p = f1p[1:]  # parameters for H1 and H2 function calls
 H2p = f2p[1:]
-print(f(x, hill, p))
-print(f.diff(x, hill, p, diffIndex=0))
+print(p)
+print('f=\n', f(x, hill, p))
+print('diff =\n', f.diff(x, hill, p, diffIndex=0))
+print('diff =\n', f.diff(x, hill, p))
+print('dx =\n', f.dx(x, hill, p))
+print('dx2 =\n', f.dx2(x, hill, p))
 eq = f.find_equilibria(10, hill, p)
+print('eq=\n', eq)
+
+'''
+should be
+
+f=
+ [-0.5        -0.58914356]
+diff =
+ [ 0.         -0.31043881]
+diff =
+ [[ 0.         -4.          1.          0.5         1.70833333  0.
+   0.          0.          0.        ]
+ [-0.31043881  0.          0.          0.          0.         -3.
+   1.          0.23514274  1.47477518]]
+dx =
+ [[-1.         -1.70833333]
+ [-1.10608138 -1.        ]]
+dx2 =
+ [[[0.         0.        ]
+  [0.         0.56944444]]
+ [[0.8770754  0.        ]
+  [0.         0.        ]]]
+eq=
+ [[1.16100039 6.88005099]
+ [3.58500776 2.9506309 ]
+ [5.80337075 1.37597185]]
+'''
+
 f.plot_nullcline(hill, p)
 plt.show()

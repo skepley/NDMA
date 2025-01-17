@@ -11,4 +11,5 @@ matplotlib = '3.5.0'
 dsgrn = "*"
 
 [requires]
+itertools = "*"
 python_version = "3.9"

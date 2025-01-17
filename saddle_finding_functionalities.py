@@ -5,11 +5,13 @@ first variable parameter in the Hill model.
 
 Main function: saddle_node_search
 """
+import warnings
 
 #from models.TS_model import *
 #from saddle_node import *
 from scipy.linalg import null_space
-#from models.TS_model import *
+from models.TS_model import *
+from warnings import warn
 
 from ndma.hill_model import *
 from ndma.examples.TS_model import ToggleSwitch
@@ -53,6 +55,7 @@ def count_eq(hillModel, hill, p, gridDensity=5):
         return countVector
     else:
         if issubclass(type(hillModel), ToggleSwitch):
+            # TODO: this should not be necessary (only faster)
             # equilibria counting for the Toggle Switch is done using the bootstrap algorithm
             eqBound = hillModel.bootstrap_enclosure(hill, p)[1]
             if is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
@@ -70,12 +73,12 @@ def count_eq(hillModel, hill, p, gridDensity=5):
                     return len(equilibria)
 
 
-def count_eq_with_eq(hillModel, hill, p, gridDensity=5):
+def count_equilibria(hillModel, hill, p, gridDensity=5):
     """Count the number of equilibria found for a Hill Model with identified Hill coefficients at a given parameter
     of the form (hill, p)."""
 
-    if is_vector(hill):  # vectorize function call to compute equilibria count for a vetor of Hill Coefficients
-        countVector = [hillModel.count_eq(hill_j, p, gridDensity=gridDensity) for hill_j in hill]
+    if is_vector(hill):  # vectorize function call to compute equilibria count for a vector of Hill Coefficients
+        countVector = [count_equilibria(hill_j, p, gridDensity=gridDensity) for hill_j in hill]
         return countVector
     else:
         if issubclass(type(hillModel), ToggleSwitch):
@@ -89,6 +92,8 @@ def count_eq_with_eq(hillModel, hill, p, gridDensity=5):
             equilibria = hillModel.find_equilibria(gridDensity, hill, p)
             if is_vector(equilibria):
                 return 1, equilibria
+            elif equilibria is None:
+                return 0, None
             else:
                 return len(equilibria), equilibria
 
@@ -261,13 +266,13 @@ def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
     if n_steps == 0:
         n_steps = 1
     SN = SaddleNode(hillModel)
-    nEq0, Eq0 = count_eq_with_eq(hillModel, hill0, p, gridDensity)
-    nEq1, Eq1 = count_eq_with_eq(hillModel, hill1, p, gridDensity)
+    nEq0, Eq0 = count_equilibria(hillModel, hill0, p, gridDensity)
+    nEq1, Eq1 = count_equilibria(hillModel, hill1, p, gridDensity)
     if nEq0 == nEq1:
         print('problem')
     for i in range(n_steps):
         hill_middle = (hill0 + hill1) / 2
-        nEqmiddle, EqMiddle = count_eq_with_eq(hillModel, hill_middle, p, gridDensity)
+        nEqmiddle, EqMiddle = count_equilibria(hillModel, hill_middle, p, gridDensity)
         if nEqmiddle == nEq0:
             hill0 = hill_middle
             nEq0 = nEqmiddle
@@ -282,7 +287,10 @@ def bisection(hillModel, hill0, hill1, p, n_steps=5, gridDensity=5):
         hill = hill0
     else:
         hill = hill1
-    eq = from_eqs_select_saddle_eq(Eq0, Eq1)
+    try:
+        eq = from_eqs_select_saddle_eq(Eq0, Eq1)
+    except:
+        warn('\nproblem  in bisection: probably no equilibrium found for a parameter value (at least one equilibrium needed for continuation)\n')
     SNB = SN.find_saddle_node(0, hill, p, equilibria=eq)
     if len(SNB) > 0:
         return eq, SNB[0]
@@ -316,7 +324,7 @@ def find_nearest_row(array2D, value1D):
     return idx
 
 
-def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIteration=100, gridDensity=5, bisectionBool=False):
+def saddle_node_search(hillModel, hillRange, parameter, ds=0.1, dsMinimum=10**-5, maxIteration=100, gridDensity=5, bisectionBool=False):
     """
     This function takes a Hill model with identified Hill coefficients and searches for saddle node bifurcations with
     respect to the Hill coefficient. The Hill coefficient must have the first parameter index.
@@ -344,7 +352,7 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
     if len(candidateIntervals) == 0:  # signature of monostability
         return 0, 0 # TODO: THIS IS HORRIBLE!!!
     else:
-        badCandidates = []  # list for parameters which pass the candidate check but fail to find a saddle node
+        unknownBifurcation = []  # list for parameters which pass the candidate check but fail to find a saddle node
         SNParameters = []
         for interval in candidateIntervals:
             if bisectionBool:
@@ -355,9 +363,9 @@ def saddle_node_search(hillModel, hillRange, parameter, ds, dsMinimum, maxIterat
             if SNB is not None:
                 SNParameters.append(SNB)
             else:
-                badCandidates.append((parameter, interval))
+                unknownBifurcation.append((parameter, interval))
 
-        return SNParameters, badCandidates
+        return SNParameters, unknownBifurcation
 
 
 if __name__ == "__main__":

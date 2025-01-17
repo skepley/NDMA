@@ -6,8 +6,4 @@ __pycache__/
 
 *.pdf
 
-ndma/parameter_generation/fixed_alphaMax.png
-
-ndma/parameter_generation/None_alphaMax.png
-
-nullclines.png
+*.png

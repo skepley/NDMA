@@ -1,56 +1,38 @@
 """
-An implementation of the 6 node EMT network as a Hill model
-    Other files required: hill_model.py
+This class restricts the Hill model class to the case in which all Hill coefficients are equal.
 
-    Author: Shane Kepley
-    Email: s.kepley@vu.nl
-    Created: 1/15/2021
+This child class overwrites all functionalities of the Hill class
 """
+import numpy as np
 
-from ndma.model.model import Model
+from hill_model import HillModel, ezcat
+from models.EMT_model import EMT
 
 
-def def_emt_hill_model():
+class HillModelRestricted(HillModel):
     """
-    returns an instance of the Hill model class describing the EMT model such that all parameters are set as variable
-    and the hill coefficient is unified
+    This subclass of the Hill model class automatically sets all Hill Coefficients to be equal, thus decreasing the  parameter space
+    It can also be used as template for future applications were other parameters are set to be equal
     """
-    # define the EMT hill model
-    gammaVar_EMT = np.array(6 * [np.nan])  # set all decay rates as variables
-    edgeCounts_EMT = [2, 2, 2, 1, 3, 2]
-    parameterVar_EMT = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts_EMT]
-    # set all production parameters as variable
-    f_EMT = EMT(gammaVar_EMT, parameterVar_EMT)
-    return f_EMT
 
-
-class EMT(HillModel):
-    """Six-dimensional EMT model construction inherited as a HillModel where each node has free Hill coefficients. This
-     has a total of 12 edges and 54 parameters. The nodes are ordered as follows:
-    0. TGF_beta
-    1. miR200
-    2. Snail1
-    3. Ovol2
-    4. Zeb1
-    5. miR34a"""
-
-    def __init__(self, gamma, parameter):
+    def __init__(self, gamma, parameter, productionSign, productionType, productionIndex):
         """Class constructor which has the following syntax:
         INPUTS:
-            gamma - A vector in R^6 of linear decay rates or NaN if decays are variable parameters.
-            parameter - A length-6 list of parameter arrays of size K_i-by-4 where K_i is the number of incoming edges to
-             node i. Each row of a parameter array has the form (ell, delta, theta, hill)."""
-
-        # TODO: The productionIndex specified here is wrong. It should only include nonlinear global indices.
-
-        parameter = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
-            np.nan]]).transpose()], axis=1), parameter))  # Insert a nan value into the Hill coefficient spot of the
-        # HillComponent parameter list associated to every edge
-        productionSign = [[-1, -1], [-1, -1], [1, -1], [-1], [-1, 1, -1],
-                          [-1, -1]]  # length 6 list of production signs for each node
-        productionType = [len(sign) * [1] for sign in productionSign]  # all productions are products
-        productionIndex = [[1, 3], [2, 4], [0, 5], [4], [1, 2, 3], [2, 4]]
-        super().__init__(gamma, parameter, productionSign, productionType,
+            gamma - A vector in R^n of linear decay rates
+            parameter - A length n list of K_i-by-3 parameter arrays
+                    Note: If K_i = 1 then productionSign[i] should be a vector, not a matrix i.e. it should have shape
+                    (3,) as opposed to (1,3). If the latter case then the result will be squeezed since otherwise HillCoordinate
+                    will throw an exception during construction of that coordinate.
+            productionSign - A length n list of lists in F_2^{K_i}
+            productionType - A length n list of length q_i lists describing an integer partitions of K_i
+            productionIndex - A length n list whose i^th element is a length K_i list of global indices for the nonlinear
+                interactions for node i. These are specified in any order as long as it is the same order used for productionSign
+                and the rows of parameter. IMPORTANT: The exception to this occurs if node i has a self edge. In this case i must appear as the first
+                index.
+"""
+        parameter_with_Hill = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
+            np.nan]]).transpose()], axis=1), parameter))
+        super().__init__(gamma, parameter_with_Hill, productionSign, productionType,
                          productionIndex)  # define HillModel for toggle switch by inheritance
 
         # # Alterations for identifying all Hill coefficients.
@@ -58,10 +40,11 @@ class EMT(HillModel):
         # vector
         self.nonHillIndex = np.array([idx for idx in range(self.nParameter) if
                                       idx not in self.hillIndex])  # indices of non Hill coefficient variable parameters in the full vector
-        self.hillInsertionIndex = self.hillIndex - np.array(range(12))
-        self.nReducedParameter = self.nParameter - 11  # adjust variable parameter count by 11 to account for the 12
-        # identified Hill
-        # coefficients.
+        n_terms = sum([len(productionSign[i]) for i in range(len(gamma))])
+        self.hillInsertionIndex = self.hillIndex - np.array(range(n_terms))
+        self.nReducedParameter = self.nParameter - (n_terms - 1)
+        # adjust variable parameter count by the number of Hill coefficients detected to account for the
+        # identified Hill coefficients.
 
     def hill_coefficient_idx(self):
         """Compute and return the variable parameter indices which correspond to Hill coefficient parameters"""
@@ -86,7 +69,7 @@ class EMT(HillModel):
 
         INPUT: parameter is an arbitrary number of inputs which must concatenate to the ordered parameter vector with hill as first component.
             Example: parameter = (hill, p) with p in R^{M-1}
-        OUTPUT: A vector of size M+12 where the value of hill has been inserted into all 12 HillCoefficient parameter locations."""
+        OUTPUT: A vector of size M+n_hill where the value of hill has been inserted into all HillCoefficient parameter locations."""
         parameterVector = ezcat(
             *parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
         hill, p = parameterVector[0], parameterVector[1:]
@@ -183,24 +166,41 @@ class EMT(HillModel):
 
 
 if __name__ == "__main__":
-    # set some parameters to test with
-    gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
-    edgeCounts = [2, 2, 2, 1, 3, 2]
-    parameterVar = [np.array([[np.nan for j in range(3)] for k in range(nEdge)]) for nEdge in edgeCounts]
-
-    f = EMT(gammaVar, parameterVar)
-    # SNB = SaddleNode(f)
-    #
-    gammaValues = np.array([j for j in range(1, 7)])
-    parmValues = [np.random.rand(*np.shape(parameterVar[node])) for node in range(6)]
-    x = np.random.rand(6)
-    p = ezcat(*[ezcat(ezcat(tup[0], tup[1].flatten())) for tup in
-                zip(gammaValues, parmValues)])  # this only works when all parameters are variable
     hill = 4
-    #
-    print(np.shape(f(x, hill, p)))
-    print(np.shape(f.dx(x, hill, p)))
-    print(np.shape(f.diff(x, hill, p)))
-    print(np.shape(f.dx2(x, hill, p)))
-    print(np.shape(f.dxdiff(x, hill, p)))
-    print(np.shape(f.diff2(x, hill, p)))
+    gamma = [np.nan, np.nan, np.nan, np.nan]
+    p1 = np.array([np.nan, np.nan, np.nan, np.nan], dtype=float)
+    p2 = np.array([np.nan, np.nan, np.nan, np.nan], dtype=float)
+    p4 = np.array(
+        [[np.nan, np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan, np.nan]],
+        dtype=float)
+    parameter = [p1, p1, p1, p4]
+
+    productionSign = [[1], [-1], [1], [1, -1, -1]]
+    productionType = [[1], [1], [1], [1, 2]]
+    productionIndex = [[1], [2], [3], [2, 1, 0]]
+    g = HillModel(gamma, parameter, productionSign, productionType, productionIndex)
+    print('Example model:\n', g)
+
+    def fill_with_randoms(p):
+        y = p
+        for i in range(len(p)):
+            for j in range(len(p[i])):
+                y[i][j] = np.random.rand()
+        return y
+
+    x = np.random.random(4)
+    pars = np.random.random(28)
+    index_list = [4, 9, 14, 19, 23, 27]  # 4 is the number of gamma parameters
+    for i in index_list:
+        pars[i] = hill
+    print('full model: ', g(x, pars))
+
+    p1 = np.array([[np.nan, np.nan, np.nan]], dtype=float)
+    p4 = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]], dtype=float)
+    parameter_small = [p1, p1, p1, p4]
+    g_tilde = HillModelRestricted(gamma, parameter_small, productionSign, productionType, productionIndex)
+    pars_small = np.delete(pars, index_list, axis=0)
+    g_tilde(x, hill, pars_small)
+
+    print('difference between full model and identified Hill coefs = ',
+          np.linalg.norm(g(x, pars) - g_tilde(x, hill, pars_small)))

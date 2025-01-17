@@ -6,10 +6,10 @@ An implementation of the 2 node Toggle Switch network as a Hill model
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from ndma.hill_model import *
-from ndma.model.model import Model
-import matplotlib.pyplot as plt
-from ndma.activation.hill import HillActivation
+import warnings
+from matplotlib import pyplot as plt
+from hill_model import HillModel, ezcat, is_vector
+import numpy as np
 
 
 class ToggleSwitch(Model):
@@ -235,17 +235,11 @@ class ToggleSwitch(Model):
         p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
         X1, X2 = np.meshgrid(np.linspace(*domainBounds[0], nNodes), np.linspace(*domainBounds[1], nNodes))
         flattenNodes = np.array([np.ravel(X1), np.ravel(X2)]).T
-        Z1 = np.reshape(np.array(list(map(lambda x: self.coordinates[0](x, p1), flattenNodes))),
-                        2 * [nNodes])
-
-        #  Z2 is called with flattenNodes[:, ::-1] since the convention after refactoring is that a HillCoordinate must be called
-        # with its own x coordinate index first. So H_1(x1, x2) is correct but H_2(x1, x2) should be H_2(x2, x_1).
-        Z2 = np.reshape(np.array(list(map(lambda x: self.coordinates[1](x, p2), flattenNodes[:, ::-1]))),
-                        2 * [nNodes])
-        # cs1 = ax.contour(X1, X2, Z1, [0], colors='g', alpha=0)
-        # cs2 = ax.contour(X1, X2, Z2, [0], colors='r', alpha=0)
-        cs1 = ax.contour(X1, X2, Z1, [0], colors='g')
-        cs2 = ax.contour(X1, X2, Z2, [0], colors='r')
+        p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
+        Z1 = np.reshape(np.array(list(map(lambda x: self.coordinates[0](x, p1), flattenNodes))), 2 * [nNodes])
+        Z2 = np.reshape(np.array(list(map(lambda x: self.coordinates[1](x, p2), flattenNodes[:, ::-1]))), 2 * [nNodes])
+        cs1 = plt.contour(X1, X2, Z1, [0], colors='g')
+        cs2 = plt.contour(X1, X2, Z2, [0], colors='r')
         x1 = cs1.collections[0].get_paths()[0].vertices[:, 0]
         y1 = cs1.collections[0].get_paths()[0].vertices[:, 1]
         x2 = cs2.collections[0].get_paths()[0].vertices[:, 0]
