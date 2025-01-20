@@ -235,10 +235,11 @@ def DSGRN_FP_per_index(par_index, parameter_graph):
     return num_stable_FP
 
 
-def par_to_n_eqs(par, parameter_graph, indices_domain, indices_input, domain_size):
+def par_to_n_eqs(hill_model, par, parameter_graph, indices_sources, indices_target):
     """
     given a NDMA parameter, returns the expected number of fixed points according to DSGRN
     INPUT
+    hill_model : an element of the Model class
     par : NDMA parameter
     parameter_graph : DSGRN parameter graph
     indices_domain : vecotr with all the edges sources in DSGRN order
@@ -247,12 +248,30 @@ def par_to_n_eqs(par, parameter_graph, indices_domain, indices_input, domain_siz
     OUTPUT
     num_stable_FP : int number of stable fixed points
     """
-    L, U, T = HillContpar_to_DSGRN(par, indices_domain, indices_input, domain_size)
-    return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
+    return_region_number = global_par_to_region(hill_model, par, parameter_graph, indices_sources, indices_target)
     if return_region_number < 0:
-        print('Problem because region number cannot be negative - probably problem higher up')
+        raise ValueError('Problem because region number cannot be negative - probably problem higher up')
     return DSGRN_FP_per_index(return_region_number, parameter_graph)
 
+
+def DSGRNpar_to_n_eqs(L, U, T, parameter_graph):
+    """
+    given a NDMA parameter, returns the expected number of fixed points according to DSGRN
+    INPUT
+    hill_model : an element of the Model class
+    par : NDMA parameter
+    parameter_graph : DSGRN parameter graph
+    indices_domain : vecotr with all the edges sources in DSGRN order
+    indices_input : vector with all the edges targets in DSGRN order
+    domain_size : dimension of the network
+    OUTPUT
+    num_stable_FP : int number of stable fixed points
+    """
+    return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)
+    if return_region_number < 0:
+        # print('Invalid parameter, skip')
+        return -1
+    return DSGRN_FP_per_index(return_region_number, parameter_graph)
 
 def random_in_region(par_index, network, parameter_graph, size_out, variance=[]):
     """
