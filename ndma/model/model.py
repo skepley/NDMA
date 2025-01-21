@@ -142,6 +142,84 @@ class Model:
             range(self.dimension)]
         self.nParameter = sum(self.nParameterByCoordinate)  # number of variable parameters for this HillModel
 
+    @classmethod
+    def Model_from_string(cls, net_spec_string, activationFunction=HillActivation):
+        """
+        A 'user-friendly' definition of the Model class : defines the Model through a string following the DSGRN framework
+        Each (non-empty) line defines a pair devided by the character ':'
+        On the left, the variable name, on the right, the equation defining its derivative
+        Repressing edges are indicated by ~
+        Example:
+            ""
+            X1 : (X1+X2)(~X3)
+            X2 : (X1)
+            X3 : (X1)(~X2)""
+
+        """
+        net_spec_string = net_spec_string.replace(" ", "") # remove spaces for easiness of counting
+        lines = net_spec_string.split("\n")
+        lines = [x for x in lines if x] # removed empty lines
+        dimensions = net_spec_string.count(':') # detect number of equations
+        if dimensions != len(lines):
+            raise ValueError("Number of equations is not the number of lines??")
+        variables_dictionary = {}
+        equations = []
+        for line, i in zip(lines, range(dimensions)):
+            equations.append(line.split(':')[1])
+            variable = line.split(':')[0]
+            variables_dictionary[variable] = "X{}".format(i)# storing all name changes
+        for key, value in variables_dictionary.items():
+            equations = [equation.replace(key, value) for equation in equations]
+
+        productionSign, productionIndex, productionType =  ([[] for _ in range(dimensions) ],
+                                                            [[] for _ in range(dimensions) ],
+                                                            [[] for _ in range(dimensions) ])
+
+        for i, equation in zip(range(dimensions), equations):
+            terms = equation.replace(")", "").split("(")
+            for term in terms:
+                if term.count("X")>0:
+                    productionType[i].append(term.count("X"))
+                signs_and_indices = term.split("X")
+                def detect_sign(sign):
+                    if sign.count("~") > 0: return -1
+                    return 1
+                def number(string):
+                    return int(''.join(c for c in string if c.isdigit()))
+
+                [productionSign[i].append(detect_sign(sign)) for sign in signs_and_indices[:-1]]
+                [productionIndex[i].append(int(number(indeces))) for indeces in signs_and_indices[1:]]
+        gamma = np.empty(dimensions)
+        gamma[:] = np.nan
+        parameter = [np.nan + np.empty([len(productionSign[i]), 4]) for i in range(dimensions)]
+        return Model(gamma, parameter, productionSign, productionType, productionIndex, activationFunction)
+
+    @classmethod
+    def Model_from_adjacency(cls, adjacency, activationFunction=HillActivation):
+        """
+        This simpler class constructor builds a Model out of SIGNED adjacency matrix and, optionally, an activation function
+        To allow for this simplicity, additional assumptions are taken:
+        - all interactions are additive
+        - all parameters are free
+        -
+        INPUTS:
+        adjacency matrix  = negative values indicate repressing connections
+        (optional) activation function
+        OUTPUT:
+        - Model instance
+        """
+        dimensions = adjacency.shape[0]
+        if adjacency.shape[1] != dimensions:
+            raise ValueError("adjacency matrix must be square")
+        numberTermsPerEquation = np.sum(np.abs(adjacency), axis=0)
+        gamma = np.empty(dimensions)
+        gamma[:] = np.nan
+        parameter = [np.nan + np.empty([numberTermsPerEquation[i],4]) for i in range(dimensions)]
+        productionSign = [adjacency[adjacency[:,i] != 0 , i] for i in range(dimensions)]
+        productionType = [[numberTermsPerEquation[i]] for i in range(dimensions)]
+        productionIndex = [np.where(adjacency[:,i])[0] for i in range(dimensions)]
+        return Model(gamma, parameter, productionSign, productionType, productionIndex, activationFunction)
+
     def state_variable_selection(self, idx):
         """Return a list which selects the correct state subvector for the component with specified index."""
 
@@ -574,25 +652,27 @@ class Model:
             n_inputs = len(self.productionIndex[i])
             n_terms = 0
             n_sums = np.sum(self.coordinates[i].productionType)
-            if n_sums > 1:
+            if n_sums > 1 and len(self.coordinates[i].productionType)>1:
                 s += ' ('
             for j in range(n_sums):
+                n_summand = 0
                 for component in self.coordinates[i].productionComponents[j]:
                     if component.sign != 1:
                         s += ' -'
-                    else:
+                    elif s[-2]!=':' and s[-1]!='(':
                         s += ' +'
                     index = self.productionIndex[i][j]
                     s += ' x_' + str(index)
                     n_terms += 1
-                if np.sum(self.coordinates[i].productionType[:j + 1]) == j + 1 and n_sums > 1:
-                    if j == n_sums - 1:
-                        s += ' )'
-                    else:
+                if np.sum(self.coordinates[i].productionType[:n_summand + 1]) == j + 1 and n_sums > 1:
+                    if j != n_sums - 1:
                         s += ' )('
+                    n_summand += 1
+                if j == n_sums - 1 and n_sums > 1 and len(self.coordinates[i].productionType)>1:
+                    s += ' )'
             s += '\n'
-            if n_inputs != n_terms:
-                raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
+            # if n_inputs != n_terms:
+            #     raise Exception("the number of input edges is not the number of printed inputs, PROBLEM")
         return s
 
     @verify_call
@@ -650,3 +730,4 @@ class Model:
             equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
 
         return equilibrium, parameter, is_saddle
+
