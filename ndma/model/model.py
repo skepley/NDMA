@@ -12,6 +12,7 @@ import warnings
 
 import numpy as np
 from scipy import linalg
+from scipy.integrate import solve_ivp
 
 from ndma.activation import HillActivation
 from ndma.coordinate import Coordinate
@@ -730,4 +731,25 @@ class Model:
             equilibrium, parameter, is_saddle = arc_length_step(equilibrium, parameter, direction)
 
         return equilibrium, parameter, is_saddle
+
+    def odeint(self, T, x, *parameter):
+        """
+        A build in method to be sure to get the parameters right!
+        T can be either an end time (start time is then assumed to be 0), a vector of 2 elements, or a vector. In the
+        latter case, the output will be structured to be the evaluation of the solution at the time points given
+        """
+        def F(t, x):
+            return self.__call__(x, *parameter)
+        t_eval = None
+        if isinstance(T, np.ndarray) and np.size(T) > 1:
+            t_eval = T
+            T = (T[0], T[-1])
+        if isinstance(T, list) :
+            if len(T) == 1:
+                T = (0,T[0])
+            elif len(T) > 2:
+                t_eval = T
+                T = (T[0], T[-1])
+
+        return solve_ivp(F, T, x, t_eval=t_eval)
 
