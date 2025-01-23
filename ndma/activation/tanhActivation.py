@@ -9,11 +9,6 @@ A description of what the script performs
     Date: 7/14/23; Last revision: 7/14/23
 """
 import numpy as np
-from numpy import log
-
-# ordered list of HillComponent parameter names as a class variable
-
-
 
 
 class tanhActivation:
