@@ -12,13 +12,11 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
-ABSTRACT_PARAMETER_NAMES = ['a', 'list','of','variable','names']
-
 class Activation(ABC):
+    PARAMETER_NAMES = ['a', 'list', 'of', 'variable', 'names']
     def __init__(self, sign, parameterValues, variableParameters, parameterCallIndex, fixedParameter, PARAMETER_NAMES):
         self.sign = sign
         self.parameterValues = parameterValues
-        self.parameterNames = PARAMETER_NAMES.copy()  # ordered list of possible parameter names
         self.variableParameters = variableParameters
         self.parameterCallIndex = parameterCallIndex
         self.fixedParameter = fixedParameter
@@ -77,7 +75,7 @@ class Activation(ABC):
         """Return a canonical string representation of a Hill component"""
 
         reprString = 'Tanh Component: \n' + 'sign = {0} \n'.format(self.sign)
-        for parameterName in self.parameterNames:
+        for parameterName in self.PARAMETER_NAMES:
             if parameterName not in self.variableParameters:
                 reprString += parameterName + ' = {0} \n'.format(getattr(self, parameterName))
         reprString += 'Variable Parameters: {' + ', '.join(self.variableParameters) + '}\n'

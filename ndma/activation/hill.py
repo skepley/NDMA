@@ -11,14 +11,15 @@ A description of what the script performs
 import numpy as np
 from numpy import log
 
-# ordered list of HillComponent parameter names as a class variable
 
-PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']
 
 class HillActivation:
     """A component of a Hill system of the form ell + delta*H(x; ell, delta, theta, n) where H is an increasing or decreasing Hill function.
     Any of these parameters can be considered as a fixed value for a Component or included in the callable variables. The
     indices of the edges associated to ell, and delta are different than those associated to theta."""
+    # ordered list of HillComponent parameter names as a class variable
+
+    PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']
 
     def __init__(self, productionSign, **kwargs):
         """A Hill function with parameters [ell, delta, theta, d] of productionType in {-1, 1} to denote H^-, H^+ """
@@ -26,7 +27,7 @@ class HillActivation:
 
         self.sign = productionSign
         self.parameterValues = np.zeros(4)  # initialize vector of parameter values
-        parameterNames = PARAMETER_NAMES.copy()  # ordered list of possible parameter names
+        parameterNames = self.PARAMETER_NAMES.copy()  # ordered list of possible parameter names
         parameterCallIndex = {parameterNames[j]: j for j in range(4)}  # calling index for parameter by name
         for parameterName, parameterValue in kwargs.items():
             setattr(self, parameterName, parameterValue)  # fix input parameter
