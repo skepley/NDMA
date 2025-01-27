@@ -12,3 +12,5 @@ __pycache__/
 
 Pipfile.lock
 /venv
+/doc/_build
+/docs/_build
