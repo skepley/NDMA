@@ -34,7 +34,7 @@ class HillModelRestricted(Model):
         parameter_with_Hill = list(map(lambda parmArray: np.concatenate([parmArray, np.array([np.shape(parmArray)[0] * [
             np.nan]]).transpose()], axis=1), parameter))
         super().__init__(gamma, parameter_with_Hill, productionSign, productionType,
-                         productionIndex, activationFunction=HillActivation)  # define HillModel for toggle switch by inheritance
+                         productionIndex, activationFunction=HillActivation)
 
         # # Alterations for identifying all Hill coefficients.
         self.hillIndex = self.hill_coefficient_idx()  # indices of Hill coefficient parameters in the full parameter
@@ -164,6 +164,16 @@ class HillModelRestricted(Model):
             return np.squeeze(
                 Dpf[np.ix_(np.arange(self.dimension), np.arange(self.dimension), diffIndex,
                            diffIndex)])  # return only slices for the specified subset of partials
+
+    @classmethod
+    def Model_from_Model(cls, A : Model):
+        # Assumed no fixed parameters!
+        gamma = np.nan + np.zeros(A.dimension)
+        productionSign = [[j.sign for j in A.coordinates[i].productionComponents] for i in range(A.dimension)]
+        productionType = [A.coordinates[i].productionType for i in range(A.dimension)]
+        productionIndex = A.productionIndex
+        parameter = [[np.nan +  np.zeros(3) for j in A.productionIndex[i]] for i in range(A.dimension)]
+        return HillModelRestricted(gamma, parameter, productionSign, productionType, productionIndex)
 
 
 if __name__ == "__main__":
