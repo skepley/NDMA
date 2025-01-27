@@ -16,6 +16,6 @@ Functionalities offered by this library are:
 - integration
 - ...
 
-For additional information, please refer to our paper : Kepley, Shane, Konstantin Mischaikow, and Elena Queirolo. "Global analysis of regulatory network dynamics: equilibria and saddle-node bifurcations." arXiv preprint arXiv:2204.13739 (2022).
+For additional information, please refer to our paper : Kepley, Shane, Konstantin Mischaikow, and Elena Queirolo. "Global analysis of regulatory network dynamics: equilibria and saddle-node bifurcations." arXiv preprint arXiv:2204.13739 (2022) https://arxiv.org/pdf/2204.13739 .
 
 Small test codes are available in the \test folder, additonal tutorials are a work in progress.
