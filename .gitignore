@@ -10,7 +10,6 @@ __pycache__/
 *.png
 
 
-Pipfile.lock
 /venv
 /doc/_build
 /docs/_build
