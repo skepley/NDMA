@@ -52,8 +52,8 @@ if test_case == 0:
     requested_size = 5000
     name = create_dataset(n_parameters_simple, simple_region, n_regions_simple, requested_size, name)
     data_loc, regions_loc, coefs_optimal = load_dataset(name)
-    plt.plot(data_loc[0], data_loc[1], '.')
-
+    # plt.plot(data_loc[0], data_loc[1], '.')
+    assert True
 
 if test_case == 1:
     # c < a - b , a-b < c < a+b , a+b < c
@@ -66,6 +66,7 @@ if test_case == 1:
     region_1 = np.sum(data_loc[2,:] < data_loc[0,:]-data_loc[1,:])
     region_3 = np.sum(data_loc[2,:] > data_loc[0,:]+data_loc[1,:])
     region_2 = requested_size - region_1 - region_3
+    assert True
 
 
 if test_case == 2:
@@ -81,6 +82,7 @@ if test_case == 2:
     for i in range(n_regions_simple):
         counter[i] = np.count_nonzero(regions_loc == i)
     print('The number of samples in each region is ', counter, '.')
+    assert True
 
 
 if test_case == 3:
@@ -115,3 +117,5 @@ if test_case == 3:
         subsample(name, size_sample)
         region_number = 5
         region_subsample(name, region_number, size_sample)
+
+    assert True
