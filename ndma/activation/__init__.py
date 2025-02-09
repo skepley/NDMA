@@ -9,3 +9,4 @@ A description of what the script performs
     Date: 7/14/23; Last revision: 7/14/23
 """
 from .hill import HillActivation
+from .tanhActivation import tanhActivation

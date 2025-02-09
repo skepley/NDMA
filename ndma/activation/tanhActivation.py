@@ -9,17 +9,13 @@ A description of what the script performs
     Date: 7/14/23; Last revision: 7/14/23
 """
 import numpy as np
-from numpy import log
-
-# ordered list of HillComponent parameter names as a class variable
-
-TANH_PARAMETER_NAMES = ['ell', 'delta', 'theta']
 
 
 class tanhActivation:
     """A component of a Hill system of the form ell + delta*tanh(sign*(x - theta)).
     Any of these parameters can be considered as a fixed value for a Component or included in the callable variables. The
     indices of the edges associated to ell, and delta are different then those associated to theta."""
+    PARAMETER_NAMES = ['ell', 'delta', 'theta']
 
     def __init__(self, productionSign, **kwargs):
         """A tanh function with parameters [ell, delta, theta] of productionType in {-1, 1}"""
@@ -27,7 +23,7 @@ class tanhActivation:
 
         self.sign = productionSign
         self.parameterValues = np.zeros(3)  # initialize vector of parameter values
-        parameterNames = TANH_PARAMETER_NAMES.copy()  # ordered list of possible parameter names
+        parameterNames = self.PARAMETER_NAMES.copy()  # ordered list of possible parameter names
         parameterCallIndex = {parameterNames[j]: j for j in range(3)}  # calling index for parameter by name
         for parameterName, parameterValue in kwargs.items():
             setattr(self, parameterName, parameterValue)  # fix input parameter

@@ -12,13 +12,14 @@ import numpy as np
 from numpy import log
 
 
+
 class HillActivation:
     """A component of a Hill system of the form ell + delta*H(x; ell, delta, theta, n) where H is an increasing or decreasing Hill function.
     Any of these parameters can be considered as a fixed value for a Component or included in the callable variables. The
     indices of the edges associated to ell, and delta are different than those associated to theta."""
+    # ordered list of HillComponent parameter names as a class variable
 
-    PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']  # ordered list of HillComponent parameter names as a class variable
-
+    PARAMETER_NAMES = ['ell', 'delta', 'theta', 'hillCoefficient']
 
     def __init__(self, productionSign, **kwargs):
         """A Hill function with parameters [ell, delta, theta, d] of productionType in {-1, 1} to denote H^-, H^+ """

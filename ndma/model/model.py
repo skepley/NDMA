@@ -192,7 +192,8 @@ class Model:
                 [productionIndex[i].append(int(number(indeces))) for indeces in signs_and_indices[1:]]
         gamma = np.empty(dimensions)
         gamma[:] = np.nan
-        parameter = [np.nan + np.empty([len(productionSign[i]), 4]) for i in range(dimensions)]
+        activation_dimension = len(activationFunction.PARAMETER_NAMES)
+        parameter = [np.nan + np.empty([len(productionSign[i]), activation_dimension]) for i in range(dimensions)]
         return Model(gamma, parameter, productionSign, productionType, productionIndex, activationFunction)
 
     @classmethod
@@ -215,7 +216,8 @@ class Model:
         numberTermsPerEquation = np.sum(np.abs(adjacency), axis=0)
         gamma = np.empty(dimensions)
         gamma[:] = np.nan
-        parameter = [np.nan + np.empty([numberTermsPerEquation[i],4]) for i in range(dimensions)]
+        activation_dimension = len(activationFunction.PARAMETER_NAMES)
+        parameter = [np.nan + np.empty([numberTermsPerEquation[i],activation_dimension]) for i in range(dimensions)]
         productionSign = [adjacency[adjacency[:,i] != 0 , i] for i in range(dimensions)]
         productionType = [[numberTermsPerEquation[i]] for i in range(dimensions)]
         productionIndex = [np.where(adjacency[:,i])[0] for i in range(dimensions)]
