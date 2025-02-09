@@ -5,10 +5,11 @@ Search for saddle-node bifurcations in the EMT model
     Email: s.kepley@vu.nl
     Created: 11/17/2021
 """
-from models.EMT_model import *
+
 from DSGRN import *
-from DSGRN_tools import *
-import re
+from ndma.DSGRNintegration.DSGRN_tools import DSGRN_parameter_to_NDMA, NDMA_parameter_to_DSGRN
+from ndma.bifurcation.saddlenode import SaddleNode
+from ndma.examples.EMT_model import EMT
 
 gammaVar = np.array(6 * [np.nan])  # set all decay rates as variables
 edgeCounts = [2, 2, 2, 1, 3, 2]

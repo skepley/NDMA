@@ -8,4 +8,4 @@ A description of what the script performs
     email: s.kepley@vu.nl
     Date: 7/14/23; Last revision: 7/14/23
 """
-if __name__ == "__main__":
+
