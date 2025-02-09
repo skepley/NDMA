@@ -1,4 +1,6 @@
 import numpy as np
+
+from ndma.activation import tanhActivation
 from ndma.model.model import Model, ezcat
 from ndma.model.restricted_model import HillModelRestricted
 from ndma.examples.EMT_model import def_emt_hill_model
@@ -73,3 +75,36 @@ for i in index_list:
     pars[i] = hill
 print('computing the example model: ', g_fixed_pars(x, pars))
 print('at different parameters')
+
+"""
+We also introduce a way to have a different activation function 
+"""
+H = tanhActivation(1, ell=3.4, delta=1., theta=2.3)
+x1 = 2.
+print('tanh =', H(x1))
+net_spec = """\nX1 : (X1+X2)(~X3)\nX2 : (X1)\nX3 : (X1)(~X2)"""
+A = Model.Model_from_string(net_spec,activationFunction=tanhActivation)
+
+print(A)
+
+x = np.array([4, 3, 2.], dtype=float)
+
+print('evaluation with tanh as activation = ')
+gamma = np.array([1,2,3.])
+p = [1,.2, 5.,1,.2, 5.,1,.2, 5.,1,.2, 5.,1,.2, 5.,1,.2, 5.]
+y = A(x, gamma, p)
+print(y)
+
+"""
+And an automatic way to have Restricted Hill Models from string
+"""
+A = Model.Model_from_string(net_spec)
+A_restricted = HillModelRestricted.Model_from_Model(A)
+print('Full model :\n', A)
+print('Restricted model :\n', A_restricted)
+
+"""
+Finally, a Hill restricted model is created from a Model 
+(even if the original model had a different activation)
+"""
+A_restricted = HillModelRestricted.Model_from_Model(A)
