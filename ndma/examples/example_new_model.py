@@ -2,7 +2,7 @@ import numpy as np
 
 from ndma.activation import tanhActivation
 from ndma.model.model import Model, ezcat
-from ndma.model.restricted_model import HillModelRestricted
+from ndma.model.restricted_model import RestrictedHillModel
 from ndma.examples.EMT_model import def_emt_hill_model
 
 '''
@@ -55,7 +55,7 @@ print('computing the example model: ', g(x, pars))
 p1 = np.array([[np.nan, np.nan, np.nan]], dtype=float)
 p4 = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]], dtype=float)
 parameter_small = [p1, p1, p1, p4]
-g_tilde = HillModelRestricted(gamma, parameter_small, productionSign, productionType, productionIndex)
+g_tilde = RestrictedHillModel(gamma, parameter_small, productionSign, productionType, productionIndex)
 pars_small = np.delete(pars, index_list, axis=0)
 print('Same model with identified Hill coefs = ', g_tilde(x, hill, pars_small))
 
@@ -99,7 +99,7 @@ print(y)
 And an automatic way to have Restricted Hill Models from string
 """
 A = Model.Model_from_string(net_spec)
-A_restricted = HillModelRestricted.Model_from_Model(A)
+A_restricted = RestrictedHillModel.Model_from_Model(A)
 print('Full model :\n', A)
 print('Restricted model :\n', A_restricted)
 
@@ -107,4 +107,4 @@ print('Restricted model :\n', A_restricted)
 Finally, a Hill restricted model is created from a Model 
 (even if the original model had a different activation)
 """
-A_restricted = HillModelRestricted.Model_from_Model(A)
+A_restricted = RestrictedHillModel.Model_from_Model(A)

@@ -10,7 +10,7 @@ from ndma.model.model import Model, ezcat
 from ndma.examples.EMT_model import EMT
 
 
-class HillModelRestricted(Model):
+class RestrictedHillModel(Model):
     """
     This subclass of the Hill model class automatically sets all Hill Coefficients to be equal, thus decreasing the  parameter space
     It can also be used as template for future applications were other parameters are set to be equal
@@ -173,7 +173,7 @@ class HillModelRestricted(Model):
         productionType = [A.coordinates[i].productionType for i in range(A.dimension)]
         productionIndex = A.productionIndex
         parameter = [[np.nan +  np.zeros(3) for j in A.productionIndex[i]] for i in range(A.dimension)]
-        return HillModelRestricted(gamma, parameter, productionSign, productionType, productionIndex)
+        return RestrictedHillModel(gamma, parameter, productionSign, productionType, productionIndex)
 
 
 if __name__ == "__main__":
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     p1 = np.array([[np.nan, np.nan, np.nan]], dtype=float)
     p4 = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]], dtype=float)
     parameter_small = [p1, p1, p1, p4]
-    g_tilde = HillModelRestricted(gamma, parameter_small, productionSign, productionType, productionIndex)
+    g_tilde = RestrictedHillModel(gamma, parameter_small, productionSign, productionType, productionIndex)
     pars_small = np.delete(pars, index_list, axis=0)
     g_tilde(x, hill, pars_small)
 

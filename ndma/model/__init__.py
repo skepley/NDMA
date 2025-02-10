@@ -9,4 +9,5 @@ A description of what the script performs
     Date: 7/14/23; Last revision: 7/14/23
 """
 from .model import Model
+from .restricted_model import RestrictedHillModel
 from ndma.coordinate import Coordinate

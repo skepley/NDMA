@@ -4,7 +4,7 @@ import DSGRN
 import numpy as np
 
 from ndma.model.model import Model
-from ndma.model.restricted_model import HillModelRestricted
+from ndma.model.restricted_model import RestrictedHillModel
 from ndma.DSGRNintegration import DSGRN_functionalities
 
 
@@ -18,7 +18,7 @@ par_index = 0 # DSGRN region of interest
 parameter = parameter_graph.parameter(par_index)
 
 A = Model.Model_from_string(net_spec)
-A_restricted = HillModelRestricted.Model_from_Model(A)
+A_restricted = RestrictedHillModel.Model_from_Model(A)
 print('Full model :\n', A)
 print('Restricted model :\n', A_restricted)
 
