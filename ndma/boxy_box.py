@@ -11,10 +11,11 @@ bounded function.
 Thus, if all equilibria are in the interval [x_min, x_max], they are in the interval
 [sigma_minus(x_max)sigma_plus(x_min)/gamma, sigma_minus(x_min)sigma_plus(x_max)/gamma]
 this being the iterative step.
-The algorithm cannot be initialised by [x_min, x_max] = [-infty, infty], that would give a meaningful next step thanks
-to the boundedness of the non-linearity.... but somehow returns nans
-Instead a TEMPORARY hack is to take x_min = 0 and x_max = 100 TODO: fix the hack
+The algorithm is initialised as the mathematical bounds of each coordinate - based on the "image" functionality in the
+Activation Functions
 """
+import warnings
+
 import numpy as np
 
 from ndma.model import Model, RestrictedHillModel
@@ -58,8 +59,10 @@ def create_sigmas(model, param):
     productionIndex = model.productionIndex
     new_sign_minus, new_sign_plus, new_type_minus, new_type_plus, new_production_minus, new_production_plus = [], [], [], [], [], []
     param_minus, param_plus = [], []
+    starting_box = np.empty([model.dimension, 2])
     for i in range(model.dimension):
         coordinate = model.coordinates[i]
+        starting_box[i, :] = coordinate.eq_interval(unpacked_param[i])
         signs = [component.sign for component in coordinate.productionComponents]
         type = coordinate.productionType
         index = productionIndex[i]
@@ -95,7 +98,8 @@ def create_sigmas(model, param):
         new_model_plus = lambda x: 0 * x + 1
     else:
         new_model_plus = Model(new_gamma, param_plus, new_sign_plus, new_type_plus, new_production_plus, activation_function)
-    return new_model_minus, new_model_plus
+    x_min, x_max = starting_box[:,0], starting_box[:,1]
+    return new_model_minus, new_model_plus, x_min, x_max
 
 
 def extract_gamma(model, param):
@@ -108,13 +112,18 @@ def boxy_box(model: Model, *parameters):
         ValueError("The boxy box algorithm cannot be applied if the model doesn't have a monotone factorisation.")
     if isinstance(model, RestrictedHillModel):
         ValueError("This implementation requests Model inputs instead of RestrictedHillModel.")
-    sigma_minus, sigma_plus = create_sigmas(model, *parameters)
+    tol = 10**-6
+    sigma_minus, sigma_plus, x_min, x_max = create_sigmas(model, *parameters)
     gamma = extract_gamma(model, *parameters)
-    x_min = 0 * np.ones(model.dimension)
-    x_max = 100 * np.ones(model.dimension)
-    for i in range(30):
+    old_x_min, old_x_max = x_min, x_max
+    for i in range(100):
         x_min = sigma_minus(x_max)*sigma_plus(x_min)/gamma
         x_max = sigma_minus(x_min)*sigma_plus(x_max)/gamma
+        if np.linalg.norm(old_x_min - x_min) < tol and np.linalg.norm(old_x_max - x_max) < tol:
+            break
+        old_x_min, old_x_max = x_min, x_max
+        if i == 99:
+            warnings.warn("The boxy box algorithm did not converge")
     return x_min, x_max
 
 
