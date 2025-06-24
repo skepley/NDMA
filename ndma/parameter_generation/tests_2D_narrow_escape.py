@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plot
 import scipy.optimize as opt
 from tools_random_walk import *
-from test_distribution import check_convergence, convergence_rate
+from assess_distribution import check_convergence, convergence_rate
 import time
 
 

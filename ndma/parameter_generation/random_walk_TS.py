@@ -1,8 +1,9 @@
 import inspect
+
+from ndma.examples.TS_model import ToggleSwitch
 from ndma.parameter_generation.DSGRN_tools import *
-from models.TS_model import ToggleSwitch
 from tools_random_walk import *
-from test_distribution import check_convergence, convergence_rate
+from assess_distribution import check_convergence, convergence_rate
 import time
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -50,11 +51,6 @@ many_points = brownian_motion_in_region(point0, bool_region, n_steps=10**4)
 # if alphaMax is fixed as previously, all points show up
 dsgrn_plot(many_points.T, alphaMax=alphaMax)
 plt.savefig('fixed_alphaMax.png')
-plt.show()
-
-# otherwise, some of them get NEGATIVE
-dsgrn_plot(many_points.T, alphaMax=None)
-plt.savefig('None_alphaMax.png')
 plt.show()
 
 # check_convergence(points_0, points_1, selected_points=None, threshold=10**-3):
