@@ -182,7 +182,7 @@ def snake_testing(points):
 
 
 def snake_sample(dim, repeat_size = 100, sample_size=100):
-    known_distribution = np.empty(repeat_size)
+    known_distribution = np.zeros(repeat_size)
     for i in range(repeat_size):
         points = np.random.random((sample_size, dim))
         route = simulated_annealing_for_snake(points)
@@ -195,8 +195,8 @@ def snake_sample(dim, repeat_size = 100, sample_size=100):
         shift_dif = longer_than_mean[1:] - longer_than_mean[:-1]
         runs = []
         current_counter = 0
-        for i in shift_dif:
-            if i == 0:
+        for j in shift_dif:
+            if j == 0:
                 current_counter += 1
             elif current_counter > 0 :
                 runs.append(current_counter)
@@ -205,6 +205,8 @@ def snake_sample(dim, repeat_size = 100, sample_size=100):
         average_len_runs = np.average(np.array(runs))
         n_runs = sum(runs > average_len_runs)
         snake_ratio = n_runs/max_len
+        if snake_ratio == 0:
+            print('something weird, keep going, dim = ', dim)
         known_distribution[i] = snake_ratio
     return known_distribution
 
@@ -217,7 +219,20 @@ def simulated_annealing_test(size = 30, dim = 3):
 
 
 if __name__ == '__main__':
-    sample = snake_sample(4, repeat_size=10)
-    plt.hist(sample)
-    plt.show()
-    print(sample)
+    filename = 'snake_sample_results2.pickle'
+    repeat_size = 2
+    sample_size = 1000
+    try:
+        with open(filename, 'rb') as handle:
+            dict_sample = pickle.load(handle)
+    except FileNotFoundError:
+        dict_sample = {}
+    for dim in range(2,4):
+        sample = snake_sample(dim, repeat_size=repeat_size, sample_size=sample_size)
+        if (dim, sample_size) in dict_sample:
+            dict_sample[(dim, sample_size)] = np.append(dict_sample[(dim, sample_size)],sample)
+        else:
+            dict_sample[(dim,sample_size)] = sample
+        with open(filename, 'wb') as handle:
+            pickle.dump(dict_sample, handle)
+    print(dict_sample)
