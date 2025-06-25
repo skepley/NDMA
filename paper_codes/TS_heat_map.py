@@ -13,7 +13,7 @@ from ndma.bifurcation.saddlenode import SaddleNode
 from toggle_switch_heat_functionalities import parameter_to_alpha_beta, parameter_to_DSGRN_coord, dsgrn_heat_plot, \
     dsgrn_plot
 from ndma.basic_models.TS_model import ToggleSwitch
-from create_dataset import subsample
+from create_dataset import subsample, TS_region
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -25,7 +25,7 @@ SN = SaddleNode(f)
 # use dataset creation
 # size of the sample
 n_sample = 4 * 10 ** 4  # testing on 3, final run on 4
-file_name = 'TS_data_100000.npz'
+file_name = '../TS_data_100000.npz'
 try:
     np.load(file_name)
 except FileNotFoundError:
