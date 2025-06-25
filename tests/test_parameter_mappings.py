@@ -70,4 +70,4 @@ for jTest in range(nTest):
                                                T)  # use Marcios builtin method to reconstruct parameter and map to DSGRN region
     assert region_test == ground_truth
 
-print('parameter mappings work!')
+# print('parameter mappings work!')

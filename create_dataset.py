@@ -378,6 +378,16 @@ def region_sampler_fisher():
 
     return many_fisher_distributions
 
+def multivariate_normal_distributions(c1_vec, c2_vec, size):
+    # par = np.zeros([len(c1_vec), size])
+    mean = c1_vec
+    dim = len(mean)
+    cov = np.reshape(c2_vec, (dim, dim))
+    x = np.random.multivariate_normal(mean, cov, size)
+    par = np.abs(x).T
+    # abs ensures it's positive
+    return par
+
 
 def distribution_sampler():
     """
@@ -386,7 +396,6 @@ def distribution_sampler():
     Returns a function that takes as input 2 coefficient vectors and the size of the requested sample and that has as
     output a sample
     """
-
     def multivariate_normal_distributions(c1_vec, c2_vec, size):
         # par = np.zeros([len(c1_vec), size])
         mean = c1_vec
@@ -396,6 +405,7 @@ def distribution_sampler():
         par = np.abs(x).T
         # abs ensures it's positive
         return par
+
 
     return multivariate_normal_distributions
 
