@@ -10,7 +10,7 @@ from toggle_switch_heat_functionalities import *
 import random
 from scipy.optimize import minimize
 from datetime import datetime
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 import matplotlib.pyplot as plt
 
 

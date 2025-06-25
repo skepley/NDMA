@@ -241,8 +241,8 @@ class ToggleSwitch(Model):
         p1, p2 = self.unpack_parameter(self.parse_parameter(*parameter))
         Z1 = np.reshape(np.array(list(map(lambda x: self.coordinates[0](x, p1), flattenNodes))), 2 * [nNodes])
         Z2 = np.reshape(np.array(list(map(lambda x: self.coordinates[1](x, p2), flattenNodes[:, ::-1]))), 2 * [nNodes])
-        cs1 = plt.contour(X1, X2, Z1, [0], colors='g')
-        cs2 = plt.contour(X1, X2, Z2, [0], colors='r')
+        cs1 = ax.contour(X1, X2, Z1, [0], colors='g')
+        cs2 = ax.contour(X1, X2, Z2, [0], colors='r')
         x1 = cs1.collections[0].get_paths()[0].vertices[:, 0]
         y1 = cs1.collections[0].get_paths()[0].vertices[:, 1]
         x2 = cs2.collections[0].get_paths()[0].vertices[:, 0]
@@ -261,11 +261,11 @@ class ToggleSwitch(Model):
             elif is_vector(eqBound):  # only a single equilibrium given by the degenerate rectangle
                 return eqBound
             else:
-                return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits,
+                return super().global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits,
                                                eqBound=eqBound)
 
         else:  # Use the old version inherited from the HillModel class. This should only be used to troubleshoot
-            return super().find_equilibria(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
+            return super().global_equilibrium_search(gridDensity, *parameter, uniqueRootDigits=uniqueRootDigits)
 
     def plot_equilibria(self, *parameter, nInitData=10):
         """Find equilibria at given parameter and add to current plot"""

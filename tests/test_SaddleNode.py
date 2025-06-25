@@ -9,7 +9,7 @@ Function and design testing for the SaddleNode class
     Created: 4/13/2020 
 """
 import numpy as np
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.bifurcation.saddlenode import SaddleNode
 import matplotlib.pyplot as plt
 

@@ -4,7 +4,7 @@ import DSGRN
 
 from ndma.DSGRNintegration.DSGRNcrawler import DSGRNcrawler
 from ndma.hill_model import equilibrium_stability
-from ndma.examples.EMT_model import def_emt_hill_model
+from ndma.basic_models.EMT_model import def_emt_hill_model
 from create_dataset import from_region_to_deterministic_point
 from EMT_boxybox import eqs_with_boxyboxEMT
 

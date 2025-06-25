@@ -40,9 +40,6 @@ hill_vec = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 17, 20, 30, 40, 50]
 parameter_regions = random.sample(range(parameter_graph_EMT.size()), test_size)
 coherency = []
 
-
-
-
 for hill in hill_vec:
     coherent_regions = 0
     for parameter_region in parameter_regions:

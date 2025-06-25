@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 
-from ndma.examples.EMT_model import def_emt_hill_model
+from ndma.basic_models.EMT_model import def_emt_hill_model
 from ndma.bifurcation.saddlenode import SaddleNode
 
 

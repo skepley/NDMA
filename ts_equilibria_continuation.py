@@ -7,7 +7,7 @@
     Created: 12/8/2021
 """
 from ndma.hill_model import find_root
-from ndma.examples.TS_model import *
+from ndma.basic_models.TS_model import *
 from scipy.linalg import null_space
 import matplotlib.pyplot as plt
 

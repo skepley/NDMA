@@ -9,7 +9,7 @@ Testing and analysis of the ToggleSwitch model
 """
 
 import numpy as np
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.hill_model import ezcat
 
 def test_toggle_switch():

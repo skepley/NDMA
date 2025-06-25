@@ -10,7 +10,7 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
 
 from ndma.hill_model import *
 from ndma.model import Model
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.bifurcation.saddlenode import SaddleNode
 import matplotlib.pyplot as plt
 

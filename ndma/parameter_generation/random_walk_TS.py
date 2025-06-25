@@ -1,4 +1,6 @@
 import inspect
+
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.parameter_generation.DSGRN_tools import *
 from models.TS_model import ToggleSwitch
 from tools_random_walk import *
