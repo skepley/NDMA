@@ -11,7 +11,7 @@ Test and debug functions which map back and forth between NDMA and DSGRN paramet
 
 from ndma.DSGRNintegration.DSGRN_functionalities import *
 from ndma.DSGRNintegration.DSGRN_tools import DSGRN_parameter_to_NDMA, NDMA_parameter_to_DSGRN
-from ndma.examples.EMT_model import EMT
+from ndma.basic_models.EMT_model import EMT
 
 
 def marcio_dict(par_idx, sampler):

@@ -8,7 +8,7 @@ Test and debug functions which map back and forth between NDMA and DSGRN paramet
     email: s.kepley@vu.nl
     Date: 6/28/22; Last revision: 6/28/22
 """
-from ndma.examples.EMT_model import EMT
+from ndma.basic_models.EMT_model import EMT
 from ndma.parameter_generation.DSGRN_tools import *
 
 

@@ -2,8 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ndma.hill_model import is_vector
-from saddle_finding_functionalities import count_eq
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
+
+"""
+We plot the nullclines of the Toggle Switch
+Then, we computer all the equilibria of the Toggle Switch for all Hill coefficients in an interval and plot the result.
+For the appropriate parameters, we can detect both hysterisis w.r.t. the Hill coefficient and isolas.
+"""
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
@@ -25,7 +30,7 @@ parameter = [0.9243, 0.0506, 0.8125, 0.0779, 0.8161]
 hill = np.linspace(10, 80, 800)
 fig, ax = plt.subplots()
 for h in hill:
-    eqs = f.find_equilibria(10, h, parameter)
+    eqs = f.global_equilibrium_search(10, h, parameter)
     if is_vector(eqs):
         ax.plot(eqs[0], h, 'b.')
     else:
@@ -39,7 +44,7 @@ parameter = [0.6470, 0.3279, 0.9445, 0.5301, 0.3908]
 hill = np.linspace(10, 80, 800)
 fig, ax = plt.subplots()
 for h in hill:
-    eqs = f.find_equilibria(10, h, parameter)
+    eqs = f.global_equilibrium_search(10, h, parameter)
     if is_vector(eqs):
         ax.plot(eqs[0], h, 'b.')
     else:

@@ -3,11 +3,11 @@ import DSGRN
 import random
 
 from ndma.hill_model import equilibrium_stability
-from ndma.examples.EMT_model import def_emt_hill_model
+from ndma.basic_models.EMT_model import def_emt_hill_model
 from create_dataset import from_region_to_deterministic_point, par_to_region_wrapper, \
     generate_data_from_coefs, tworegions_dataset
 from EMT_boxybox import eqs_with_boxyboxEMT
-from DSGRNcrawler import DSGRNcrawler
+from ndma.DSGRNintegration.DSGRNcrawler import DSGRNcrawler
 
 
 EMT_network = DSGRN.Network("EMT.txt")

@@ -9,7 +9,8 @@ Create the plot for Application #1 in section 6 of the paper
     Date: 3/23/22; Last revision: 3/23/22
 """
 import matplotlib.pyplot as plt
-from saddle_finding_functionalities import *
+from ndma.saddle_finding_functionalities import *
+
 
 # set up the model
 decay = np.array([np.nan, np.nan], dtype=float)  # gamma

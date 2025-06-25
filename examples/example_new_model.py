@@ -3,7 +3,7 @@ import numpy as np
 from ndma.activation import tanhActivation
 from ndma.model.model import Model, ezcat
 from ndma.model.restricted_model import RestrictedHillModel
-from ndma.examples.EMT_model import def_emt_hill_model
+from ndma.basic_models.EMT_model import def_emt_hill_model
 
 '''
 This code is an introduction to building your own model and setting parameters.

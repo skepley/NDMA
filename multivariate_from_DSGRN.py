@@ -1,7 +1,7 @@
 import numpy as np
 from create_dataset import tworegions_dataset
-from models.EMT_model import def_emt_hill_model
-from DSGRNcrawler import DSGRNcrawler
+from ndma.basic_models.EMT_model import def_emt_hill_model
+from ndma.DSGRNintegration.DSGRNcrawler import DSGRNcrawler
 import DSGRN
 
 # size and name of dataset created

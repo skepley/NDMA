@@ -5,19 +5,10 @@ Search for saddle-node bifurcations in the EMT model
     Email: elena.queirolo@tum.de
     Created: 12/09/2023
 """
-import warnings
 
-import matplotlib.pyplot as plt
-import numpy as np
-
-from ndma.examples.EMT_model import *
-from saddle_finding_functionalities import *
-from create_dataset import *
-import sys
-from scipy.stats import chi2_contingency
-import DSGRN
-import json
-from DSGRN_functionalities import *
+from ndma.basic_models.EMT_model import *
+from ndma.saddle_finding_functionalities import *
+from ndma.DSGRNintegration.DSGRN_functionalities import *
 
 # reminder:
 # return_region_number = DSGRN.par_index_from_sample(parameter_graph, L, U, T)

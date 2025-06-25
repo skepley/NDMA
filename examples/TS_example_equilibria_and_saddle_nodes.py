@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import os.path
 
 from ndma.model.model import Model
-from ndma.examples.EMT_model import def_emt_hill_model
-from saddle_finding_functionalities import count_eq, saddle_node_search
+from ndma.basic_models.EMT_model import def_emt_hill_model
+from ndma.saddle_finding_functionalities import count_eq, saddle_node_search
 from ndma.bifurcation.saddlenode import SaddleNode
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from create_dataset import create_dataset_ToggleSwitch, subsample
 
 # defining the parameters to be np.nan keeps them free to be determined at computation

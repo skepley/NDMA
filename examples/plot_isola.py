@@ -9,7 +9,7 @@ PLot the isola figure from the Toggle Switch section of the paper.
     Date: 3/22/22; Last revision: 3/22/22
 """
 import matplotlib.pyplot as plt
-from saddle_finding_functionalities import *
+from ndma.saddle_finding_functionalities import *
 
 # set up the model
 decay = np.array([np.nan, np.nan], dtype=float)  # gamma

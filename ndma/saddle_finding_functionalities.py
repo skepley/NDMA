@@ -7,14 +7,12 @@ Main function: saddle_node_search
 """
 import warnings
 
-#from models.TS_model import *
-#from saddle_node import *
 from scipy.linalg import null_space
-from ndma.examples.TS_model import *
+from ndma.basic_models.TS_model import *
 from warnings import warn
 
 from ndma.hill_model import *
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.bifurcation.saddlenode import SaddleNode
 import matplotlib.pyplot as plt
 

@@ -5,12 +5,12 @@ import pylab #needed for DSGRN
 import DSGRN
 from create_dataset import create_dataset, multivariate_normal_distributions, generate_data_from_coefs
 import json
-from DSGRN_tools import *
+from ndma.DSGRNintegration.DSGRN_tools import *
 
 
 # let a and be be two vectors in high dimensions, we want to create a distribution that approximately give points along
 # the segment [a,b]
-from models.EMT_model import EMT
+from ndma.basic_models.EMT_model import EMT
 
 
 def gram_schmidt(vectors):

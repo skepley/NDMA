@@ -7,7 +7,7 @@ import numpy as np
 
 from ndma.activation import HillActivation
 from ndma.model.model import Model, ezcat
-from ndma.examples.EMT_model import EMT
+from ndma.basic_models.EMT_model import EMT
 
 
 class RestrictedHillModel(Model):

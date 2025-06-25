@@ -1,6 +1,6 @@
 import inspect
 
-from ndma.examples.TS_model import ToggleSwitch
+from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.parameter_generation.DSGRN_tools import *
 from tools_random_walk import *
 from assess_distribution import check_convergence, convergence_rate

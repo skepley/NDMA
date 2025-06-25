@@ -8,12 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-from saddle_finding_functionalities import saddle_node_search
+from ndma.saddle_finding_functionalities import saddle_node_search
 from ndma.bifurcation.saddlenode import SaddleNode
 from toggle_switch_heat_functionalities import parameter_to_alpha_beta, parameter_to_DSGRN_coord, dsgrn_heat_plot, \
     dsgrn_plot
-from ndma.examples.TS_model import ToggleSwitch
-from create_dataset import create_dataset_ToggleSwitch, subsample
+from ndma.basic_models.TS_model import ToggleSwitch
+from create_dataset import subsample
 
 # define the saddle node problem for the toggle switch
 decay = np.array([1, np.nan], dtype=float)
