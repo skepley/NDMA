@@ -256,8 +256,8 @@ class Model:
 
     def unpack_parameter(self, parameter):
         """Unpack a parameter vector for the HillModel into disjoint parameter slices for each distinct coordinate"""
-
-        return [parameter[idx] for idx in self.parameterIndexByCoordinate]
+        parameter_all = self.parse_parameter(*parameter)
+        return [parameter_all[idx] for idx in self.parameterIndexByCoordinate]
 
     def unpack_state(self, x):
         """Unpack a state vector for the HillModel into a length-n list of state vector slices to pass for evaluation into

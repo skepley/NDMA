@@ -1,7 +1,9 @@
 import numpy as np
 
+from EMT_boxybox import boxy_box_from_pars
 from ndma.boxy_box import boxy_box
 from ndma.model import Model
+from ndma.basic_models.EMT_model import def_emt_hill_model
 
 def point_is_in_box(point, low_box, high_box):
     for i in range(np.shape(low_box)[0]):
@@ -86,3 +88,25 @@ def test_boxybox_3Dmodel():
 
     x_0 = np.array([0.1, 0.001, 0.2])  # "small" initial point
     assert boxy_box_call(other_3Dmodel, another_parameter, x_0, T)
+
+
+def test_boxybox_as_bbEMT():
+    f_emt = def_emt_hill_model()
+    print('compare results of the boxybox code with the EMT boxy box')
+
+    par = np.random.random(size=(12, 3))
+    gamma = np.random.random(size=(6))
+    hill = 3.3
+    full_pars = np.append(np.append(hill, gamma), par.flat)
+
+    success, xminus, xplus, remainder = boxy_box_from_pars(hill, par, gamma)
+    xmin_BB, xplus_BB = boxy_box(f_emt, full_pars)
+
+    tol = 10**-4
+    assert np.linalg.norm(xplus - xplus_BB) < tol
+    assert np.linalg.norm(xminus - xmin_BB) < tol
+
+
+
+if __name__ == '__main__':
+    print(7)

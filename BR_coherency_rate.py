@@ -11,7 +11,7 @@ import DSGRN
 import random
 
 from ndma.DSGRNintegration.DSGRNcrawler import DSGRNcrawler
-from ndma.boxy_box import boxy_box
+from ndma.boxy_box import boxy_box, equilibria_with_boxybox
 from ndma.hill_model import equilibrium_stability
 from ndma.DSGRNintegration.DSGRN_functionalities import from_region_to_deterministic_point
 from ndma.model import Model, RestrictedHillModel
@@ -27,7 +27,7 @@ example_parameter = np.abs(np.random.randn(15))
 test = BR_model(np.array([2,.3]), example_parameter)
 print('Running the BR model suceeded: ', test)
 
-x_low, x_high = boxy_box(BR_model, example_parameter[1:])
+x_low, x_high = boxy_box(BR_model, example_parameter)
 print('the boxy box returns ', x_low, x_high)
 
 EMT_network = DSGRN.Network(string)
@@ -46,7 +46,7 @@ for hill in hill_vec:
         DSGRN_n_eqs = crawler.n_stable_FP(parameter_region)
 
         par_NDMA, sources_vec, targets_vec = from_region_to_deterministic_point(EMT_network, parameter_region)
-        NDMA_eqs = eqs_with_boxyboxEMT(hill, par_NDMA)
+        NDMA_eqs = equilibria_with_boxybox(hill, par_NDMA)
         NDMA_n_stable_eqs = sum(equilibrium_stability(BR_model, equilibrium, hill, par_NDMA) for equilibrium in NDMA_eqs)
 
         coherent_regions += (NDMA_n_stable_eqs == DSGRN_n_eqs)

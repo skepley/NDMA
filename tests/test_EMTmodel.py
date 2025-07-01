@@ -19,13 +19,12 @@ def test_EMTmodel():
                 zip(gammaValues, parmValues)])  # this only works when all parameters are variable
     hill = 4
     #
-    print(np.shape(f(x, hill, p)))
-    print(np.shape(f.dx(x, hill, p)))
-    print(np.shape(f.diff(x, hill, p)))
-    print(np.shape(f.dx2(x, hill, p)))
-    print(np.shape(f.dxdiff(x, hill, p)))
-    print(np.shape(f.diff2(x, hill, p)))
-
+    assert np.shape(f(x, hill, p)) == (6,)
+    assert np.shape(f.dx(x, hill, p)) == (6, 6)
+    assert np.shape(f.diff(x, hill, p)) == (6,43)
+    assert np.shape(f.dx2(x, hill, p)) == (6,6,6)
+    assert np.shape(f.dxdiff(x, hill, p)) == (6,6,43)
+    assert np.shape(f.diff2(x, hill, p)) == (6, 43, 43)
 
 if __name__ == "__main__":
     test_EMTmodel()

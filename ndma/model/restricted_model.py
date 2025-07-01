@@ -7,7 +7,6 @@ import numpy as np
 
 from ndma.activation import HillActivation
 from ndma.model.model import Model, ezcat
-from ndma.basic_models.EMT_model import EMT
 
 
 class RestrictedHillModel(Model):
@@ -75,6 +74,11 @@ class RestrictedHillModel(Model):
             *parameter)  # concatenate input into a single vector. Its first component must be the common hill parameter for both coordinates
         hill, p = parameterVector[0], parameterVector[1:]
         return np.insert(p, self.hillInsertionIndex, hill)
+
+    def unpack_parameter(self, parameter):
+        """Unpack a parameter vector for the HillModel into disjoint parameter slices for each distinct coordinate"""
+        parameter_all = self.parse_parameter(*parameter)
+        return [parameter_all[idx] for idx in self.parameterIndexByCoordinate]
 
     def diff(self, x, *parameter, diffIndex=None):
         """Overload the diff function to identify the Hill parameters"""

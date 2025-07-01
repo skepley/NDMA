@@ -14,10 +14,10 @@ this being the iterative step.
 The algorithm is initialised as the mathematical bounds of each coordinate - based on the "image" functionality in the
 Activation Functions
 """
+import itertools
 import warnings
 
 import numpy as np
-
 from ndma.model import Model, RestrictedHillModel
 
 """
@@ -30,6 +30,7 @@ Thus, the first step of this algorithm will be to properly construct the wanted 
 follow trivially
 """
 
+# # # MAIN BOXY BOX ALGORITHM
 def has_monotone_factorisation(model):
     for coordinate in model.coordinates:
         signs = [component.sign for component in coordinate.productionComponents]
@@ -43,7 +44,6 @@ def has_monotone_factorisation(model):
                 return False
             start_index = j
     return True
-
 
 def create_sigmas(model, param):
     def flatten(xss):
@@ -79,16 +79,20 @@ def create_sigmas(model, param):
         low_index = 0
         for high_index in type:
             param_loc = param_without_gamma[i][low_index*n_param_for_activation:(low_index + high_index)*n_param_for_activation]
+            param_loc = np.reshape(param_loc, (high_index, n_param_for_activation))
             if signs[low_index] == 1:
                 [new_sign_plus[i].append(sign) for sign in signs[low_index:low_index+high_index]]
                 new_type_plus[i].append(high_index)
-                new_production_plus[i].append(*index[low_index:low_index+high_index])
-                [param_plus[i].append(param) for param in param_loc]
+
+                for k in index[low_index:low_index+high_index]:
+                    new_production_plus[i].append(k)
+                param_plus[i].append(param_loc)
             else:
                 [new_sign_minus[i].append(sign) for sign in signs[low_index:low_index+high_index]]
                 new_type_minus[i].append(high_index)
-                new_production_minus[i].append(*index[low_index:low_index+high_index])
-                [param_minus[i].append(param) for param in param_loc]
+                for k in index[low_index:low_index+high_index]:
+                    new_production_minus[i].append(k)
+                param_minus[i].append(param_loc)
             low_index = high_index + low_index
     if len(flatten(new_sign_minus)) < 1:
         new_model_minus = lambda x: 0*x + 1
@@ -101,13 +105,12 @@ def create_sigmas(model, param):
     x_min, x_max = starting_box[:,0], starting_box[:,1]
     return new_model_minus, new_model_plus, x_min, x_max
 
-
 def extract_gamma(model, param):
     unpacked_param = model.unpack_parameter(param)
     gamma = np.array([param[0] for param in unpacked_param])
     return gamma
 
-def boxy_box(model: Model, *parameters):
+def boxy_box(model: Model, *parameters, maxiter=100):
     if not has_monotone_factorisation(model):
         ValueError("The boxy box algorithm cannot be applied if the model doesn't have a monotone factorisation.")
     if isinstance(model, RestrictedHillModel):
@@ -116,7 +119,7 @@ def boxy_box(model: Model, *parameters):
     sigma_minus, sigma_plus, x_min, x_max = create_sigmas(model, *parameters)
     gamma = extract_gamma(model, *parameters)
     old_x_min, old_x_max = x_min, x_max
-    for i in range(100):
+    for i in range(maxiter):
         x_min = sigma_minus(x_max)*sigma_plus(x_min)/gamma
         x_max = sigma_minus(x_min)*sigma_plus(x_max)/gamma
         if np.linalg.norm(old_x_min - x_min) < tol and np.linalg.norm(old_x_max - x_max) < tol:
@@ -126,3 +129,78 @@ def boxy_box(model: Model, *parameters):
             warnings.warn("The boxy box algorithm did not converge")
     return x_min, x_max
 
+## DETECTING EQUILIBRIA WITH BOXY BOX
+def equilibria_with_boxybox(model, parameters):
+    """
+    takes some info on the
+    """
+    xminus, xplus = boxy_box(model, parameters)
+    all_corners = corners_of_box(xminus, xplus)
+    doubled_eqs = model.local_equilibrium_search(all_corners, parameters)
+    equilibria = model.remove_doubles(doubled_eqs, parameters, uniqueRootDigits=5)
+    return equilibria
+
+
+## SADDLE DETECTION WITH BOXY BOX
+def approx_saddle_node_with_boxy_box(model, par_comb, all_pars):
+    """ by going through all coefficients stored in par_comb, we look for changes in the number of equilibria and
+    return approximate saddle nodes"""
+    def outlier(xminus, xplus, hill_iter, old_xminus, old_xplus, old_hill, tol=10**-7):
+        """ select the corner that is disappearing during the saddle node"""
+        if is_degenerate(old_xminus, old_xplus, tol=tol):
+            return outlier(old_xminus, old_xplus, old_hill, xminus, xplus, hill_iter, tol=tol)
+        degenerate_x = xminus
+        hill = hill_iter
+        approx_saddle_position = 0 * degenerate_x
+        for i in range(np.size(degenerate_x)):
+            if np.abs(degenerate_x[i] - old_xminus[i]) > np.abs(degenerate_x[i] - old_xplus[i]):
+                approx_saddle_position[i] = old_xminus[i]
+            else:
+                approx_saddle_position[i] = old_xplus[i]
+        return approx_saddle_position, hill
+
+    if np.size(par_comb) == 2:
+        low_par = min(par_comb)
+        high_par = max(par_comb)
+        par_comb = np.linspace(high_par, low_par, 50)
+    old_par = par_comb[0]
+    old_xminus, old_xplus = boxy_box(model, old_par, all_pars, maxiter=300)
+    approx_saddle_position, approx_saddle_hill = [], []
+    for par_iter in par_comb[1:]:
+        success, xminus, xplus, remainder = boxy_box(model, par_iter, all_pars, maxiter=300)
+        if not success:
+            continue
+        if is_degenerate(xminus, xplus, tol=10**-5) != is_degenerate(old_xminus, old_xplus, tol=10**-5):
+            coord, hill_val = outlier(xminus, xplus, par_iter, old_xminus, old_xplus, old_par, tol=10**-5)
+            approx_saddle_position.append(coord)
+            approx_saddle_hill.append(hill_val)
+        old_xminus, old_xplus, old_par = xminus, xplus, par_iter
+
+    return approx_saddle_position, approx_saddle_hill
+
+
+def saddle_node_with_boxybox(model, saddle_node_problem, par_comb, all_par):
+    """ for the EMT saddle node problem taken a selection of hill coefficients and a parameter, it finds all saddle nodes"""
+    if np.size(par_comb) == 2:
+        low_par = min(par_comb)
+        high_par = max(par_comb)
+        par_comb = np.linspace(high_par, low_par, 50)
+    approx_saddle_position, saddle_par = approx_saddle_node_with_boxy_box(model,par_comb, all_par)
+    par_of_SNbif, bad_candidate = [], []
+    for i in range(len(saddle_par)):
+        saddle = saddle_node_problem.find_saddle_node(0, saddle_par[i], all_par, equilibria=approx_saddle_position[i])
+        if saddle:
+            par_of_SNbif.append(saddle)
+        else:
+            bad_candidate.append(saddle_par[i])
+    return par_of_SNbif, bad_candidate
+
+## SMALL SUPPORT FUNCTIONS
+def is_degenerate(xminus, xplus, tol=10**-7):
+    if np.linalg.norm(xminus - xplus) < tol:
+        return True
+    return False
+
+def corners_of_box(xminus, xplus):
+    all_corners = list(itertools.product(*zip(xminus, xplus)))
+    return np.array(all_corners)

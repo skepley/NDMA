@@ -10,7 +10,7 @@ from ndma.hill_model import find_root
 from ndma.basic_models.TS_model import *
 from scipy.linalg import null_space
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def initial_direction(h0, h_target):
     """Choose the initial tangent direction for pseudo-arc length continuation. h0 is the starting hill coefficient
