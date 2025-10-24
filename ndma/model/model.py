@@ -16,7 +16,7 @@ from scipy.integrate import solve_ivp
 
 from ndma.activation import HillActivation
 from ndma.coordinate import Coordinate
-from ndma.hill_model import ezcat, find_root, is_vector
+from ndma.helper_functions import ezcat, find_root, is_vector
 
 
 def verify_call(func):

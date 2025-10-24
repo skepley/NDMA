@@ -3,7 +3,7 @@ import warnings
 import DSGRN
 import numpy as np
 import json
-from ndma.hill_model import ezcat, is_vector
+from ndma.helper_functions import ezcat, is_vector
 
 
 # notation: L, U, T

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ndma.hill_model import is_vector
+from ndma.helper_functions import is_vector
 from ndma.basic_models.TS_model import ToggleSwitch
 
 """

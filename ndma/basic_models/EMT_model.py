@@ -1,6 +1,6 @@
 """
 An implementation of the 6 node EMT network as a Hill model
-    Other files required: hill_model.py
+    Other files required: helper_functions.py
 
     Author: Shane Kepley
     Email: s.kepley@vu.nl
@@ -8,7 +8,7 @@ An implementation of the 6 node EMT network as a Hill model
 """
 import numpy as np
 
-from ndma.hill_model import ezcat
+from ndma.helper_functions import ezcat
 from ndma.activation import HillActivation
 from ndma.model.model import Model
 

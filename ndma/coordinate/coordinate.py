@@ -13,7 +13,7 @@ from itertools import permutations, product
 
 import numpy as np
 # from ndma.activation import HillActivation
-from ndma.hill_model import ezcat, is_vector
+from ndma.helper_functions import ezcat, is_vector
 
 
 def verify_call(func):

@@ -38,7 +38,7 @@ def ezcat(*coordinates):
             return np.array([coordinates[0]])
 
     try:
-        return np.concatenate([coordinates[0], ezcat(*coordinates[1:])])
+        return np.concatenate([np.array([coordinates[0]]), ezcat(*coordinates[1:])])
     except ValueError:
         return np.concatenate([np.array([coordinates[0]]), ezcat(*coordinates[1:])])
 

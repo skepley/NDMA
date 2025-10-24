@@ -12,7 +12,7 @@ import random
 
 from ndma.DSGRNintegration.DSGRNcrawler import DSGRNcrawler
 from ndma.boxy_box import boxy_box, equilibria_with_boxybox
-from ndma.hill_model import equilibrium_stability
+from ndma.helper_functions import equilibrium_stability
 from ndma.DSGRNintegration.DSGRN_functionalities import from_region_to_deterministic_point
 from ndma.model import Model, RestrictedHillModel
 

@@ -8,7 +8,7 @@ Function and design testing for the SaddleNode class
     Email: s.kepley@vu.nl
     Created: 4/13/2020 
 """
-from ndma.hill_model import *
+from ndma.helper_functions import *
 from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.bifurcation.saddlenode import SaddleNode
 import matplotlib.pyplot as plt

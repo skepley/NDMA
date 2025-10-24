@@ -5,7 +5,7 @@ A saddle-node bifurcation class and related functionality.
     Email: s.kepley@vu.nl
     Created: 5/18/2020
 """
-from ndma.hill_model import *
+from ndma.helper_functions import *
 import warnings
 
 # TODO: saddle node search still returns 0,0 if no saddle node is found!

@@ -9,7 +9,7 @@ Function and design testing for the HillModel class
     Email: s.kepley@vu.nl
     Created: 4/6/2020 
 """
-from ndma.hill_model import *
+from ndma.helper_functions import *
 from ndma.model import Model
 from ndma.activation import HillActivation
 

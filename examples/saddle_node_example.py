@@ -8,7 +8,7 @@ Testing and analysis for SaddleNode and ToggleSwitch classes
     Created: 4/24/2020 
 """
 
-from ndma.hill_model import *
+from ndma.helper_functions import *
 from ndma.model import Model
 from ndma.basic_models.TS_model import ToggleSwitch
 from ndma.bifurcation.saddlenode import SaddleNode

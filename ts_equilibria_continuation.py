@@ -6,7 +6,7 @@
     Email: s.kepley@vu.nl
     Created: 12/8/2021
 """
-from ndma.hill_model import find_root
+from ndma.helper_functions import find_root
 from ndma.basic_models.TS_model import *
 from scipy.linalg import null_space
 import matplotlib.pyplot as plt
@@ -93,11 +93,16 @@ decay = np.array([np.nan, np.nan], dtype=float)  # gamma
 p1 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_1, delta_1, theta_1)
 p2 = np.array([np.nan, np.nan, np.nan], dtype=float)  # (ell_2, delta_2, theta_2)
 f = ToggleSwitch(decay, [p1, p2])
-p0 = np.array([1, 1, 5, 3, 1, 1, 6, 3],
+gamma, theta, ell, delta = 1, 4, 2, 30
+p0 = np.array([gamma, ell, delta, theta, gamma, ell, delta+1, theta],
               dtype=float)  # (gamma_1, ell_1, delta_1, theta_1, gamma_2, ell_2, delta_2, theta_2)
-h0 = 4
+print(gamma * theta > ell)
+print(gamma * theta < ell + delta)
+h0 = 30
 hTarget = 1
-allEquilibria = f.find_equilibria(10, h0, p0)
+allEquilibria = f.find_equilibria(10, h0, p0, bootstrap = False)
+if len(allEquilibria) == 2:
+    allEquilibria = np.reshape(allEquilibria, (1, 2))
 ds = 0.25  # arc length parameter
 
 eqBranches = []

@@ -208,14 +208,17 @@ if __name__ == "__main__":
     index_list = [4, 9, 14, 19, 23, 27]  # 4 is the number of gamma parameters
     for i in index_list:
         pars[i] = hill
-    print('full model: ', g(x, pars))
+    print('computed full model: ', g(x, pars))
 
     p1 = np.array([[np.nan, np.nan, np.nan]], dtype=float)
     p4 = np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]], dtype=float)
     parameter_small = [p1, p1, p1, p4]
     g_tilde = RestrictedHillModel(gamma, parameter_small, productionSign, productionType, productionIndex)
     pars_small = np.delete(pars, index_list, axis=0)
-    g_tilde(x, hill, pars_small)
+    print('restricted model: ', g_tilde)
+    print('computed restricted model: ', g_tilde(x, hill, pars_small))
+
+    print(pars,'\n', pars_small)
 
     print('difference between full model and identified Hill coefs = ',
           np.linalg.norm(g(x, pars) - g_tilde(x, hill, pars_small)))

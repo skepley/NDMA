@@ -1,7 +1,7 @@
 # set some parameters to test with
 import numpy as np
 from ndma.basic_models.EMT_model import EMT
-from ndma.hill_model import ezcat
+from ndma.helper_functions import ezcat
 
 
 def test_EMTmodel():

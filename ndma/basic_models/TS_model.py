@@ -1,6 +1,6 @@
 """
 An implementation of the 2 node Toggle Switch network as a Hill model
-    Other files required: hill_model.py
+    Other files required: helper_functions.py
 
     Author: Shane Kepley
     Email: s.kepley@vu.nl
@@ -8,7 +8,7 @@ An implementation of the 2 node Toggle Switch network as a Hill model
 """
 import warnings
 from matplotlib import pyplot as plt
-from ndma.hill_model import ezcat, is_vector
+from ndma.helper_functions import ezcat, is_vector
 import numpy as np
 
 from ndma.activation import HillActivation
@@ -186,9 +186,11 @@ class ToggleSwitch(Model):
         a unique equilibrium at the coordinates x = (x1, x2) which is always stable."""
 
         # get initial condition for Phi
-        fullParm = self.parse_parameter(
-            *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
-        P0, P1 = parameterByCoordinate = self.unpack_parameter(fullParm)  # unpack variable parameters by component
+        #fullParm = self.parse_parameter(
+        #    *parameter)  # concatenate all parameters into a vector with hill coefficients sliced in
+        #P0, P1 = parameterByCoordinate = self.unpack_parameter(fullParm)  # unpack variable parameters by component
+
+        P0, P1 =  self.unpack_parameter(parameter)
         g0, p0 = self.coordinates[0].parse_parameters(P0)
         g1, p1 = self.coordinates[1].parse_parameters(P1)
         H0 = self.coordinates[0].productionComponents[0]

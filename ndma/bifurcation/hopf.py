@@ -6,7 +6,7 @@ A Hopf bifurcation class and related functionality.
     Created: 16.06.2023
 """
 
-from ndma.hill_model import *
+from ndma.helper_functions import *
 
 
 class Hopf:

@@ -24,7 +24,7 @@ SN = SaddleNode(f)
 
 # use dataset creation
 # size of the sample
-n_sample = 4 * 10 ** 4  # testing on 3, final run on 4
+n_sample = 4 * 10 ** 3  # testing on 3, final run on 4
 file_name = '../TS_data_100000.npz'
 try:
     np.load(file_name)

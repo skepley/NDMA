@@ -11,7 +11,7 @@ Function and design testing for the HillComponent class
 
 from ndma.coordinate import Coordinate
 from ndma.activation.hill import HillActivation
-from ndma.hill_model import ezcat
+from ndma.helper_functions import ezcat
 import numpy as np
 
 

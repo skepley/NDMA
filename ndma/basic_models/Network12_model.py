@@ -7,7 +7,7 @@ A separate file to store important HillModel subclasses for analysis or testing
     Email: s.kepley@vu.nl
     Created: 6/24/2020 
 """
-from ndma.hill_model import *
+from ndma.helper_functions import *
 from ndma.model.model import Model
 
 

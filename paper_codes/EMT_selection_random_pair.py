@@ -2,7 +2,7 @@ import numpy as np
 import DSGRN
 import random
 
-from ndma.hill_model import equilibrium_stability
+from ndma.helper_functions import equilibrium_stability
 from ndma.basic_models.EMT_model import def_emt_hill_model
 from create_dataset import from_region_to_deterministic_point, par_to_region_wrapper, \
     generate_data_from_coefs, tworegions_dataset
